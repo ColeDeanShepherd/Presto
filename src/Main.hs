@@ -55,6 +55,11 @@ parsePrefixExpression (t:ts) =
   case t of
     Identifier text -> (IdentifierNode text, ts)
     NumberToken text -> (NumberNode text, ts)
+    LeftParen _ ->
+      let (expr, t':ts') = parseExpression ts in
+        case t' of
+          RightParen _ -> (expr, ts')
+          _ -> error ("Expected ')' but encountered" ++ (show t'))
     _ -> error ("Unknown token: " ++ (show t))
 
 parseInfixExpression :: ParseTree -> [Token] -> (ParseTree, [Token])
@@ -74,7 +79,7 @@ parseFunctionCallArgumentsTuple (t:ts) =
     LeftParen _ ->
       let (args, (t':ts')) = parseCommaSeparated parseExpression ts in
         case t' of
-          RightParen text -> (args, ts')
+          RightParen _ -> (args, ts')
           _ -> error ("Expected ')' but encountered" ++ (show t'))
     _ -> error ("Expected '(' but encountered: " ++ (show t))
 
@@ -93,16 +98,20 @@ evaluate (FunctionCall funcExpr args) =
   case funcExpr of
     IdentifierNode text ->
       case text of
-        "add" -> sum (map evaluate args)
+        "add" -> foldl (+) (evaluate (head args)) (map evaluate (tail args))
+        "sub" -> foldl (-) (evaluate (head args)) (map evaluate (tail args))
+        "mul" -> foldl (*) (evaluate (head args)) (map evaluate (tail args))
+        "div" -> foldl (/) (evaluate (head args)) (map evaluate (tail args))
         _ -> error ("Unsupported function: " ++ text)
     _ -> error ("Unsupported function expression type: " ++ (show funcExpr))
 evaluate (NumberNode text) = read text::Double
 
-sourceCode = "add(1, 2)"
+sourceCode = "mul((mul(1, 2)), 3)"
 
 main =
   let tokens = tokenize sourceCode in
     let parseTree = parse tokens in
       do
+        print tokens
         print parseTree
         print (evaluate parseTree)
