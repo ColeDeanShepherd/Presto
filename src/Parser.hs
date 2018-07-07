@@ -5,7 +5,18 @@ module Parser (
 
 import Lexer
 
--- Parser
+{-
+To-Do:
+-Implement & use peekToken & readToken.
+-Fill out parser errors array.
+-Return maybes.
+-}
+
+data ParserState = ParserState {
+  tokensLeft :: [Token],
+  errors :: [String]
+}
+
 data ParseTree =
   IdentifierNode String
   | NumberNode String
@@ -13,55 +24,71 @@ data ParseTree =
   deriving (Show)
 
 parse :: [Token] -> ParseTree
-parse tokens =
-  let (expr, tokens') = parseExpression tokens in
-    case tokens' of
-      [] -> expr
-      _ -> error "Expected the end of the source code."
+parse tokens = parseGivenState (ParserState { tokensLeft = tokens, errors = [] })
 
-parseExpression :: [Token] -> (ParseTree, [Token])
-parseExpression tokens =
-  let (prefixExpr, tokens') = parsePrefixExpression tokens in
-    parseInfixExpression prefixExpr tokens'
+parseGivenState :: ParserState -> ParseTree
+parseGivenState parserState =
+  let (parserState', expr) = parseExpression parserState in
+    let tokens' = (tokensLeft parserState') in
+      case tokens' of
+        [] -> expr
+        _ -> error ("Expected the end of the source code." ++ (show tokens'))
 
-parsePrefixExpression :: [Token] -> (ParseTree, [Token])
-parsePrefixExpression (t:ts) =
-  case t of
-    Identifier text -> (IdentifierNode text, ts)
-    NumberToken text -> (NumberNode text, ts)
-    LeftParen _ ->
-      let (expr, t':ts') = parseExpression ts in
-        case t' of
-          RightParen _ -> (expr, ts')
-          _ -> error ("Expected ')' but encountered" ++ (show t'))
-    _ -> error ("Unknown token: " ++ (show t))
+parseExpression :: ParserState -> (ParserState, ParseTree)
+parseExpression parserState =
+  let (parserState', prefixExpr) = parsePrefixExpression parserState in
+    parseInfixExpression parserState' prefixExpr
 
-parseInfixExpression :: ParseTree -> [Token] -> (ParseTree, [Token])
-parseInfixExpression prefixExpr (t:ts) =
-  case t of
-    LeftParen _ -> parseFunctionCall prefixExpr (t:ts)
-    _ -> (prefixExpr, t:ts)
+parsePrefixExpression :: ParserState -> (ParserState, ParseTree)
+parsePrefixExpression parserState@(ParserState { tokensLeft = (nextToken:tokensTail), errors = errors }) =
+  case nextToken of
+    (Token { tokenType = Identifier, tokenText = text }) ->
+      (parserState { tokensLeft = tokensTail }, IdentifierNode text)
+    (Token { tokenType = NumberToken, tokenText = text }) ->
+      (parserState { tokensLeft = tokensTail }, NumberNode text)
+    (Token { tokenType = LeftParen, tokenText = _ }) ->
+      let parserState' = (parserState { tokensLeft = tokensTail }) in
+        let (parserState'', expr) = parseExpression parserState' in
+          let nextToken':tokensTail' = (tokensLeft parserState'') in
+            case nextToken' of
+              (Token { tokenType = RightParen, tokenText = _ }) ->
+                ((parserState { tokensLeft = tokensTail' }), expr)
+              _ -> error ("Expected ')' but encountered" ++ (show nextToken'))
+    _ -> error ("Unknown token: " ++ (show nextToken))
 
-parseFunctionCall :: ParseTree -> [Token] -> (ParseTree, [Token])
-parseFunctionCall funcExpr tokens =
-  let (args, t') = parseFunctionCallArgumentsTuple tokens in
-    (FunctionCall funcExpr args, t')
+parseInfixExpression :: ParserState -> ParseTree -> (ParserState, ParseTree)
+parseInfixExpression parserState prefixExpr =
+  let tokens@(nextToken:tokensTail) = (tokensLeft parserState) in
+    case nextToken of
+      (Token { tokenType = LeftParen, tokenText = _ }) -> parseFunctionCall parserState prefixExpr
+      _ -> (parserState, prefixExpr)
 
-parseFunctionCallArgumentsTuple :: [Token] -> ([ParseTree], [Token])
-parseFunctionCallArgumentsTuple (t:ts) =
-  case t of
-    LeftParen _ ->
-      let (args, (t':ts')) = parseCommaSeparated parseExpression ts in
-        case t' of
-          RightParen _ -> (args, ts')
-          _ -> error ("Expected ')' but encountered" ++ (show t'))
-    _ -> error ("Expected '(' but encountered: " ++ (show t))
+parseFunctionCall :: ParserState -> ParseTree -> (ParserState, ParseTree)
+parseFunctionCall parserState funcExpr =
+  let (parserState', args) = parseFunctionCallArgumentsTuple parserState in
+    (parserState', FunctionCall funcExpr args)
 
-parseCommaSeparated :: ([Token] -> (ParseTree, [Token])) -> [Token] -> ([ParseTree], [Token])
-parseCommaSeparated parseFunc tokens =
-  let (parseTree, (t':ts')) = parseFunc tokens in
-    case t' of
-      Comma _ ->
-        let (parseTreesTail, t'') = parseCommaSeparated parseFunc ts' in
-          (parseTree:parseTreesTail, t'')
-      _ -> ([parseTree], t':ts')
+parseFunctionCallArgumentsTuple :: ParserState -> (ParserState, [ParseTree])
+parseFunctionCallArgumentsTuple parserState =
+  let (nextToken:tokensTail) = (tokensLeft parserState) in
+    case nextToken of
+      (Token { tokenType = LeftParen, tokenText = _ }) ->
+        let parserState' = (parserState { tokensLeft = tokensTail }) in
+          let (parserState'', args) = parseCommaSeparated parserState' parseExpression in
+            let (nextToken'':tokensTail'') = (tokensLeft parserState'') in
+              case nextToken'' of
+                (Token { tokenType = RightParen, tokenText = _ }) ->
+                  let parserState3 = (parserState'' { tokensLeft = tokensTail'' }) in (parserState3, args)
+                _ -> error ("Expected ')' but encountered" ++ (show nextToken''))
+      _ -> error ("Expected '(' but encountered: " ++ (show nextToken))
+
+parseCommaSeparated :: ParserState -> (ParserState -> (ParserState, ParseTree)) -> (ParserState, [ParseTree])
+parseCommaSeparated parserState parseFunc =
+  let (parserState', parseTree) = parseFunc parserState in
+    let (nextToken':tokensTail') = (tokensLeft parserState') in
+      case nextToken' of
+        (Token { tokenType = Comma, tokenText = _ }) ->
+          let parserState'' = (parserState' { tokensLeft = tokensTail' }) in
+            let (parserState3, parseTreesTail) = parseCommaSeparated parserState'' parseFunc in
+              (parserState3, parseTree:parseTreesTail)
+        _ -> (parserState', [parseTree])
