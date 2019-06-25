@@ -7,7 +7,7 @@ namespace Presto
     {
         static void Main(string[] args)
         {
-            var ast = new FunctionCall
+            var printHelloWorld = new FunctionCall
             {
                 FunctionExpression = new MemberAccessOperator
                 {
@@ -34,7 +34,7 @@ namespace Presto
                         Text = "writeLine"
                     }
                 },
-                Arguments = new List<Expression>
+                Arguments = new List<IExpression>
                 {
                     new StringLiteral
                     {
@@ -42,6 +42,21 @@ namespace Presto
                     }
                 }
             };
+            var ast = new FunctionDefinition
+            {
+                Name = new Identifier
+                {
+                    Text = "main"
+                },
+                Body = new Block
+                {
+                    Statements = new List<IStatement>
+                    {
+                        printHelloWorld
+                    }
+                }
+            };
+
             var prestoCodeGenerator = new PrestoCodeGenerator();
             prestoCodeGenerator.Visit(ast);
 

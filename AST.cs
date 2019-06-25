@@ -7,9 +7,14 @@ namespace Presto
     {
         public abstract void Visit(IntegerLiteral integerLiteral);
         public abstract void Visit(StringLiteral stringLiteral);
+
         public abstract void Visit(Identifier identifier);
+
         public abstract void Visit(FunctionCall functionCall);
         public abstract void Visit(MemberAccessOperator memberAccessOperator);
+
+        public abstract void Visit(Block block);
+        public abstract void Visit(FunctionDefinition functionDefinition);
     }
 
     public class PrestoCodeGenerator : AstNodeVisitor
@@ -58,34 +63,60 @@ namespace Presto
             memberAccessOperator.MemberIdentifier.Accept(this);
         }
 
+        public override void Visit(Block block)
+        {
+            stringBuilder.Append('{');
+            
+            foreach (var statement in block.Statements)
+            {
+                statement.Accept(this);
+                stringBuilder.Append(';');
+            }
+
+            stringBuilder.Append('}');
+        }
+
+        public override void Visit(FunctionDefinition functionDefinition)
+        {
+            stringBuilder.Append("fn");
+            stringBuilder.Append(' ');
+            functionDefinition.Name.Accept(this);
+            stringBuilder.Append('(');
+            stringBuilder.Append(')');
+            functionDefinition.Body.Accept(this);
+        }
+
         private StringBuilder stringBuilder = new StringBuilder();
     }
 
-    public abstract class AstNode
+    public interface IAstNode
     {
-        public abstract void Accept(AstNodeVisitor visitor);
+        void Accept(AstNodeVisitor visitor);
     }
-    public abstract class Expression : AstNode
+    public interface IExpression : IAstNode
+    {
+    }
+    public interface IStatement : IAstNode
     {
     }
 
     // All nodes must derive from AstNote.
     #region Literals
 
-    public class IntegerLiteral : Expression
+    public class IntegerLiteral : IExpression
     {
         public int Value;
 
-        public override void Accept(AstNodeVisitor visitor)
+        public void Accept(AstNodeVisitor visitor)
         {
             visitor.Visit(this);
         }
     }
-    public class StringLiteral : Expression
+    public class StringLiteral : IExpression
     {
         public string Value;
 
-        public override void Accept(AstNodeVisitor visitor)
+        public void Accept(AstNodeVisitor visitor)
         {
             visitor.Visit(this);
         }
@@ -93,33 +124,53 @@ namespace Presto
 
     #endregion
 
-    public class Identifier : Expression
+    public class Identifier : IExpression
     {
         public string Text;
 
-        public override void Accept(AstNodeVisitor visitor)
+        public void Accept(AstNodeVisitor visitor)
         {
             visitor.Visit(this);
         }
     }
 
-    public class MemberAccessOperator : Expression
+    public class MemberAccessOperator : IExpression
     {
-        public Expression MemberContainer;
+        public IExpression MemberContainer;
         public Identifier MemberIdentifier;
 
-        public override void Accept(AstNodeVisitor visitor)
+        public void Accept(AstNodeVisitor visitor)
+        {
+            visitor.Visit(this);
+        }
+    }
+    public class FunctionCall : IExpression, IStatement
+    {
+        public IExpression FunctionExpression;
+        public List<IExpression> Arguments;
+
+        public void Accept(AstNodeVisitor visitor)
         {
             visitor.Visit(this);
         }
     }
 
-    public class FunctionCall : Expression
+    public class Block : IStatement
     {
-        public Expression FunctionExpression;
-        public List<Expression> Arguments;
+        public List<IStatement> Statements;
 
-        public override void Accept(AstNodeVisitor visitor)
+        public void Accept(AstNodeVisitor visitor)
+        {
+            visitor.Visit(this);
+        }
+    }
+
+    public class FunctionDefinition : IStatement
+    {
+        public Identifier Name;
+        public Block Body;
+
+        public void Accept(AstNodeVisitor visitor)
         {
             visitor.Visit(this);
         }
