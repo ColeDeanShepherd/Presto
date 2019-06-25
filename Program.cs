@@ -3,72 +3,49 @@ using System.Collections.Generic;
 
 namespace Presto
 {
-    public abstract class AstNodeVisitor
-    {
-        public abstract void Visit(IntegerLiteral integerLiteral);
-        public abstract void Visit(Identifier identifier);
-        public abstract void Visit(FunctionCall node);
-    }
-
-    public abstract class AstNode
-    {
-        public abstract void Accept(AstNodeVisitor visitor);
-    }
-    public abstract class Expression : AstNode
-    {
-    }
-    public class IntegerLiteral : Expression
-    {
-        public int Value;
-
-        public override void Accept(AstNodeVisitor visitor)
-        {
-            visitor.Visit(this);
-        }
-    }
-    public class Identifier : Expression
-    {
-        public string Text;
-
-        public override void Accept(AstNodeVisitor visitor)
-        {
-            visitor.Visit(this);
-        }
-    }
-    public class FunctionCall : Expression
-    {
-        public Expression FunctionExpression;
-        public List<Expression> Arguments;
-
-        public override void Accept(AstNodeVisitor visitor)
-        {
-            visitor.Visit(this);
-        }
-    }
-
     class Program
     {
         static void Main(string[] args)
         {
             var ast = new FunctionCall
             {
-                FunctionExpression = new Identifier
+                FunctionExpression = new MemberAccessOperator
                 {
-                    Text = "add"
+                    MemberContainer = new MemberAccessOperator
+                    {
+                        MemberContainer = new MemberAccessOperator
+                        {
+                            MemberContainer = new Identifier
+                            {
+                                Text = "std"
+                            },
+                            MemberIdentifier = new Identifier
+                            {
+                                Text = "io"
+                            }
+                        },
+                        MemberIdentifier = new Identifier
+                        {
+                            Text = "stdout"
+                        }
+                    },
+                    MemberIdentifier = new Identifier
+                    {
+                        Text = "writeLine"
+                    }
                 },
                 Arguments = new List<Expression>
                 {
-                    new IntegerLiteral
+                    new StringLiteral
                     {
-                        Value = 1
-                    },
-                    new IntegerLiteral
-                    {
-                        Value = 2
+                        Value = "Hello, world!"
                     }
                 }
             };
+            var prestoCodeGenerator = new PrestoCodeGenerator();
+            prestoCodeGenerator.Visit(ast);
 
+            Console.WriteLine(prestoCodeGenerator.GeneratedCode);
             Console.ReadKey();
         }
     }
