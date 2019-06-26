@@ -1,4 +1,5 @@
-﻿using System;
+﻿using Presto.AST;
+using System;
 using System.Collections.Generic;
 
 namespace Presto
@@ -42,25 +43,31 @@ namespace Presto
                     }
                 }
             };
-            var ast = new FunctionDefinition
+            var ast = new AST.Program
             {
-                Name = new Identifier
+                Definitions = new List<IDefinition>
                 {
-                    Text = "main"
-                },
-                Body = new Block
-                {
-                    Statements = new List<IStatement>
+                    new FunctionDefinition
                     {
-                        printHelloWorld
+                        Name = new Identifier
+                        {
+                            Text = "main"
+                        },
+                        Body = new Block
+                        {
+                            Statements = new List<IStatement>
+                            {
+                                printHelloWorld
+                            }
+                        }
                     }
                 }
             };
 
-            var prestoCodeGenerator = new PrestoCodeGenerator();
-            prestoCodeGenerator.Visit(ast);
+            var codeGenerator = new CCodeGenerator();
+            codeGenerator.Visit(ast);
 
-            Console.WriteLine(prestoCodeGenerator.GeneratedCode);
+            Console.WriteLine(codeGenerator.GeneratedCode);
             Console.ReadKey();
         }
     }

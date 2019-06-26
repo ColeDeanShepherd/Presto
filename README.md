@@ -15,7 +15,7 @@
   * No need for ugliness like
     * visitor pattern
   * Code shouldn't require deciphering
-  * Code shouldn't be intimadating to look at
+  * Code shouldn't be intimidating to look at
 * Easy to do the right thing, hard to do the wrong thing
   * Immutable by default
 * Interoperable
@@ -34,6 +34,8 @@
       * Generating/handling errors
     * Transform data
       * From one data structure to another
+* No garbage collection
+  * Instead, single ownership wherever possible
 
 ### To-Do
 
