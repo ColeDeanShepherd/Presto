@@ -1,60 +1,41 @@
-﻿using Presto.AST;
+﻿using Presto.ASG;
 using System.Text;
 
-namespace Presto
+namespace Presto.CodeGenerators
 {
-    public class PrestoCodeGenerator : AstNodeVisitor
+    public class PrestoCodeGenerator : AsgNodeVisitor
     {
         public string GeneratedCode => stringBuilder.ToString();
 
-        public override void Visit(AST.Program program)
+        public override void Visit(ASG.Program program)
         {
-            foreach (var definition in program.Definitions)
+            program.GlobalNamespace.Accept(this);
+        }
+
+        public override void Visit(Namespace @namespace)
+        {
+            foreach (var function in @namespace.Functions)
             {
-                definition.Accept(this);
+                function.Accept(this);
+            }
+
+            foreach (var childNamespace in @namespace.Namespaces)
+            {
+                childNamespace.Accept(this);
             }
         }
 
-        public override void Visit(IntegerLiteral integerLiteral)
+        public override void Visit(Function function)
         {
-            stringBuilder.Append(integerLiteral.Value);
-        }
+            // Skip externally-defined functions for now.
+            if (function.Body == null) { return; }
 
-        public override void Visit(StringLiteral stringLiteral)
-        {
-            stringBuilder.Append('"');
-            stringBuilder.Append(stringLiteral.Value);
-            stringBuilder.Append('"');
-        }
-
-        public override void Visit(Identifier identifier)
-        {
-            stringBuilder.Append(identifier.Text);
-        }
-
-        public override void Visit(FunctionCall functionCall)
-        {
-            functionCall.FunctionExpression.Accept(this);
+            stringBuilder.Append("fn");
+            stringBuilder.Append(' ');
+            stringBuilder.Append(function.Name);
             stringBuilder.Append('(');
-
-            for (var i = 0; i < functionCall.Arguments.Count; i++)
-            {
-                if (i > 0)
-                {
-                    stringBuilder.Append(", ");
-                }
-
-                functionCall.Arguments[i].Accept(this);
-            }
-
             stringBuilder.Append(')');
-        }
-
-        public override void Visit(MemberAccessOperator memberAccessOperator)
-        {
-            memberAccessOperator.MemberContainer.Accept(this);
-            stringBuilder.Append('.');
-            memberAccessOperator.MemberIdentifier.Accept(this);
+            function.Body.Accept(this);
         }
 
         public override void Visit(Block block)
@@ -70,16 +51,32 @@ namespace Presto
             stringBuilder.Append('}');
         }
 
-        public override void Visit(FunctionDefinition functionDefinition)
+        public override void Visit(FunctionCall functionCall)
         {
-            stringBuilder.Append("fn");
-            stringBuilder.Append(' ');
-            functionDefinition.Name.Accept(this);
+            stringBuilder.Append(functionCall.Function.GetQualifiedName());
             stringBuilder.Append('(');
+
+            for (var i = 0; i < functionCall.Arguments.Count; i++)
+            {
+                if (i > 0)
+                {
+                    stringBuilder.Append(", ");
+                }
+
+                functionCall.Arguments[i].Accept(this);
+            }
+
             stringBuilder.Append(')');
-            functionDefinition.Body.Accept(this);
         }
 
+        public override void Visit(StringLiteral stringLiteral)
+        {
+            stringBuilder.Append('"');
+            stringBuilder.Append(stringLiteral.Value);
+            stringBuilder.Append('"');
+        }
+
+        
         private StringBuilder stringBuilder = new StringBuilder();
     }
 }

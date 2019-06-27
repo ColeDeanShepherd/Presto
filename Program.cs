@@ -1,6 +1,6 @@
-﻿using Presto.AST;
+﻿using Presto.ASG;
+using Presto.CodeGenerators;
 using System;
-using System.Collections.Generic;
 
 namespace Presto
 {
@@ -8,66 +8,37 @@ namespace Presto
     {
         static void Main(string[] args)
         {
-            var printHelloWorld = new FunctionCall
-            {
-                FunctionExpression = new MemberAccessOperator
-                {
-                    MemberContainer = new MemberAccessOperator
-                    {
-                        MemberContainer = new MemberAccessOperator
-                        {
-                            MemberContainer = new Identifier
-                            {
-                                Text = "std"
-                            },
-                            MemberIdentifier = new Identifier
-                            {
-                                Text = "io"
-                            }
-                        },
-                        MemberIdentifier = new Identifier
-                        {
-                            Text = "stdout"
-                        }
-                    },
-                    MemberIdentifier = new Identifier
-                    {
-                        Text = "writeLine"
-                    }
-                },
-                Arguments = new List<IExpression>
-                {
-                    new StringLiteral
-                    {
-                        Value = "Hello, world!"
-                    }
-                }
-            };
-            var ast = new AST.Program
-            {
-                Definitions = new List<IDefinition>
-                {
-                    new FunctionDefinition
-                    {
-                        Name = new Identifier
-                        {
-                            Text = "main"
-                        },
-                        Body = new Block
-                        {
-                            Statements = new List<IStatement>
-                            {
-                                printHelloWorld
-                            }
-                        }
-                    }
-                }
-            };
+            var program = ASG.Program.CreateWithStdLib();
 
-            var codeGenerator = new CCodeGenerator();
-            codeGenerator.Visit(ast);
+            var mainFn = new Function("main");
+            mainFn.SetParent(program.GlobalNamespace);
 
-            Console.WriteLine(codeGenerator.GeneratedCode);
+            var mainFnBody = new Block();
+            mainFnBody.ParentNode = mainFn;
+            mainFn.Body = mainFnBody;
+
+            var printCall = new FunctionCall();
+            printCall.Function = program.GlobalNamespace.FindDeclaration(new[] { "std", "io", "stdout", "writeLine" }) as Function;
+            printCall.ParentNode = mainFnBody;
+            mainFnBody.Statements.Add(printCall);
+
+            var printCallArg = new StringLiteral();
+            printCallArg.Value = "Hello, world!";
+            printCallArg.ParentNode = printCall;
+            printCall.Arguments.Add(printCallArg);
+
+            var prestoGenerator = new PrestoCodeGenerator();
+            prestoGenerator.Visit(program);
+            Console.WriteLine(prestoGenerator.GeneratedCode);
+
+            Console.WriteLine();
+            Console.WriteLine("==========");
+            Console.WriteLine();
+
+            var cGenerator = new CCodeGenerator();
+            cGenerator.Visit(program);
+            Console.WriteLine(cGenerator.GeneratedCode);
+
             Console.ReadKey();
         }
     }

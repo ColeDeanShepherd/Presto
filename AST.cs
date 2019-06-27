@@ -6,15 +6,9 @@ namespace Presto.AST
     {
         void Accept(AstNodeVisitor visitor);
     }
-    public interface IDefinition: IAstNode
-    {
-    }
-    public interface IExpression : IAstNode
-    {
-    }
-    public interface IStatement : IAstNode
-    {
-    }
+    public interface IDefinition: IAstNode { }
+    public interface IExpression : IAstNode { }
+    public interface IStatement : IAstNode { }
 
     // All nodes must derive from AstNote.
     #region Literals

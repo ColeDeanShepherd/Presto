@@ -1,9 +1,9 @@
-﻿using Presto.AST;
+﻿using Presto.ASG;
 using System.Text;
 
-namespace Presto
+namespace Presto.CodeGenerators
 {
-    public class CCodeGenerator : AstNodeVisitor
+    public class CCodeGenerator : AsgNodeVisitor
     {
         #region Constants
 
@@ -14,17 +14,21 @@ namespace Presto
 
         public string GeneratedCode => stringBuilder.ToString();
 
-        public override void Visit(AST.Program program)
+        public override void Visit(ASG.Program program)
         {
             stringBuilder.Append("#include <stdio.h>");
             StartNewLine();
             StartNewLine();
 
-            foreach (var definition in program.Definitions)
-            {
-                definition.Accept(this);
-                StartNewLine();
-            }
+            stringBuilder.Append("void pst_std_io_stdout_writeLine(char* str) {");
+            StartNewLine(deltaIndentationLevel: 1);
+            stringBuilder.Append("printf(\"%s\", str);");
+            StartNewLine(deltaIndentationLevel: -1);
+            stringBuilder.Append("}");
+            StartNewLine();
+            StartNewLine();
+
+            program.GlobalNamespace.Accept(this);
 
             StartNewLine();
 
@@ -40,49 +44,37 @@ namespace Presto
             stringBuilder.Append("}");
             StartNewLine();
 
+
+
+            
         }
 
-        public override void Visit(IntegerLiteral integerLiteral)
+        public override void Visit(Namespace @namespace)
         {
-            stringBuilder.Append(integerLiteral.Value);
-        }
-
-        public override void Visit(StringLiteral stringLiteral)
-        {
-            stringBuilder.Append('"');
-            stringBuilder.Append(stringLiteral.Value);
-            stringBuilder.Append('"');
-        }
-
-        public override void Visit(Identifier identifier)
-        {
-            stringBuilder.Append(IDENTIFIER_PREFIX);
-            stringBuilder.Append(identifier.Text);
-        }
-
-        public override void Visit(FunctionCall functionCall)
-        {
-            functionCall.FunctionExpression.Accept(this);
-            stringBuilder.Append('(');
-
-            for (var i = 0; i < functionCall.Arguments.Count; i++)
+            foreach (var function in @namespace.Functions)
             {
-                if (i > 0)
-                {
-                    stringBuilder.Append(", ");
-                }
-
-                functionCall.Arguments[i].Accept(this);
+                function.Accept(this);
+                StartNewLine();
             }
 
-            stringBuilder.Append(')');
+            foreach (var childNamespace in @namespace.Namespaces)
+            {
+                childNamespace.Accept(this);
+            }
         }
 
-        public override void Visit(MemberAccessOperator memberAccessOperator)
+        public override void Visit(Function function)
         {
-            memberAccessOperator.MemberContainer.Accept(this);
-            stringBuilder.Append('.');
-            memberAccessOperator.MemberIdentifier.Accept(this);
+            // Skip externally-defined functions for now.
+            if (function.Body == null) { return; }
+
+            stringBuilder.Append("void");
+            stringBuilder.Append(' ');
+            stringBuilder.Append(IDENTIFIER_PREFIX);
+            stringBuilder.Append(function.Name);
+            stringBuilder.Append('(');
+            stringBuilder.Append(')');
+            function.Body.Accept(this);
         }
 
         public override void Visit(Block block)
@@ -101,15 +93,30 @@ namespace Presto
             stringBuilder.Append('}');
         }
 
-        public override void Visit(FunctionDefinition functionDefinition)
+        public override void Visit(FunctionCall functionCall)
         {
-            stringBuilder.Append("void");
-            stringBuilder.Append(' ');
-            functionDefinition.Name.Accept(this);
+            stringBuilder.Append(IDENTIFIER_PREFIX);
+            stringBuilder.Append(string.Join('_', functionCall.Function.GetQualifiedNameParts()));
             stringBuilder.Append('(');
+
+            for (var i = 0; i < functionCall.Arguments.Count; i++)
+            {
+                if (i > 0)
+                {
+                    stringBuilder.Append(", ");
+                }
+
+                functionCall.Arguments[i].Accept(this);
+            }
+
             stringBuilder.Append(')');
-            stringBuilder.Append(' ');
-            functionDefinition.Body.Accept(this);
+        }
+
+        public override void Visit(StringLiteral stringLiteral)
+        {
+            stringBuilder.Append('"');
+            stringBuilder.Append(stringLiteral.Value);
+            stringBuilder.Append('"');
         }
 
         private StringBuilder stringBuilder = new StringBuilder();
