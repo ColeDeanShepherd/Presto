@@ -20,7 +20,8 @@ namespace Presto.Lexer
         LCurlyBrace,
         RCurlyBrace,
         Period,
-        Semicolon
+        Semicolon,
+        Comma
     }
 
     public struct TextPosition
@@ -75,10 +76,10 @@ namespace Presto.Lexer
 
             // body
             this.sourceCode = sourceCode;
+            charIndex = 0;
             position = new TextPosition(lineNumber: 1, columnNumber: 1);
             tokens = new List<Token>();
             errors = new List<LexerError>();
-            charIndex = 0;
 
             char? nextChar;
             while ((nextChar = PeekPossibleCharacter()) != null)
@@ -129,14 +130,15 @@ namespace Presto.Lexer
             { '{', TokenType.LCurlyBrace },
             { '}', TokenType.RCurlyBrace },
             { '.', TokenType.Period },
-            { ';', TokenType.Semicolon }
+            { ';', TokenType.Semicolon },
+            { ',', TokenType.Comma }
         };
 
-        public string sourceCode { get; private set; }
+        private string sourceCode;
         private int charIndex;
-        public TextPosition position { get; private set; }
-        public List<Token> tokens { get; private set; }
-        public List<LexerError> errors { get; private set; }
+        private TextPosition position;
+        private List<Token> tokens;
+        private List<LexerError> errors;
 
         #region Helper Methods
 
