@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.Linq;
 
 namespace Presto.ASG
@@ -9,14 +10,20 @@ namespace Presto.ASG
         INode ParentNode { get; }
         IEnumerable<INode> ChildNodes { get; }
 
-        void Accept(AsgNodeVisitor visitor);
+        TResult Accept<TArg, TResult>(AsgNodeVisitor<TArg, TResult> visitor, TArg arg);
     }
     public interface IDeclaration : INode
     {
         string Name { get; }
     }
-    public interface IStatement : INode { }
-    public interface IExpression : INode { }
+    public interface IStatement : INode
+    {
+        new INode ParentNode { get; set; }
+    }
+    public interface IExpression : INode
+    {
+        new INode ParentNode { get; set; }
+    }
     public interface IScope : INode { }
 
     public static class INodeHelpers
@@ -89,36 +96,14 @@ namespace Presto.ASG
 
     public class Program : INode
     {
-        public static Program CreateWithStdLib()
-        {
-            var program = new ASG.Program();
-
-            var globalNamespace = new Namespace(name: null);
-            program.GlobalNamespace = globalNamespace;
-
-            var stdNamespace = new Namespace("std");
-            stdNamespace.SetParent(globalNamespace);
-
-            var stdIoNamespace = new Namespace("io");
-            stdIoNamespace.SetParent(stdNamespace);
-
-            var stdIoStdOutNamespace = new Namespace("stdout");
-            stdIoStdOutNamespace.SetParent(stdIoNamespace);
-
-            var writeLineFunction = new Function("writeLine");
-            writeLineFunction.SetParent(stdIoStdOutNamespace);
-
-            return program;
-        }
-
         #region INode
 
         public INode ParentNode => null;
         public IEnumerable<INode> ChildNodes => IEnumerableExtensions.AsEnumerable<INode>(GlobalNamespace);
 
-        public void Accept(AsgNodeVisitor visitor)
+        public TResult Accept<TArg, TResult>(AsgNodeVisitor<TArg, TResult> visitor, TArg arg)
         {
-            visitor.Visit(this);
+            return visitor.Visit(this, arg);
         }
 
         #endregion
@@ -134,9 +119,9 @@ namespace Presto.ASG
         public IEnumerable<INode> ChildNodes =>
             IEnumerableExtensions.Concat(Namespaces.Cast<INode>(), Functions.Cast<INode>());
 
-        public void Accept(AsgNodeVisitor visitor)
+        public TResult Accept<TArg, TResult>(AsgNodeVisitor<TArg, TResult> visitor, TArg arg)
         {
-            visitor.Visit(this);
+            return visitor.Visit(this, arg);
         }
 
         #endregion
@@ -183,9 +168,9 @@ namespace Presto.ASG
         public INode ParentNode => Parent;
         public IEnumerable<INode> ChildNodes => IEnumerableExtensions.AsEnumerable<INode>(Body);
 
-        public void Accept(AsgNodeVisitor visitor)
+        public TResult Accept<TArg, TResult>(AsgNodeVisitor<TArg, TResult> visitor, TArg arg)
         {
-            visitor.Visit(this);
+            return visitor.Visit(this, arg);
         }
 
         #endregion
@@ -231,9 +216,9 @@ namespace Presto.ASG
         public INode ParentNode { get; set; }
         public IEnumerable<INode> ChildNodes => Statements.Cast<INode>();
 
-        public void Accept(AsgNodeVisitor visitor)
+        public TResult Accept<TArg, TResult>(AsgNodeVisitor<TArg, TResult> visitor, TArg arg)
         {
-            visitor.Visit(this);
+            return visitor.Visit(this, arg);
         }
 
         #endregion
@@ -253,9 +238,9 @@ namespace Presto.ASG
         public INode ParentNode { get; set; }
         public IEnumerable<INode> ChildNodes => Arguments.Cast<INode>();
 
-        public void Accept(AsgNodeVisitor visitor)
+        public TResult Accept<TArg, TResult>(AsgNodeVisitor<TArg, TResult> visitor, TArg arg)
         {
-            visitor.Visit(this);
+            return visitor.Visit(this, arg);
         }
 
         #endregion
@@ -269,6 +254,23 @@ namespace Presto.ASG
         }
     }
 
+    public class IntegerLiteral : IExpression
+    {
+        #region INode
+
+        public INode ParentNode { get; set; }
+        public IEnumerable<INode> ChildNodes => Enumerable.Empty<INode>();
+
+        public TResult Accept<TArg, TResult>(AsgNodeVisitor<TArg, TResult> visitor, TArg arg)
+        {
+            return visitor.Visit(this, arg);
+        }
+
+        #endregion
+
+        public int Value;
+    }
+
     public class StringLiteral : IExpression
     {
         #region INode
@@ -276,13 +278,200 @@ namespace Presto.ASG
         public INode ParentNode { get; set; }
         public IEnumerable<INode> ChildNodes => Enumerable.Empty<INode>();
 
-        public void Accept(AsgNodeVisitor visitor)
+        public TResult Accept<TArg, TResult>(AsgNodeVisitor<TArg, TResult> visitor, TArg arg)
         {
-            visitor.Visit(this);
+            return visitor.Visit(this, arg);
         }
 
         #endregion
 
         public string Value;
+    }
+
+    public class AsgBuilderDeclarationsPass : AST.AstNodeVisitor<INode, INode>
+    {
+        public AsgBuilderDeclarationsPass(List<string> errors)
+        {
+            this.errors = errors;
+        }
+
+        #region AstNodeVisitor<INode>
+
+        public override INode Visit(AST.Program astProgram, INode parent)
+        {
+            Debug.Assert(astProgram != null);
+
+            program = CreateProgramWithStdLib();
+
+            foreach (var astDefinition in astProgram.Definitions)
+            {
+                var node = astDefinition.Accept(this, program);
+
+                if (node is Function)
+                {
+                    var function = node as Function;
+                    function.SetParent(program.GlobalNamespace);
+                }
+                else
+                {
+                    errors.Add($"Unexpected AST node type: {node.GetType().Name}");
+                }
+            }
+
+            return program;
+        }
+
+        public override INode Visit(AST.FunctionDefinition astFunctionDefinition, INode parent)
+        {
+            Debug.Assert(astFunctionDefinition != null);
+
+            var function = new Function(astFunctionDefinition.Name.Text);
+            return function;
+
+            var node = astFunctionDefinition.Body.Accept(this, function);
+            var body = node as Block;
+            if (body == null)
+            {
+                errors.Add($"Unexpected AST node type: {node.GetType().Name}");
+            }
+
+            body.ParentNode = function;
+            function.Body = body;
+
+            return function;
+        }
+
+        public override INode Visit(AST.Block astBlock, INode parent)
+        {
+            Debug.Assert(astBlock != null);
+
+            var block = new Block
+            {
+                Statements = new List<IStatement>()
+            };
+
+            foreach (var astStatement in astBlock.Statements)
+            {
+                var node = astStatement.Accept(this, block);
+                var statement = node as IStatement;
+                if (node != null)
+                {
+                    statement.ParentNode = block;
+                    block.Statements.Add(statement);
+                }
+                else
+                {
+                    errors.Add($"Unexpected AST node type: {node.GetType().Name}");
+                }
+            }
+
+            return block;
+        }
+
+        public override INode Visit(AST.FunctionCall astFunctionCall, INode parent)
+        {
+            Debug.Assert(astFunctionCall != null);
+
+            var functionCall = new FunctionCall();
+            functionCall.Function = program.GlobalNamespace.FindDeclaration(new[] { "std", "io", "stdout", "writeLine" }) as Function;
+
+            return functionCall;
+        }
+
+        public override INode Visit(AST.MemberAccessOperator astMemberAccessOperator, INode parent)
+        {
+            return null;
+
+            /*Debug.Assert(astMemberAccessOperator != null);
+
+            var memberContainerNode = astMemberAccessOperator.MemberContainer.Accept(this, parent);
+
+            var memberDeclarationNode = astMemberAccessOperator.MemberIdentifier.Accept(this, parent);
+            var memberDeclaration = memberDeclarationNode as IDeclaration;
+            if (memberDeclaration == null)
+            {
+                errors.Add($"Unexpected AST node type: {memberDeclarationNode.GetType().Name}");
+            }*/
+        }
+
+        public override INode Visit(AST.Identifier identifier, INode parent)
+        {
+            Debug.Assert(identifier != null);
+
+            var scope = parent.FindThisOrAncestorOfType<IScope>();
+            // TODO: error handling?
+
+            return scope.FindDeclaration(identifier.Text);
+        }
+
+        public override INode Visit(AST.IntegerLiteral astIntegerLiteral, INode parent)
+        {
+            var integerLiteral = new IntegerLiteral();
+            integerLiteral.Value = astIntegerLiteral.Value;
+            return integerLiteral;
+        }
+
+        public override INode Visit(AST.StringLiteral astStringLiteral, INode parent)
+        {
+            var stringLiteral = new StringLiteral();
+            stringLiteral.Value = astStringLiteral.Value;
+            return stringLiteral;
+        }
+        
+        #endregion
+
+        private Program program;
+        private List<string> errors;
+
+        #region Helper Methods
+
+        private Program CreateProgramWithStdLib()
+        {
+            var program = new ASG.Program();
+
+            var globalNamespace = new Namespace(name: null);
+            program.GlobalNamespace = globalNamespace;
+
+            var stdNamespace = new Namespace("std");
+            stdNamespace.SetParent(globalNamespace);
+
+            var stdIoNamespace = new Namespace("io");
+            stdIoNamespace.SetParent(stdNamespace);
+
+            var stdIoStdOutNamespace = new Namespace("stdout");
+            stdIoStdOutNamespace.SetParent(stdIoNamespace);
+
+            var writeLineFunction = new Function("writeLine");
+            writeLineFunction.SetParent(stdIoStdOutNamespace);
+
+            return program;
+        }
+
+        #endregion
+    }
+
+    public class AsgBuilder
+    {
+        public (Program, List<string>) BuildAsg(AST.Program astProgram)
+        {
+            // preconditions
+            Debug.Assert(astProgram != null);
+
+            // body
+            errors = new List<string>();
+
+            var initialPass = new AsgBuilderDeclarationsPass(errors);
+
+            var node = astProgram.Accept(initialPass, null);
+            var program = node as Program;
+            if (program == null)
+            {
+                errors.Add($"Unexpected AST node type: {node.GetType().Name}");
+            }
+
+            return (program, errors);
+        }
+
+        private List<string> errors;
     }
 }

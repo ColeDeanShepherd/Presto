@@ -4,7 +4,7 @@ namespace Presto.AST
 {
     public interface IAstNode
     {
-        void Accept(AstNodeVisitor visitor);
+        TResult Accept<TArg, TResult>(AstNodeVisitor<TArg, TResult> visitor, TArg arg);
     }
     public interface IDefinition: IAstNode { }
     public interface IExpression : IAstNode { }
@@ -17,18 +17,18 @@ namespace Presto.AST
     {
         public int Value;
 
-        public void Accept(AstNodeVisitor visitor)
+        public TResult Accept<TArg, TResult>(AstNodeVisitor<TArg, TResult> visitor, TArg arg)
         {
-            visitor.Visit(this);
+            return visitor.Visit(this, arg);
         }
     }
     public class StringLiteral : IExpression
     {
         public string Value;
 
-        public void Accept(AstNodeVisitor visitor)
+        public TResult Accept<TArg, TResult>(AstNodeVisitor<TArg, TResult> visitor, TArg arg)
         {
-            visitor.Visit(this);
+            return visitor.Visit(this, arg);
         }
     }
 
@@ -38,9 +38,9 @@ namespace Presto.AST
     {
         public string Text;
 
-        public void Accept(AstNodeVisitor visitor)
+        public TResult Accept<TArg, TResult>(AstNodeVisitor<TArg, TResult> visitor, TArg arg)
         {
-            visitor.Visit(this);
+            return visitor.Visit(this, arg);
         }
     }
 
@@ -49,9 +49,9 @@ namespace Presto.AST
         public IExpression MemberContainer;
         public Identifier MemberIdentifier;
 
-        public void Accept(AstNodeVisitor visitor)
+        public TResult Accept<TArg, TResult>(AstNodeVisitor<TArg, TResult> visitor, TArg arg)
         {
-            visitor.Visit(this);
+            return visitor.Visit(this, arg);
         }
     }
     public class FunctionCall : IExpression, IStatement
@@ -59,9 +59,9 @@ namespace Presto.AST
         public IExpression FunctionExpression;
         public List<IExpression> Arguments;
 
-        public void Accept(AstNodeVisitor visitor)
+        public TResult Accept<TArg, TResult>(AstNodeVisitor<TArg, TResult> visitor, TArg arg)
         {
-            visitor.Visit(this);
+            return visitor.Visit(this, arg);
         }
     }
 
@@ -69,9 +69,9 @@ namespace Presto.AST
     {
         public List<IStatement> Statements;
 
-        public void Accept(AstNodeVisitor visitor)
+        public TResult Accept<TArg, TResult>(AstNodeVisitor<TArg, TResult> visitor, TArg arg)
         {
-            visitor.Visit(this);
+            return visitor.Visit(this, arg);
         }
     }
 
@@ -80,19 +80,19 @@ namespace Presto.AST
         public Identifier Name;
         public Block Body;
 
-        public void Accept(AstNodeVisitor visitor)
+        public TResult Accept<TArg, TResult>(AstNodeVisitor<TArg, TResult> visitor, TArg arg)
         {
-            visitor.Visit(this);
+            return visitor.Visit(this, arg);
         }
     }
 
-    public class Program : IDefinition
+    public class Program
     {
         public List<IDefinition> Definitions;
         
-        public void Accept(AstNodeVisitor visitor)
+        public TResult Accept<TArg, TResult>(AstNodeVisitor<TArg, TResult> visitor, TArg arg)
         {
-            visitor.Visit(this);
+            return visitor.Visit(this, arg);
         }
     }
 }

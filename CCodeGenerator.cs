@@ -3,7 +3,7 @@ using System.Text;
 
 namespace Presto.CodeGenerators
 {
-    public class CCodeGenerator : AsgNodeVisitor
+    public class CCodeGenerator : AsgNodeVisitor<Unit, Unit>
     {
         #region Constants
 
@@ -14,7 +14,7 @@ namespace Presto.CodeGenerators
 
         public string GeneratedCode => stringBuilder.ToString();
 
-        public override void Visit(ASG.Program program)
+        public override Unit Visit(ASG.Program program, Unit unit)
         {
             stringBuilder.Append("#include <stdio.h>");
             StartNewLine();
@@ -28,7 +28,7 @@ namespace Presto.CodeGenerators
             StartNewLine();
             StartNewLine();
 
-            program.GlobalNamespace.Accept(this);
+            program.GlobalNamespace.Accept(this, unit);
 
             StartNewLine();
 
@@ -44,29 +44,29 @@ namespace Presto.CodeGenerators
             stringBuilder.Append("}");
             StartNewLine();
 
-
-
-            
+            return Unit.Instance;
         }
 
-        public override void Visit(Namespace @namespace)
+        public override Unit Visit(Namespace @namespace, Unit unit)
         {
             foreach (var function in @namespace.Functions)
             {
-                function.Accept(this);
+                function.Accept(this, unit);
                 StartNewLine();
             }
 
             foreach (var childNamespace in @namespace.Namespaces)
             {
-                childNamespace.Accept(this);
+                childNamespace.Accept(this, unit);
             }
+
+            return Unit.Instance;
         }
 
-        public override void Visit(Function function)
+        public override Unit Visit(Function function, Unit unit)
         {
             // Skip externally-defined functions for now.
-            if (function.Body == null) { return; }
+            if (function.Body == null) { return Unit.Instance; }
 
             stringBuilder.Append("void");
             stringBuilder.Append(' ');
@@ -74,26 +74,30 @@ namespace Presto.CodeGenerators
             stringBuilder.Append(function.Name);
             stringBuilder.Append('(');
             stringBuilder.Append(')');
-            function.Body.Accept(this);
+            function.Body.Accept(this, unit);
+
+            return Unit.Instance;
         }
 
-        public override void Visit(Block block)
+        public override Unit Visit(Block block, Unit unit)
         {
             stringBuilder.Append('{');
             StartNewLine(deltaIndentationLevel: 1);
 
             foreach (var statement in block.Statements)
             {
-                statement.Accept(this);
+                statement.Accept(this, unit);
                 stringBuilder.Append(';');
                 StartNewLine();
             }
 
             StartNewLine(deltaIndentationLevel: -1);
             stringBuilder.Append('}');
+
+            return Unit.Instance;
         }
 
-        public override void Visit(FunctionCall functionCall)
+        public override Unit Visit(FunctionCall functionCall, Unit unit)
         {
             stringBuilder.Append(IDENTIFIER_PREFIX);
             stringBuilder.Append(string.Join('_', functionCall.Function.GetQualifiedNameParts()));
@@ -106,17 +110,27 @@ namespace Presto.CodeGenerators
                     stringBuilder.Append(", ");
                 }
 
-                functionCall.Arguments[i].Accept(this);
+                functionCall.Arguments[i].Accept(this, unit);
             }
 
             stringBuilder.Append(')');
+
+            return Unit.Instance;
         }
 
-        public override void Visit(StringLiteral stringLiteral)
+        public override Unit Visit(IntegerLiteral integerLiteral, Unit arg)
+        {
+            stringBuilder.Append(integerLiteral.Value);
+            return Unit.Instance;
+        }
+
+        public override Unit Visit(StringLiteral stringLiteral, Unit unit)
         {
             stringBuilder.Append('"');
             stringBuilder.Append(stringLiteral.Value);
             stringBuilder.Append('"');
+
+            return Unit.Instance;
         }
 
         private StringBuilder stringBuilder = new StringBuilder();

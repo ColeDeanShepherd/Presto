@@ -11,28 +11,10 @@ namespace Presto
             var sourceCode = "fn main(){std.io.stdout.writeLine(\"Hello, world!\");}";
             (var tokens, var lexerErrors) = (new Lexer.Lexer()).Tokenize(sourceCode);
             (var programAst, var parserErrors) = (new Parser.Parser()).Parse(tokens);
-
-            var program = ASG.Program.CreateWithStdLib();
-
-            var mainFn = new Function("main");
-            mainFn.SetParent(program.GlobalNamespace);
-
-            var mainFnBody = new Block();
-            mainFnBody.ParentNode = mainFn;
-            mainFn.Body = mainFnBody;
-
-            var printCall = new FunctionCall();
-            printCall.Function = program.GlobalNamespace.FindDeclaration(new[] { "std", "io", "stdout", "writeLine" }) as Function;
-            printCall.ParentNode = mainFnBody;
-            mainFnBody.Statements.Add(printCall);
-
-            var printCallArg = new StringLiteral();
-            printCallArg.Value = "Hello, world!";
-            printCallArg.ParentNode = printCall;
-            printCall.Arguments.Add(printCallArg);
+            (var program, var asgBuilderErrors) = (new AsgBuilder()).BuildAsg(programAst);
 
             var prestoGenerator = new PrestoCodeGenerator();
-            prestoGenerator.Visit(program);
+            prestoGenerator.Visit(program, Unit.Instance);
             Console.WriteLine(prestoGenerator.GeneratedCode);
 
             Console.WriteLine();
@@ -40,7 +22,7 @@ namespace Presto
             Console.WriteLine();
 
             var cGenerator = new CCodeGenerator();
-            cGenerator.Visit(program);
+            cGenerator.Visit(program, Unit.Instance);
             Console.WriteLine(cGenerator.GeneratedCode);
 
             Console.ReadKey();

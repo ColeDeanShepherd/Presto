@@ -3,55 +3,62 @@ using System.Text;
 
 namespace Presto.CodeGenerators
 {
-    public class PrestoCodeGenerator : AsgNodeVisitor
+    public class PrestoCodeGenerator : AsgNodeVisitor<Unit, Unit>
     {
         public string GeneratedCode => stringBuilder.ToString();
 
-        public override void Visit(ASG.Program program)
+        public override Unit Visit(ASG.Program program, Unit unit)
         {
-            program.GlobalNamespace.Accept(this);
+            program.GlobalNamespace.Accept(this, unit);
+            return unit;
         }
 
-        public override void Visit(Namespace @namespace)
+        public override Unit Visit(Namespace @namespace, Unit unit)
         {
             foreach (var function in @namespace.Functions)
             {
-                function.Accept(this);
+                function.Accept(this, unit);
             }
 
             foreach (var childNamespace in @namespace.Namespaces)
             {
-                childNamespace.Accept(this);
+                childNamespace.Accept(this, unit);
             }
+
+            return unit;
         }
 
-        public override void Visit(Function function)
+        public override Unit Visit(Function function, Unit unit)
         {
             // Skip externally-defined functions for now.
-            if (function.Body == null) { return; }
+            if (function.Body == null) { return unit; }
 
             stringBuilder.Append("fn");
             stringBuilder.Append(' ');
             stringBuilder.Append(function.Name);
             stringBuilder.Append('(');
             stringBuilder.Append(')');
-            function.Body.Accept(this);
+            function.Body.Accept(this, unit);
+
+            return unit;
         }
 
-        public override void Visit(Block block)
+        public override Unit Visit(Block block, Unit unit)
         {
             stringBuilder.Append('{');
 
             foreach (var statement in block.Statements)
             {
-                statement.Accept(this);
+                statement.Accept(this, unit);
                 stringBuilder.Append(';');
             }
 
             stringBuilder.Append('}');
+
+            return unit;
         }
 
-        public override void Visit(FunctionCall functionCall)
+        public override Unit Visit(FunctionCall functionCall, Unit unit)
         {
             stringBuilder.Append(functionCall.Function.GetQualifiedName());
             stringBuilder.Append('(');
@@ -63,20 +70,29 @@ namespace Presto.CodeGenerators
                     stringBuilder.Append(", ");
                 }
 
-                functionCall.Arguments[i].Accept(this);
+                functionCall.Arguments[i].Accept(this, unit);
             }
 
             stringBuilder.Append(')');
+
+            return unit;
         }
 
-        public override void Visit(StringLiteral stringLiteral)
+        public override Unit Visit(IntegerLiteral integerLiteral, Unit unit)
+        {
+            stringBuilder.Append(integerLiteral.Value);
+            return unit;
+        }
+
+        public override Unit Visit(StringLiteral stringLiteral, Unit unit)
         {
             stringBuilder.Append('"');
             stringBuilder.Append(stringLiteral.Value);
             stringBuilder.Append('"');
+
+            return unit;
         }
 
-        
         private StringBuilder stringBuilder = new StringBuilder();
     }
 }
