@@ -68,21 +68,16 @@ namespace Presto.Lexer
 
     public class Lexer
     {
-        public string SourceCode { get; private set; }
-        public TextPosition Position { get; private set; }
-        public List<Token> Tokens { get; private set; }
-        public List<LexerError> Errors { get; private set; }
-
-        public Result<List<Token>, List<LexerError>> Tokenize(string sourceCode)
+        public (List<Token>, List<LexerError>) Tokenize(string sourceCode)
         {
             // preconditions
             Debug.Assert(sourceCode != null);
 
             // body
-            SourceCode = sourceCode;
-            Position = new TextPosition(lineNumber: 1, columnNumber: 1);
-            Tokens = new List<Token>();
-            Errors = new List<LexerError>();
+            this.sourceCode = sourceCode;
+            position = new TextPosition(lineNumber: 1, columnNumber: 1);
+            tokens = new List<Token>();
+            errors = new List<LexerError>();
             charIndex = 0;
 
             char? nextChar;
@@ -93,7 +88,7 @@ namespace Presto.Lexer
                     var token = ReadIdentifierOrKeyword();
                     if (token != null)
                     {
-                        Tokens.Add(token.Value);
+                        tokens.Add(token.Value);
                     }
                 }
                 else if (nextChar.Value == '"')
@@ -101,12 +96,12 @@ namespace Presto.Lexer
                     var token = ReadStringLiteral();
                     if (token != null)
                     {
-                        Tokens.Add(token.Value);
+                        tokens.Add(token.Value);
                     }
                 }
                 else if (SingleCharacterTokenTypes.TryGetValue(nextChar.Value, out TokenType nextTokenType))
                 {
-                    Tokens.Add(new Token(nextTokenType, nextChar.Value.ToString(), Position));
+                    tokens.Add(new Token(nextTokenType, nextChar.Value.ToString(), position));
                     var _ = ReadCharacter();
                 }
                 else if (char.IsWhiteSpace(nextChar.Value))
@@ -115,14 +110,12 @@ namespace Presto.Lexer
                 }
                 else
                 {
-                    Errors.Add(new LexerError($"Unexpected character: {nextChar.Value}", Position));
+                    errors.Add(new LexerError($"Unexpected character: {nextChar.Value}", position));
                     var _ = ReadCharacter();
                 }
             }
 
-            return !Errors.Any()
-                ? Result<List<Token>, List<LexerError>>.Ok(Tokens)
-                : Result<List<Token>, List<LexerError>>.Err(Errors);
+            return (tokens, errors);
         }
 
         private static readonly Dictionary<string, TokenType> KeywordTokenTypes = new Dictionary<string, TokenType>
@@ -139,14 +132,18 @@ namespace Presto.Lexer
             { ';', TokenType.Semicolon }
         };
 
+        public string sourceCode { get; private set; }
         private int charIndex;
+        public TextPosition position { get; private set; }
+        public List<Token> tokens { get; private set; }
+        public List<LexerError> errors { get; private set; }
 
         #region Helper Methods
 
         private char? PeekPossibleCharacter()
         {
-            return (charIndex < SourceCode.Length)
-                ? SourceCode[charIndex]
+            return (charIndex < sourceCode.Length)
+                ? sourceCode[charIndex]
                 : (char?)null;
         }
         private char? PeekCharacter()
@@ -154,7 +151,7 @@ namespace Presto.Lexer
             var possibleChar = PeekPossibleCharacter();
             if (possibleChar == null)
             {
-                Errors.Add(new LexerError("Unexpectedly reached the end of the source code.", Position));
+                errors.Add(new LexerError("Unexpectedly reached the end of the source code.", position));
             }
 
             return possibleChar;
@@ -168,11 +165,11 @@ namespace Presto.Lexer
 
                 if (possibleChar != '\n')
                 {
-                    Position = new TextPosition(Position.LineNumber, Position.ColumnNumber + 1);
+                    position = new TextPosition(position.LineNumber, position.ColumnNumber + 1);
                 }
                 else
                 {
-                    Position = new TextPosition(Position.LineNumber + 1, columnNumber: 1);
+                    position = new TextPosition(position.LineNumber + 1, columnNumber: 1);
                 }
             }
             // PeekCharacter already outputs an error if possibleChar != null
@@ -185,7 +182,7 @@ namespace Presto.Lexer
             if ((actualChar != null) && (actualChar.Value != expectedChar))
             {
                 var errorDescription = $"Expected '{expectedChar}' ({(int)expectedChar}) but read '{actualChar.Value}' ({(int)actualChar.Value})";
-                Errors.Add(new LexerError(errorDescription, Position));
+                errors.Add(new LexerError(errorDescription, position));
             }
             // ReadCharacter already outputs an error if actualChar == null
 
@@ -217,18 +214,18 @@ namespace Presto.Lexer
 
             if (charIndex == startCharIndex)
             {
-                Errors.Add(new LexerError("Failed reading identifier", Position));
+                errors.Add(new LexerError("Failed reading identifier", position));
                 return null;
             }
 
             var textLength = charIndex - startCharIndex;
-            var text = SourceCode.Substring(startCharIndex, textLength);
+            var text = sourceCode.Substring(startCharIndex, textLength);
             TokenType tokenType;
             tokenType = KeywordTokenTypes.TryGetValue(text, out tokenType)
                 ? tokenType
                 : TokenType.Identifier;
 
-            return new Token(tokenType, text, Position);
+            return new Token(tokenType, text, position);
         }
 
         private Token? ReadStringLiteral()
@@ -245,16 +242,16 @@ namespace Presto.Lexer
 
             if (charIndex == startCharIndex)
             {
-                Errors.Add(new LexerError("Failed reading string literal", Position));
+                errors.Add(new LexerError("Failed reading string literal", position));
                 return null;
             }
 
             var textLength = charIndex - startCharIndex;
-            var text = SourceCode.Substring(startCharIndex, textLength);
+            var text = sourceCode.Substring(startCharIndex, textLength);
 
             if (ReadExpectedCharacter('"') == null) { return null; }
 
-            return new Token(TokenType.StringLiteral, text, Position);
+            return new Token(TokenType.StringLiteral, text, position);
         }
 
         #endregion

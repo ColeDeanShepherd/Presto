@@ -9,7 +9,7 @@ namespace Presto
         static void Main(string[] args)
         {
             var sourceCode = "fn main(){std.io.stdout.writeLine(\"Hello, world!\");}";
-            var tokenizeResult = (new Lexer.Lexer()).Tokenize(sourceCode);
+            (var tokens, var lexerErrors) = (new Lexer.Lexer()).Tokenize(sourceCode);
 
             var program = ASG.Program.CreateWithStdLib();
 
