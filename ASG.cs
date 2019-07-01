@@ -5,6 +5,31 @@ using System.Linq;
 
 namespace Presto.ASG
 {
+    public abstract class Type { }
+    public class IntegerType : Type
+    {
+        public readonly bool IsUnsigned;
+        public readonly uint NumBytes;
+
+        public IntegerType(bool isUnsigned, uint numBytes)
+        {
+            IsUnsigned = isUnsigned;
+            NumBytes = numBytes;
+        }
+    }
+    public class StringType : Type { }
+    public class FunctionType : Type
+    {
+        public readonly IReadOnlyList<Type> ParameterTypes;
+        public readonly Function Function; // optional
+
+        public FunctionType(IReadOnlyList<Type> parameterTypes, Function function = null)
+        {
+            ParameterTypes = parameterTypes;
+            Function = function;
+        }
+    }
+
     public interface INode
     {
         INode ParentNode { get; }
@@ -23,6 +48,7 @@ namespace Presto.ASG
     public interface IExpression : INode
     {
         new INode ParentNode { get; set; }
+        Type Type { get; set; }
     }
     public interface IScope : INode { }
 
@@ -43,6 +69,10 @@ namespace Presto.ASG
             return (parentAsT != null)
                 ? parentAsT
                 : FindAncestorOfType<T>(node.ParentNode);
+        }
+        public static IScope GetScope(this INode node)
+        {
+            return node.FindThisOrAncestorOfType<IScope>();
         }
 
         public static List<string> GetQualifiedNameParts(this IDeclaration declaration)
@@ -96,6 +126,13 @@ namespace Presto.ASG
 
     public class Program : INode
     {
+        #region Constants
+
+        public readonly IntegerType Int32Type = new IntegerType(isUnsigned: false, numBytes: 4);
+        public readonly StringType StringType = new StringType();
+
+        #endregion
+
         #region INode
 
         public INode ParentNode => null;
@@ -109,6 +146,14 @@ namespace Presto.ASG
         #endregion
 
         public Namespace GlobalNamespace;
+        public List<Type> Types;
+
+        public Program()
+        {
+            Types = new List<Type>();
+            Types.Add(Int32Type);
+            Types.Add(StringType);
+        }
     }
 
     public class Namespace : IDeclaration, IScope
@@ -182,10 +227,10 @@ namespace Presto.ASG
         #endregion
 
         public Namespace Parent;
-
         // TODO: parameters
         // TODO: return type
         public Block Body; // nullable
+        public Type Type;
 
         public Function(string name)
         {
@@ -247,6 +292,7 @@ namespace Presto.ASG
 
         public Function Function;
         public List<IExpression> Arguments;
+        public Type Type { get; set; }
 
         public FunctionCall()
         {
@@ -269,6 +315,7 @@ namespace Presto.ASG
         #endregion
 
         public int Value;
+        public Type Type { get; set; }
     }
 
     public class StringLiteral : IExpression
@@ -286,6 +333,7 @@ namespace Presto.ASG
         #endregion
 
         public string Value;
+        public Type Type { get; set; }
     }
 
     public class AsgBuilderDeclarationsPass : AST.AstNodeVisitor<INode, INode>
@@ -450,6 +498,224 @@ namespace Presto.ASG
         #endregion
     }
 
+    public class AsgBuilderCreateDeclarationTypesPass : AST.AstNodeVisitor<INode, INode>
+    {
+        public AsgBuilderCreateDeclarationTypesPass(Program program, List<string> errors)
+        {
+            this.program = program;
+            this.errors = errors;
+        }
+
+        #region AstNodeVisitor<INode>
+
+        public override INode Visit(AST.Program astProgram, INode parent)
+        {
+            Debug.Assert(astProgram != null);
+
+            foreach (var astDefinition in astProgram.Definitions)
+            {
+                var node = astDefinition.Accept(this, program);
+            }
+
+            return program;
+        }
+
+        public override INode Visit(AST.FunctionDefinition astFunctionDefinition, INode parent)
+        {
+            Debug.Assert(astFunctionDefinition != null);
+
+            var scope = parent.GetScope();
+            var function = scope.FindDeclaration(astFunctionDefinition.Name.Text) as Function;
+            // walk params
+            // build param types
+            function.Type = new FunctionType(parameterTypes, function);
+            return function;
+        }
+
+        public override INode Visit(AST.Block astBlock, INode parent)
+        {
+            Debug.Assert(astBlock != null);
+            return null;
+        }
+
+        public override INode Visit(AST.FunctionCall astFunctionCall, INode parent)
+        {
+            Debug.Assert(astFunctionCall != null);
+            return null;
+        }
+
+        public override INode Visit(AST.MemberAccessOperator astMemberAccessOperator, INode parent)
+        {
+            Debug.Assert(astMemberAccessOperator != null);
+            return null;
+        }
+
+        public override INode Visit(AST.Identifier identifier, INode parent)
+        {
+            Debug.Assert(identifier != null);
+            return null;
+        }
+
+        public override INode Visit(AST.IntegerLiteral astIntegerLiteral, INode parent)
+        {
+            Debug.Assert(astIntegerLiteral != null);
+            return null;
+        }
+
+        public override INode Visit(AST.StringLiteral astStringLiteral, INode parent)
+        {
+            Debug.Assert(astStringLiteral != null);
+            return null;
+        }
+
+        #endregion
+
+        private Program program;
+        private List<string> errors;
+    }
+
+    public class AsgBuilderFunctionBodiesPass : AST.AstNodeVisitor<INode, INode>
+    {
+        public AsgBuilderFunctionBodiesPass(Program program, List<string> errors)
+        {
+            this.program = program;
+            this.errors = errors;
+        }
+
+        #region AstNodeVisitor<INode>
+
+        public override INode Visit(AST.Program astProgram, INode parent)
+        {
+            Debug.Assert(astProgram != null);
+
+            foreach (var astDefinition in astProgram.Definitions)
+            {
+                astDefinition.Accept(this, program);
+            }
+
+            return program;
+        }
+
+        public override INode Visit(AST.FunctionDefinition astFunctionDefinition, INode parent)
+        {
+            Debug.Assert(astFunctionDefinition != null);
+
+            var scope = parent.FindThisOrAncestorOfType<IScope>();
+            var function = scope.FindDeclaration(astFunctionDefinition.Name.Text) as Function;
+
+            var body = astFunctionDefinition.Body.Accept(this, function) as Block;
+            body.ParentNode = function;
+            function.Body = body;
+
+            return function;
+        }
+
+        public override INode Visit(AST.Block astBlock, INode parent)
+        {
+            Debug.Assert(astBlock != null);
+
+            var block = new Block
+            {
+                Statements = new List<IStatement>()
+            };
+
+            foreach (var astStatement in astBlock.Statements)
+            {
+                var statement = astStatement.Accept(this, block) as IStatement;
+                statement.ParentNode = block;
+                block.Statements.Add(statement);
+            }
+
+            return block;
+        }
+
+        public override INode Visit(AST.FunctionCall astFunctionCall, INode parent)
+        {
+            Debug.Assert(astFunctionCall != null);
+
+            var functionCall = new FunctionCall();
+            var functionExpressionNode = astFunctionCall.FunctionExpression.Accept(this, functionCall);
+
+            if (functionExpressionNode is Function)
+            {
+                var function = functionExpressionNode as Function;
+                functionCall.Function = function;
+            }
+            else if (functionExpressionNode is IExpression)
+            {
+                var functionExpression = functionExpressionNode as IExpression;
+                var functionType = functionExpression.Type as FunctionType;
+                functionCall.Function = functionType.Function;
+            }
+            else
+            {
+                throw new Exception($"Unknown node type: {functionExpressionNode.GetType().Name}");
+            }
+
+            return functionCall;
+        }
+
+        public override INode Visit(AST.MemberAccessOperator astMemberAccessOperator, INode parent)
+        {
+            Debug.Assert(astMemberAccessOperator != null);
+
+            var memberContainerNode = astMemberAccessOperator.MemberContainer.Accept(this, parent);
+            Type type;
+
+            if (memberContainerNode is IDeclaration)
+            {
+                //type = (memberContainerNode as IDeclaration).Type;
+                // TODO: fix
+            }
+            else if (memberContainerNode is IExpression)
+            {
+                type = (memberContainerNode as IExpression).Type;
+            }
+            else
+            {
+                throw new Exception($"Unknown node type: {memberContainerNode.GetType().Name}");
+            }
+
+            // TODO: fix
+            /*var memberDeclarationNode = astMemberAccessOperator.MemberIdentifier.Accept(this, declaration);
+            var memberDeclaration = memberDeclarationNode as IDeclaration;
+            if (memberDeclaration == null)
+            {
+                errors.Add($"Unexpected AST node type: {memberDeclarationNode.GetType().Name}");
+            }
+
+            return memberDeclaration;*/
+            return null;
+        }
+
+        public override INode Visit(AST.Identifier identifier, INode parent)
+        {
+            Debug.Assert(identifier != null);
+
+            var scope = parent.FindThisOrAncestorOfType<IScope>();
+            return scope.FindDeclaration(identifier.Text);
+        }
+
+        public override INode Visit(AST.IntegerLiteral astIntegerLiteral, INode parent)
+        {
+            var integerLiteral = new IntegerLiteral();
+            integerLiteral.Value = astIntegerLiteral.Value;
+            return integerLiteral;
+        }
+
+        public override INode Visit(AST.StringLiteral astStringLiteral, INode parent)
+        {
+            var stringLiteral = new StringLiteral();
+            stringLiteral.Value = astStringLiteral.Value;
+            return stringLiteral;
+        }
+
+        #endregion
+
+        private Program program;
+        private List<string> errors;
+    }
+
     public class AsgBuilder
     {
         public (Program, List<string>) BuildAsg(AST.Program astProgram)
@@ -468,6 +734,12 @@ namespace Presto.ASG
             {
                 errors.Add($"Unexpected AST node type: {node.GetType().Name}");
             }
+
+            var createTypesPass = new AsgBuilderCreateDeclarationTypesPass(program, errors);
+            astProgram.Accept(createTypesPass, null);
+
+            //var functionBodiesPass = new AsgBuilderFunctionBodiesPass(program, errors);
+            //astProgram.Accept(functionBodiesPass, null);
 
             return (program, errors);
         }
