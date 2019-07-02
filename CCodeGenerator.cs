@@ -79,6 +79,12 @@ namespace Presto.CodeGenerators
             return Unit.Instance;
         }
 
+        public override Unit Visit(FunctionParameter functionParameter, Unit unit)
+        {
+            // TODO: implement
+            return unit;
+        }
+
         public override Unit Visit(Block block, Unit unit)
         {
             stringBuilder.Append('{');
