@@ -1,12 +1,32 @@
-﻿using System;
+﻿using Presto.ASG;
+using System.Collections.Generic;
 
 namespace Presto
 {
-    class Program
+    public class Program
     {
-        static void Main(string[] args)
+        public static void Main(string[] args)
         {
-            Console.WriteLine("Hello World!");
+            var program = new ASG.Program();
+
+            var mainFunction = new Function
+            {
+                Name = "Main",
+                Parameters = new List<Parameter>(),
+                ReturnType = BuiltInTypes.Unit,
+                Body = new List<IStatement>
+                {
+                    new FunctionCall
+                    {
+                        Function = BuiltInFunctions.WriteLineToConsole,
+                        Arguments = new List<IExpression>
+                        {
+                            new StringLiteral { Value = "Hello, world!" }
+                        }
+                    }
+                }
+            };
+            program.Functions.Add(mainFunction);
         }
     }
 }
