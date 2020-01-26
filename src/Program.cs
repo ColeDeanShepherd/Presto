@@ -2,6 +2,7 @@
 using Presto.CodeGeneration;
 using System;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.Linq;
 
 namespace Presto
@@ -11,22 +12,28 @@ namespace Presto
         public static void Main(string[] args)
         {
             var program = CreateProgram();
-            var (generatedCode, codeGenErrors) = CSharpCodeGenerator.GenerateCode(program);
 
-            foreach (var error in codeGenErrors)
-            {
-                Console.WriteLine(error);
-            }
+            Console.WriteLine("Generating C# program...");
+            var (generatedCode, codeGenErrors) = CSharpCodeGenerator.GenerateCode(program);
 
             if (codeGenErrors.Any())
             {
-                Console.WriteLine($"Compilation failed with {codeGenErrors.Count} errors.");
+                Console.WriteLine($"Code generation failed with {codeGenErrors.Count} errors.");
+
+                foreach (var error in codeGenErrors)
+                {
+                    Console.WriteLine(error);
+                }
+
                 return;
             }
 
-            Console.WriteLine(generatedCode);
-
+            Console.WriteLine("Compiling C# program...");
             CSharpCompiler.CompileCSharpProgram(generatedCode);
+
+            Console.WriteLine("Starting compiled program...");
+            var process = Process.Start("bin/PrestoProgram.exe");
+            process.WaitForExit();
         }
 
         public static ASG.Program CreateProgram()
