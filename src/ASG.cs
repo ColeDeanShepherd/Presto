@@ -54,7 +54,10 @@ namespace Presto.ASG
 
     #region Types
 
-    public interface IType { }
+    public interface IType
+    {
+        public string Name { get; }
+    }
 
     public static class BuiltInTypes
     {
@@ -62,9 +65,15 @@ namespace Presto.ASG
         public static readonly StringType String = new StringType();
     }
 
-    public class UnitType : IType { }
+    public class UnitType : IType
+    {
+        public string Name => "void";
+    }
 
-    public class StringType : IType { }
+    public class StringType : IType
+    {
+        public string Name => "String";
+    }
 
     #endregion
 
