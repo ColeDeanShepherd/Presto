@@ -1,0 +1,25 @@
+﻿
+Microsoft Visual Studio Solution File, Format Version 12.00
+# Visual Studio Version 16
+VisualStudioVersion = 16.0.29709.97
+MinimumVisualStudioVersion = 10.0.40219.1
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Presto", "Presto.csproj", "{94BE5470-27ED-4254-9D32-4739751593FB}"
+EndProject
+Global
+	GlobalSection(SolutionConfigurationPlatforms) = preSolution
+		Debug|Any CPU = Debug|Any CPU
+		Release|Any CPU = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{94BE5470-27ED-4254-9D32-4739751593FB}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{94BE5470-27ED-4254-9D32-4739751593FB}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{94BE5470-27ED-4254-9D32-4739751593FB}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{94BE5470-27ED-4254-9D32-4739751593FB}.Release|Any CPU.Build.0 = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(SolutionProperties) = preSolution
+		HideSolutionNode = FALSE
+	EndGlobalSection
+	GlobalSection(ExtensibilityGlobals) = postSolution
+		SolutionGuid = {0A035A4B-119B-452D-96C6-BE22E5D37D2B}
+	EndGlobalSection
+EndGlobal

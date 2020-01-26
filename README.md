@@ -37,12 +37,6 @@
 * No garbage collection
   * Instead, single ownership wherever possible
 
-### To-Do
-
-* Figure out target language
-* Add code generator for target language
-* Add semantic analysis step
-
 ### Ideas
 
 * 
