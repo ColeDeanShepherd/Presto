@@ -99,12 +99,12 @@ public static class Program
             WriteBlock(context, function.Body);
         }
 
-        public static void WriteParameterTuple(Context context, List<Parameter> parameters)
+        public static void WriteParameterTuple(Context context, List<Variable> parameters)
         {
             WriteTuple(context, parameters, WriteParameter);
         }
 
-        public static void WriteParameter(Context context, Parameter parameter)
+        public static void WriteParameter(Context context, Variable parameter)
         {
             WriteTypeName(context, parameter.Type);
             Write(context, ' ');
@@ -136,9 +136,17 @@ public static class Program
 
         public static void WriteStatement(Context context, IStatement statement)
         {
-            if (statement is FunctionCall)
+            if (statement is IExpression)
             {
-                WriteFunctionCall(context, statement as FunctionCall);
+                WriteExpression(context, (IExpression)statement);
+            }
+            else if (statement is ReturnStatement)
+            {
+                WriteReturnStatement(context, (ReturnStatement)statement);
+            }
+            else if (statement is IfStatement)
+            {
+                WriteIfStatement(context, (IfStatement)statement);
             }
             else
             {
@@ -148,15 +156,50 @@ public static class Program
             Write(context, ';');
         }
 
+        public static void WriteReturnStatement(Context context, ReturnStatement returnStatement)
+        {
+            Write(context, "return ");
+            WriteExpression(context, returnStatement.Value);
+        }
+
+        public static void WriteIfStatement(Context context, IfStatement ifStatement)
+        {
+            Write(context, "if (");
+            WriteExpression(context, ifStatement.Condition);
+            Write(context, ')');
+            StartNewLine(context);
+            WriteBlock(context, ifStatement.Body);
+        }
+
         public static void WriteExpression(Context context, IExpression expression)
         {
-            if (expression is StringLiteral)
+            if (expression is IntegerLiteral)
+            {
+                WriteIntegerLiteral(context, (IntegerLiteral)expression);
+            }
+            else if (expression is StringLiteral)
             {
                 WriteStringLiteral(context, (StringLiteral)expression);
+            }
+            else if (expression is VariableExpression)
+            {
+                WriteVariableExpression(context, (VariableExpression)expression);
             }
             else if (expression is FunctionCall)
             {
                 WriteFunctionCall(context, (FunctionCall)expression);
+            }
+            else if (expression is EqualityOperator)
+            {
+                WriteEqualityOperator(context, (EqualityOperator)expression);
+            }
+            else if (expression is AdditionOperator)
+            {
+                WriteAdditionOperator(context, (AdditionOperator)expression);
+            }
+            else if (expression is SubtractionOperator)
+            {
+                WriteSubtractionOperator(context, (SubtractionOperator)expression);
             }
             else
             {
@@ -167,6 +210,23 @@ public static class Program
         public static void WriteExpressionTuple(Context context, List<IExpression> expressions)
         {
             WriteTuple(context, expressions, WriteExpression);
+        }
+
+        public static void WriteIntegerLiteral(Context context, IntegerLiteral integerLiteral)
+        {
+            Write(context, integerLiteral.Value.ToString());
+        }
+
+        public static void WriteStringLiteral(Context context, StringLiteral stringLiteral)
+        {
+            Write(context, '"');
+            Write(context, stringLiteral.Value);
+            Write(context, '"');
+        }
+
+        public static void WriteVariableExpression(Context context, VariableExpression variableExpression)
+        {
+            WriteName(context, variableExpression.Variable.Name);
         }
 
         public static void WriteFunctionCall(Context context, FunctionCall functionCall)
@@ -180,11 +240,32 @@ public static class Program
             WriteName(context, function.Name);
         }
 
-        public static void WriteStringLiteral(Context context, StringLiteral stringLiteral)
+        public static void WriteEqualityOperator(Context context, EqualityOperator equalityOperator)
         {
-            Write(context, '"');
-            Write(context, stringLiteral.Value);
-            Write(context, '"');
+            Write(context, '(');
+            WriteExpression(context, equalityOperator.Left);
+            Write(context, " == ");
+            WriteExpression(context, equalityOperator.Right);
+            Write(context, ')');
+        }
+
+
+        public static void WriteAdditionOperator(Context context, AdditionOperator additionOperator)
+        {
+            Write(context, '(');
+            WriteExpression(context, additionOperator.Left);
+            Write(context, " + ");
+            WriteExpression(context, additionOperator.Right);
+            Write(context, ')');
+        }
+
+        public static void WriteSubtractionOperator(Context context, SubtractionOperator subtractionOperator)
+        {
+            Write(context, '(');
+            WriteExpression(context, subtractionOperator.Left);
+            Write(context, " - ");
+            WriteExpression(context, subtractionOperator.Right);
+            Write(context, ')');
         }
 
         #endregion

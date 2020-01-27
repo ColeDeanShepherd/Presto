@@ -57,13 +57,130 @@ namespace Presto.Cli
         public static ASG.Program CreateProgram()
         {
             var program = new ASG.Program();
+
+            var fibFunction = new Function
+            {
+                Name = "Fib",
+                Parameters = new List<Variable>
+                {
+                    new Variable
+                    {
+                        Name = "n",
+                        Type = BuiltInTypes.Int32
+                    }
+                },
+                ReturnType = BuiltInTypes.Int32
+            };
+            fibFunction.Body = new List<IStatement>
+            {
+                new IfStatement
+                {
+                    Condition = new EqualityOperator
+                    {
+                        Left = new VariableExpression
+                        {
+                            Variable = fibFunction.Parameters[0]
+                        },
+                        Right = new IntegerLiteral
+                        {
+                            Value = 0
+                        }
+                    },
+                    Body = new List<IStatement>
+                    {
+                        new ReturnStatement
+                        {
+                            Value = new IntegerLiteral
+                            {
+                                Value = 0
+                            }
+                        }
+                    },
+                },
+                new IfStatement
+                {
+                    Condition = new EqualityOperator
+                    {
+                        Left = new VariableExpression
+                        {
+                            Variable = fibFunction.Parameters[0]
+                        },
+                        Right = new IntegerLiteral
+                        {
+                            Value = 1
+                        }
+                    },
+                    Body = new List<IStatement>
+                    {
+                        new ReturnStatement
+                        {
+                            Value = new IntegerLiteral
+                            {
+                                Value = 1
+                            }
+                        }
+                    },
+                },
+                new ReturnStatement
+                {
+                    Value = new AdditionOperator
+                    {
+                        Left = new FunctionCall
+                        {
+                            Function = fibFunction,
+                            Arguments = new List<IExpression>
+                            {
+                                new SubtractionOperator
+                                {
+                                    Left = new VariableExpression
+                                    {
+                                        Variable = fibFunction.Parameters[0]
+                                    },
+                                    Right = new IntegerLiteral
+                                    {
+                                        Value = 1
+                                    }
+                                }
+                            }
+                        },
+                        Right = new FunctionCall
+                        {
+                            Function = fibFunction,
+                            Arguments = new List<IExpression>
+                            {
+                                new SubtractionOperator
+                                {
+                                    Left = new VariableExpression
+                                    {
+                                        Variable = fibFunction.Parameters[0]
+                                    },
+                                    Right = new IntegerLiteral
+                                    {
+                                        Value = 2
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            };
+            program.Functions.Add(fibFunction);
+
             var mainFunction = new Function
             {
                 Name = "Main",
-                Parameters = new List<Parameter>(),
+                Parameters = new List<Variable>(),
                 ReturnType = BuiltInTypes.Unit,
                 Body = new List<IStatement>
                 {
+                    new FunctionCall
+                    {
+                        Function = fibFunction,
+                        Arguments = new List<IExpression>
+                        {
+                            new IntegerLiteral { Value = 8 }
+                        }
+                    },
                     new FunctionCall
                     {
                         Function = BuiltInFunctions.WriteLineToConsole,

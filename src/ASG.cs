@@ -22,9 +22,9 @@ namespace Presto.ASG
         public static readonly Function WriteLineToConsole = new Function
         {
             Name = "WriteLineToConsole",
-            Parameters = new List<Parameter>
+            Parameters = new List<Variable>
             {
-                new Parameter
+                new Variable
                 {
                     Name = "line",
                     Type = BuiltInTypes.String
@@ -42,12 +42,12 @@ namespace Presto.ASG
     public class Function
     {
         public string Name;
-        public List<Parameter> Parameters;
+        public List<Variable> Parameters;
         public IType ReturnType;
         public List<IStatement> Body;
     }
 
-    public class Parameter
+    public class Variable
     {
         public string Name;
         public IType Type;
@@ -65,6 +65,8 @@ namespace Presto.ASG
     public static class BuiltInTypes
     {
         public static readonly UnitType Unit = new UnitType();
+        public static readonly IntegerType Int32 = new IntegerType();
+        public static readonly BooleanType Bool = new BooleanType();
         public static readonly StringType String = new StringType();
     }
 
@@ -86,6 +88,24 @@ namespace Presto.ASG
         public override int GetHashCode() => GetType().GetHashCode();
     }
 
+    public class BooleanType : IType
+    {
+        public string Name => "bool";
+
+        public override bool Equals(object obj)
+        {
+            return this.Equals(obj as IType);
+        }
+        public bool Equals([AllowNull] IType type)
+        {
+            if (type == null) { return false; }
+            if (!(type is BooleanType)) { return false; }
+            return true;
+        }
+
+        public override int GetHashCode() => GetType().GetHashCode();
+    }
+
     public class StringType : IType
     {
         public string Name => "String";
@@ -98,6 +118,24 @@ namespace Presto.ASG
         {
             if (type == null) { return false; }
             if (!(type is StringType)) { return false; }
+            return true;
+        }
+
+        public override int GetHashCode() => GetType().GetHashCode();
+    }
+
+    public class IntegerType : IType
+    {
+        public string Name => "int";
+
+        public override bool Equals(object obj)
+        {
+            return this.Equals(obj as IType);
+        }
+        public bool Equals([AllowNull] IType type)
+        {
+            if (type == null) { return false; }
+            if (!(type is IntegerType)) { return false; }
             return true;
         }
 
@@ -148,6 +186,18 @@ namespace Presto.ASG
     #region Statements & Expressions
 
     public interface IStatement { }
+
+    public class ReturnStatement : IStatement
+    {
+        public IExpression Value;
+    }
+
+    public class IfStatement : IStatement
+    {
+        public IExpression Condition;
+        public List<IStatement> Body;
+    }
+
     public interface IExpression : IStatement
     {
         public IType Type { get; }
@@ -158,11 +208,76 @@ namespace Presto.ASG
         public IType Type => BuiltInTypes.Unit;
     }
 
+    public class IntegerLiteral : IExpression
+    {
+        public int Value;
+
+        public IType Type => BuiltInTypes.Int32;
+    }
+
     public class StringLiteral : IExpression
     {
         public string Value;
 
         public IType Type => BuiltInTypes.String;
+    }
+
+    public class EqualityOperator : IExpression
+    {
+        public IExpression Left;
+        public IExpression Right;
+
+        public IType Type
+        {
+            get
+            {
+                // TODO: move to type checker
+                Dbc.Precondition(Left.Type.Equals(Right.Type));
+
+                return BuiltInTypes.Bool;
+            }
+        }
+    }
+
+    public class AdditionOperator : IExpression
+    {
+        public IExpression Left;
+        public IExpression Right;
+
+        public IType Type
+        {
+            get
+            {
+                // TODO: move to type checker
+                Dbc.Precondition(Left.Type.Equals(Right.Type));
+
+                return Left.Type;
+            }
+        }
+    }
+
+    public class SubtractionOperator : IExpression
+    {
+        public IExpression Left;
+        public IExpression Right;
+
+        public IType Type
+        {
+            get
+            {
+                // TODO: move to type checker
+                Dbc.Precondition(Left.Type.Equals(Right.Type));
+
+                return Left.Type;
+            }
+        }
+    }
+
+    public class VariableExpression : IExpression
+    {
+        public Variable Variable;
+
+        public IType Type => Variable.Type;
     }
 
     public class FunctionCall : IStatement, IExpression
