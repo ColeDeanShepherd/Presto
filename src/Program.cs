@@ -166,6 +166,12 @@ namespace Presto.Cli
             };
             program.Functions.Add(fibFunction);
 
+            var fibVariable = new Variable
+            {
+                Name = "fib",
+                Type = BuiltInTypes.Int32
+            };
+
             var mainFunction = new Function
             {
                 Name = "Main",
@@ -173,12 +179,16 @@ namespace Presto.Cli
                 ReturnType = BuiltInTypes.Unit,
                 Body = new List<IStatement>
                 {
-                    new FunctionCall
+                    new VariableDeclaration
                     {
-                        Function = fibFunction,
-                        Arguments = new List<IExpression>
+                        Variable = fibVariable,
+                        InitialValue = new FunctionCall
                         {
-                            new IntegerLiteral { Value = 8 }
+                            Function = fibFunction,
+                            Arguments = new List<IExpression>
+                            {
+                                new IntegerLiteral { Value = 8 }
+                            }
                         }
                     },
                     new FunctionCall
@@ -187,6 +197,24 @@ namespace Presto.Cli
                         Arguments = new List<IExpression>
                         {
                             new StringLiteral { Value = "Hello, world!" }
+                        }
+                    },
+                    new FunctionCall
+                    {
+                        Function = BuiltInFunctions.WriteLineToConsole,
+                        Arguments = new List<IExpression>
+                        {
+                            new FunctionCall
+                            {
+                                Function = BuiltInFunctions.Int32ToString,
+                                Arguments = new List<IExpression>
+                                {
+                                    new VariableExpression
+                                    {
+                                        Variable = fibVariable
+                                    }
+                                }
+                            }
                         }
                     }
                 }

@@ -38,6 +38,11 @@ public static class Program
     {
         Console.WriteLine(line);
     }
+
+    public static string ToString(int x)
+    {
+        return x.ToString();
+    }
 ";
 
         public const string Footer = "}";
@@ -148,6 +153,10 @@ public static class Program
             {
                 WriteIfStatement(context, (IfStatement)statement);
             }
+            else if (statement is VariableDeclaration)
+            {
+                WriteVariableDeclaration(context, (VariableDeclaration)statement);
+            }
             else
             {
                 throw new NotImplementedException($"Unknown statement type: {statement.GetType().Name}");
@@ -169,6 +178,15 @@ public static class Program
             Write(context, ')');
             StartNewLine(context);
             WriteBlock(context, ifStatement.Body);
+        }
+
+        public static void WriteVariableDeclaration(Context context, VariableDeclaration variableDeclaration)
+        {
+            WriteTypeName(context, variableDeclaration.Variable.Type);
+            Write(context, ' ');
+            WriteName(context, variableDeclaration.Variable.Name);
+            Write(context, " = ");
+            WriteExpression(context, variableDeclaration.InitialValue);
         }
 
         public static void WriteExpression(Context context, IExpression expression)

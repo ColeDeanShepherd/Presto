@@ -32,6 +32,19 @@ namespace Presto.ASG
             },
             ReturnType = BuiltInTypes.Unit
         };
+        public static readonly Function Int32ToString = new Function
+        {
+            Name = "ToString",
+            Parameters = new List<Variable>
+            {
+                new Variable
+                {
+                    Name = "x",
+                    Type = BuiltInTypes.Int32
+                }
+            },
+            ReturnType = BuiltInTypes.String
+        };
 
         public static readonly List<Function> All = new List<Function>
         {
@@ -198,6 +211,12 @@ namespace Presto.ASG
         public List<IStatement> Body;
     }
 
+    public class VariableDeclaration : IStatement
+    {
+        public Variable Variable;
+        public IExpression InitialValue;
+    }
+
     public interface IExpression : IStatement
     {
         public IType Type { get; }
@@ -285,7 +304,7 @@ namespace Presto.ASG
         public Function Function;
         public List<IExpression> Arguments;
 
-        public IType Type => new FunctionType(Function);
+        public IType Type => Function.ReturnType;
     }
 
     #endregion
