@@ -5,7 +5,7 @@ using System.Collections.Generic;
 using System.Diagnostics;
 using System.Linq;
 
-namespace Presto
+namespace Presto.Cli
 {
     public class Program
     {
@@ -13,6 +13,22 @@ namespace Presto
         {
             var program = CreateProgram();
 
+            // semantic analysis
+            var semanticAnalysisErrors = SemanticAnalysis.Validate(program);
+
+            if (semanticAnalysisErrors.Any())
+            {
+                Console.WriteLine($"Semantic analysis failed with {semanticAnalysisErrors.Count} errors.");
+
+                foreach (var error in semanticAnalysisErrors)
+                {
+                    Console.WriteLine(error);
+                }
+
+                return;
+            }
+
+            // code gen
             Console.WriteLine("Generating C# program...");
             var (generatedCode, codeGenErrors) = CSharpCodeGenerator.GenerateCode(program);
 
@@ -28,9 +44,11 @@ namespace Presto
                 return;
             }
 
+            // C# compilation
             Console.WriteLine("Compiling C# program...");
             CSharpCompiler.CompileCSharpProgram(generatedCode);
 
+            // run executable
             Console.WriteLine("Starting compiled program...");
             var process = Process.Start("bin/PrestoProgram.exe");
             process.WaitForExit();

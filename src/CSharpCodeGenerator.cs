@@ -18,6 +18,11 @@ namespace Presto.CodeGeneration
         {
             public ErrorType Type;
             public string Description;
+
+            public override string ToString()
+            {
+                return Description;
+            }
         }
 
         public enum ErrorType
@@ -147,11 +152,11 @@ public static class Program
         {
             if (expression is StringLiteral)
             {
-                WriteStringLiteral(context, expression as StringLiteral);
+                WriteStringLiteral(context, (StringLiteral)expression);
             }
             else if (expression is FunctionCall)
             {
-                WriteFunctionCall(context, expression as FunctionCall);
+                WriteFunctionCall(context, (FunctionCall)expression);
             }
             else
             {
