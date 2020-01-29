@@ -11,7 +11,7 @@ namespace Presto.Cli
     {
         public static void Main(string[] args)
         {
-            var program = CreateProgram();
+            var program = CreateFibonacciProgram();
 
             // semantic analysis
             var semanticAnalysisErrors = SemanticAnalysis.Validate(program);
@@ -54,7 +54,7 @@ namespace Presto.Cli
             process.WaitForExit();
         }
 
-        public static ASG.Program CreateProgram()
+        public static ASG.Program CreateFibonacciProgram()
         {
             var program = new ASG.Program();
 

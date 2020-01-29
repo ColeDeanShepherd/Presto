@@ -45,10 +45,25 @@ namespace Presto.ASG
             },
             ReturnType = BuiltInTypes.String
         };
+        public static readonly Function Length = new Function
+        {
+            Name = "Length",
+            Parameters = new List<Variable>
+            {
+                new Variable
+                {
+                    Name = "list",
+                    Type = new ListType(BuiltInTypes.Int32)
+                }
+            },
+            ReturnType = BuiltInTypes.Int32
+        };
 
         public static readonly List<Function> All = new List<Function>
         {
-            WriteLineToConsole
+            WriteLineToConsole,
+            Int32ToString,
+            Length
         };
     }
 
@@ -194,6 +209,37 @@ namespace Presto.ASG
         }
     }
 
+    public class ListType : IType
+    {
+        public string Name => $"List<{ElementType.Name}>";
+        public readonly IType ElementType;
+
+        public ListType(IType elementType)
+        {
+            ElementType = elementType;
+        }
+
+        public override bool Equals(object obj)
+        {
+            return this.Equals(obj as IType);
+        }
+        public bool Equals([AllowNull] IType type)
+        {
+            if (type == null) { return false; }
+            if (!(type is ListType)) { return false; }
+
+            var other = (ListType)type;
+            return ElementType.Equals(other.ElementType);
+        }
+
+        public override int GetHashCode()
+        {
+            int hashCode = GetType().GetHashCode();
+            hashCode = (hashCode * 16777619) ^ ElementType.GetHashCode();
+            return hashCode;
+        }
+    }
+
     #endregion
 
     #region Statements & Expressions
@@ -211,10 +257,30 @@ namespace Presto.ASG
         public List<IStatement> Body;
     }
 
+    public class DoWhileStatement : IStatement
+    {
+        public List<IStatement> Body;
+        public IExpression Condition;
+    }
+
+    public class ForLoopStatement : IStatement
+    {
+        public IStatement PreStatement;
+        public IExpression Condition;
+        public IStatement PostIterationStatement;
+        public List<IStatement> Body;
+    }
+
     public class VariableDeclaration : IStatement
     {
         public Variable Variable;
         public IExpression InitialValue;
+    }
+
+    public class VariableAssignment : IStatement
+    {
+        public Variable Variable;
+        public IExpression Value;
     }
 
     public interface IExpression : IStatement
@@ -234,6 +300,13 @@ namespace Presto.ASG
         public IType Type => BuiltInTypes.Int32;
     }
 
+    public class BooleanLiteral : IExpression
+    {
+        public bool Value;
+
+        public IType Type => BuiltInTypes.Bool;
+    }
+
     public class StringLiteral : IExpression
     {
         public string Value;
@@ -242,6 +315,40 @@ namespace Presto.ASG
     }
 
     public class EqualityOperator : IExpression
+    {
+        public IExpression Left;
+        public IExpression Right;
+
+        public IType Type
+        {
+            get
+            {
+                // TODO: move to type checker
+                Dbc.Precondition(Left.Type.Equals(Right.Type));
+
+                return BuiltInTypes.Bool;
+            }
+        }
+    }
+
+    public class LessThanOperator : IExpression
+    {
+        public IExpression Left;
+        public IExpression Right;
+
+        public IType Type
+        {
+            get
+            {
+                // TODO: move to type checker
+                Dbc.Precondition(Left.Type.Equals(Right.Type));
+
+                return BuiltInTypes.Bool;
+            }
+        }
+    }
+
+    public class LessThanOrEqualToOperator : IExpression
     {
         public IExpression Left;
         public IExpression Right;
@@ -306,6 +413,15 @@ namespace Presto.ASG
 
         public IType Type => Function.ReturnType;
     }
+
+    // ensure variable references have valid names
+    // ensure if statements have boolean expressions
+    // ensure functions return values if not unit return type
+    // ensure return values match return type
+    // ensure binary operators operate on same type
+    // ensure var. decl. have unique names (in scope)
+    // ensure function parameters have diff names
+    // ensure function calls refer to valid functions
 
     #endregion
 }
