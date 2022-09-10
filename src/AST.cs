@@ -2,6 +2,10 @@
 {
     public interface IDeclaration { }
 
+    public record Program(
+        List<IExpression> Expressions
+    );
+
     public record Namespace(
         string Name,
         List<IDeclaration> Declarations
