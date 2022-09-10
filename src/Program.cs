@@ -1,20 +1,31 @@
 ﻿using Presto.AST;
 
+namespace Presto.CLI;
+
 class Program
 {
     static void Main(string[] args)
     {
         // Create program node.
-        Presto.AST.Program program = new(
+        Namespace globalNamespace = new(
+            "",
+            Declarations: new List<IDeclaration>(),
+            ParentNamespace: null);
+
+        AST.Program program = new(
+            globalNamespace,
             Expressions: new List<IExpression>());
 
         // Create "Console" namespace.
         Namespace consoleNamespace = new(
             "Console",
-            Declarations: new List<IDeclaration>());
+            Declarations: new List<IDeclaration>(),
+            ParentNamespace: globalNamespace);
 
         // Create "WriteLine" function.
-        Function writeLineFunction = new("WriteLine");
+        Function writeLineFunction = new(
+            "WriteLine",
+            ParentNamespace: consoleNamespace);
 
         // Add "WriteLine" function to "Console" namespace.
         consoleNamespace.Declarations.Add(writeLineFunction);
@@ -28,7 +39,11 @@ class Program
                     new StringLiteral("Hello, World!")
                 }));
 
-        // Output to console.
-        Console.WriteLine("Not there yet!");
+        // Generate code.
+        CodeGenerator codeGenerator = new();
+        string generatedCode = codeGenerator.GenerateCode(program);
+
+        // Output generated code to console.
+        Console.WriteLine(generatedCode);
     }
 }
