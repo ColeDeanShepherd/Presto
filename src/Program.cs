@@ -1,4 +1,5 @@
-﻿using Presto.AST;
+﻿
+using Presto.ParseTree;
 
 namespace Presto.CLI;
 
@@ -6,38 +7,23 @@ class Program
 {
     static async Task Main(string[] args)
     {
-        // Create program node.
-        Namespace globalNamespace = new(
-            "",
-            Declarations: new List<IDeclaration>(),
-            ParentNamespace: null);
+        // Create parse tree.
+        ParseTree.Program parseTree = new(
+            Expressions: new List<IExpression>
+            {
+                new CallExpression(
+                    FunctionExpression: new MemberAccessOperator(
+                        Expression: new Identifier("Console"),
+                        Member: new Identifier("WriteLine")),
+                    Arguments: new List<IExpression>
+                    {
+                        new StringLiteral("Hello, world!")
+                    })
+            });
 
-        AST.Program program = new(
-            globalNamespace,
-            Expressions: new List<IExpression>());
-
-        // Create "Console" namespace.
-        Namespace consoleNamespace = new(
-            "Console",
-            Declarations: new List<IDeclaration>(),
-            ParentNamespace: globalNamespace);
-
-        // Create "WriteLine" function.
-        Function writeLineFunction = new(
-            "WriteLine",
-            ParentNamespace: consoleNamespace);
-
-        // Add "WriteLine" function to "Console" namespace.
-        consoleNamespace.Declarations.Add(writeLineFunction);
-
-        // Initialize the program node.
-        program.Expressions.Add(
-            new FunctionCall(
-                writeLineFunction,
-                Arguments: new List<IExpression>
-                {
-                    new StringLiteral("Hello, World!!!")
-                }));
+        // Translate parse tree to AST.
+        ASTBuilder builder = new();
+        AST.Program program = builder.BuildAST(parseTree);
 
         // Generate code.
         CodeGenerator codeGenerator = new();

@@ -2,6 +2,8 @@
 
 public interface IDeclaration { }
 
+public interface IDeclarationExpression : IDeclaration, IExpression { }
+
 public record Program(
     Namespace GlobalNamespace,
     List<IExpression> Expressions
@@ -19,7 +21,7 @@ public record Namespace(
 public record Function(
     string Name,
     Namespace ParentNamespace
-) : IDeclaration;
+) : IDeclarationExpression;
 
 public interface IExpression { }
 
