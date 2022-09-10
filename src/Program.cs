@@ -4,7 +4,7 @@ namespace Presto.CLI;
 
 class Program
 {
-    static void Main(string[] args)
+    static async Task Main(string[] args)
     {
         // Create program node.
         Namespace globalNamespace = new(
@@ -36,14 +36,15 @@ class Program
                 writeLineFunction,
                 Arguments: new List<IExpression>
                 {
-                    new StringLiteral("Hello, World!")
+                    new StringLiteral("Hello, World!!!")
                 }));
 
         // Generate code.
         CodeGenerator codeGenerator = new();
         string generatedCode = codeGenerator.GenerateCode(program);
 
-        // Output generated code to console.
-        Console.WriteLine(generatedCode);
+        // Run the code!.
+        CSharpCodeRunner codeRunner = new();
+        await codeRunner.RunCode(generatedCode);
     }
 }
