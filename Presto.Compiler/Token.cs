@@ -11,4 +11,11 @@ public enum TokenType
     Semicolon
 };
 
-public record Token(TokenType Type, string Text);
+public readonly record struct TextPosition(
+    int LineIndex,
+    int ColumnIndex);
+
+public record Token(
+    TokenType Type,
+    string Text,
+    TextPosition TextPosition);
