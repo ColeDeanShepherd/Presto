@@ -96,7 +96,7 @@ public class ASTBuilder
         {
             scope = (Namespace)accessedDeclaration;
             IDeclaration declaration = GetDeclarationFromExpression(memberAccessOperator.Member);
-            scope = scope.ParentNamespace;
+            scope = scope.ParentNamespace!;
 
             if (declaration is IDeclarationExpression)
             {
