@@ -1,25 +1,18 @@
-﻿
-using Presto.ParseTree;
-
-namespace Presto.CLI;
+﻿namespace Presto.CLI;
 
 class Program
 {
     static async Task Main(string[] args)
     {
+        string sourceCode = "Console.WriteLine(\"Hello, world!\");";
+
+        // Create tokens.
+        Lexer lexer = new Lexer(sourceCode);
+        List<Token> tokens = lexer.Tokenize();
+
         // Create parse tree.
-        ParseTree.Program parseTree = new(
-            Expressions: new List<IExpression>
-            {
-                new CallExpression(
-                    FunctionExpression: new MemberAccessOperator(
-                        Expression: new Identifier("Console"),
-                        Member: new Identifier("WriteLine")),
-                    Arguments: new List<IExpression>
-                    {
-                        new StringLiteral("Hello, world!")
-                    })
-            });
+        Parser parser = new(tokens);
+        ParseTree.Program parseTree = parser.ParseProgram();
 
         // Translate parse tree to AST.
         ASTBuilder builder = new();
