@@ -1,0 +1,62 @@
+using System.Collections.Generic;
+using Xunit;
+
+namespace Presto.Tests;
+
+public class EndToEndTests
+{
+    #region Tests
+
+    [Fact]
+    public void Empty()
+    {
+        const string sourceCode = "";
+        const string expectedGeneratedCode = "";
+
+        AssertCodeGenerated(sourceCode, expectedGeneratedCode);
+    }
+
+    [Fact]
+    public void HelloWorld()
+    {
+        const string sourceCode = "Console.WriteLine(\"Hello, world!\");";
+        const string expectedGeneratedCode = "Console.WriteLine(\"Hello, world!\");";
+
+        AssertCodeGenerated(sourceCode, expectedGeneratedCode);
+    }
+
+    #endregion Tests
+
+    #region Helper Methods
+
+    private void AssertCodeGenerated(string sourceCode, string expectedGeneratedCode)
+    {
+        #region Act
+
+        // Create tokens.
+        Lexer lexer = new Lexer(sourceCode);
+        List<Token> tokens = lexer.Tokenize();
+
+        // Create parse tree.
+        Parser parser = new(tokens);
+        ParseTree.Program parseTree = parser.ParseProgram();
+
+        // Translate parse tree to AST.
+        ASTBuilder builder = new();
+        AST.Program program = builder.BuildAST(parseTree);
+
+        // Generate code.
+        CodeGenerator codeGenerator = new();
+        string generatedCode = codeGenerator.GenerateCode(program);
+
+        #endregion Act
+
+        #region Assert
+
+        Assert.Equal(expectedGeneratedCode, generatedCode);
+
+        #endregion Assert
+    }
+
+    #endregion Helper Methods
+}
