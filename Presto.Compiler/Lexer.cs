@@ -11,13 +11,13 @@ public class Lexer
 
     public List<Token> Tokenize()
     {
-        List<Token> tokens = new List<Token>();
+        List<Token> tokens = new();
 
         while (!IsDoneReading)
         {
             char nextChar = PeekChar();
 
-            if (IsIdentifierChar(nextChar))
+            if (IsValidFirstIdentifierChar(nextChar))
             {
                 tokens.Add(ReadIdentifier());
             }
@@ -27,23 +27,19 @@ public class Lexer
             }
             else if (nextChar == '.')
             {
-                TextPosition textPosition = this.textPosition;
-                tokens.Add(new Token(TokenType.Period, ReadChar().ToString(), textPosition));
+                tokens.Add(ReadSingleCharacterToken(nextChar, TokenType.Period));
             }
             else if (nextChar == '(')
             {
-                TextPosition textPosition = this.textPosition;
-                tokens.Add(new Token(TokenType.LeftParen, ReadChar().ToString(), textPosition));
+                tokens.Add(ReadSingleCharacterToken(nextChar, TokenType.LeftParen));
             }
             else if (nextChar == ')')
             {
-                TextPosition textPosition = this.textPosition;
-                tokens.Add(new Token(TokenType.RightParen, ReadChar().ToString(), textPosition));
+                tokens.Add(ReadSingleCharacterToken(nextChar, TokenType.RightParen));
             }
             else if (nextChar == ';')
             {
-                TextPosition textPosition = this.textPosition;
-                tokens.Add(new Token(TokenType.Semicolon, ReadChar().ToString(), textPosition));
+                tokens.Add(ReadSingleCharacterToken(nextChar, TokenType.Semicolon));
             }
             else
             {
@@ -55,8 +51,13 @@ public class Lexer
     }
 
     private string sourceCode;
-    private int nextCharIndex = 0;
+    private int nextCharIndex;
     private TextPosition textPosition;
+
+    #region Helpers
+
+    private bool IsStillReading => nextCharIndex < sourceCode.Length;
+    private bool IsDoneReading => nextCharIndex >= sourceCode.Length;
 
     private char? TryPeekChar()
     {
@@ -82,7 +83,7 @@ public class Lexer
         if (IsStillReading)
         {
             char nextChar = sourceCode[nextCharIndex];
-            AdvanceTextPosition(nextChar);
+            MoveToNextChar();
             return nextChar;
         }
         else
@@ -115,21 +116,28 @@ public class Lexer
         return nextChar;
     }
 
-    private bool IsIdentifierChar(char c)
+    private bool IsValidFirstIdentifierChar(char c)
     {
-        return char.IsLetterOrDigit(c);
+        return char.IsLetter(c) || (c == '_');
+    }
+
+    private bool IsValidIdentifierChar(char c)
+    {
+        return char.IsLetterOrDigit(c) || (c == '_');
     }
 
     private Token ReadIdentifier()
     {
         TextPosition textPosition = this.textPosition;
-        string tokenText = "";
+        int startCharIndex = nextCharIndex;
 
-        while (!IsDoneReading && (IsIdentifierChar(PeekChar())))
+        while (!IsDoneReading && (IsValidIdentifierChar(PeekChar())))
         {
-            tokenText += ReadChar();
+            ReadChar();
         }
 
+        int tokenTextLength = nextCharIndex - startCharIndex;
+        string tokenText = sourceCode.Substring(startCharIndex, tokenTextLength);
         return new Token(TokenType.Identifier, tokenText, textPosition);
     }
 
@@ -137,35 +145,47 @@ public class Lexer
     {
         TextPosition textPosition = this.textPosition;
 
-        ReadChar();
+        ReadExpectedChar('"');
 
-        string tokenText = "";
+        int valueStartCharIndex = nextCharIndex;
 
         while (PeekChar() != '"')
         {
-            tokenText += ReadChar();
+            ReadChar();
         }
 
-        ReadChar();
+        int tokenTextLength = nextCharIndex - valueStartCharIndex;
 
+        ReadExpectedChar('"');
+
+        string tokenText = sourceCode.Substring(valueStartCharIndex, tokenTextLength);
         return new Token(TokenType.StringLiteral, tokenText, textPosition);
     }
 
-    private void AdvanceTextPosition(char c)
+    private Token ReadSingleCharacterToken(char c, TokenType tokenType)
     {
-        nextCharIndex++;
+        TextPosition textPosition = this.textPosition;
+        return new Token(tokenType, ReadExpectedChar(c).ToString(), textPosition);
+    }
 
-        if (c != '\n')
+    private void MoveToNextChar()
+    {
+        if (IsStillReading)
         {
-            textPosition = new TextPosition(textPosition.LineIndex, textPosition.ColumnIndex + 1);
-        }
-        else
-        {
-            textPosition = new TextPosition(textPosition.LineIndex + 1, 0);
+            char c = sourceCode[nextCharIndex];
+
+            nextCharIndex++;
+
+            if (c != '\n')
+            {
+                textPosition = new TextPosition(textPosition.LineIndex, textPosition.ColumnIndex + 1);
+            }
+            else
+            {
+                textPosition = new TextPosition(textPosition.LineIndex + 1, 0);
+            }
         }
     }
 
-    private bool IsStillReading => nextCharIndex < sourceCode.Length;
-
-    private bool IsDoneReading => nextCharIndex >= sourceCode.Length;
+    #endregion Helpers
 }
