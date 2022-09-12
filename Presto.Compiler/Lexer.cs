@@ -8,7 +8,8 @@ public enum TokenType
     Period,
     LeftParen,
     RightParen,
-    Semicolon
+    Semicolon,
+    Comma
 };
 
 public readonly record struct TextPosition(
@@ -18,6 +19,16 @@ public readonly record struct TextPosition(
     public override string ToString()
     {
         return $"({LineIndex + 1}, {ColumnIndex + 1})";
+    }
+
+    public TextPosition AddColumns(int deltaColumns)
+    {
+        if ((ColumnIndex + deltaColumns) < 0)
+        {
+            throw new ArgumentOutOfRangeException(nameof(deltaColumns), $"Sum {nameof(TextPosition)} has a negative {nameof(ColumnIndex)}");
+        }
+
+        return new TextPosition(LineIndex, ColumnIndex + deltaColumns);
     }
 }
 
@@ -34,7 +45,7 @@ public readonly record struct TextRange(
 public record Token(
     TokenType Type,
     string Text,
-    TextPosition TextPosition);
+    TextRange TextRange);
 
 public interface ILexerError
 {
@@ -77,6 +88,7 @@ public class Lexer
         { '(', TokenType.LeftParen },
         { ')', TokenType.RightParen },
         { ';', TokenType.Semicolon },
+        { ',', TokenType.Comma },
     };
 
     public Lexer(string sourceCode)
@@ -153,7 +165,7 @@ public class Lexer
             return null;
         }
 
-        return nextChar.Value;
+        return nextChar;
     }
 
     private char? TryReadChar()
@@ -180,7 +192,7 @@ public class Lexer
             return null;
         }
 
-        return nextChar.Value;
+        return nextChar;
     }
 
     private char? ReadExpectedChar(char expectedChar)
@@ -210,7 +222,7 @@ public class Lexer
 
     private Token ReadIdentifier()
     {
-        TextPosition textPosition = this.textPosition;
+        TextPosition startTextPosition = this.textPosition;
         int startCharIndex = nextCharIndex;
 
         uint GetIdentifierCharIndex() => (uint)(nextCharIndex - startCharIndex);
@@ -230,17 +242,18 @@ public class Lexer
             }
             else
             {
-                errors.Add(new UnexpectedCharacterError(new TextRange(textPosition, GetNextTextPosition()), PeekChar()!.Value));
+                errors.Add(new UnexpectedCharacterError(new TextRange(startTextPosition, GetNextTextPosition()), PeekChar()!.Value));
             }
         }
 
+        TextPosition endTextPosition = this.textPosition;
         string tokenText = sourceCode.Substring(startCharIndex, tokenTextLength);
-        return new Token(TokenType.Identifier, tokenText, textPosition);
+        return new Token(TokenType.Identifier, tokenText, new TextRange(startTextPosition, endTextPosition));
     }
 
     private Token? ReadStringLiteral()
     {
-        TextPosition textPosition = this.textPosition;
+        TextPosition startTextPosition = this.textPosition;
 
         if (ReadExpectedChar('"') == null)
         {
@@ -272,13 +285,14 @@ public class Lexer
             return null;
         }
 
+        TextPosition endTextPosition = this.textPosition;
         string tokenText = sourceCode.Substring(valueStartCharIndex, tokenTextLength);
-        return new Token(TokenType.StringLiteral, tokenText, textPosition);
+        return new Token(TokenType.StringLiteral, tokenText, new TextRange(startTextPosition, endTextPosition));
     }
 
     private Token? ReadSingleCharacterToken(char c, TokenType tokenType)
     {
-        TextPosition textPosition = this.textPosition;
+        TextPosition startTextPosition = this.textPosition;
 
         char? nextChar = ReadExpectedChar(c);
         if (nextChar == null)
@@ -286,7 +300,9 @@ public class Lexer
             return null;
         }
 
-        return new Token(tokenType, nextChar.Value.ToString(), textPosition);
+        TextPosition endTextPosition = this.textPosition;
+
+        return new Token(tokenType, nextChar.Value.ToString(), new TextRange(startTextPosition, endTextPosition));
     }
 
     private TextPosition GetNextTextPosition()

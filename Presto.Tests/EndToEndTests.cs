@@ -44,11 +44,13 @@ public class EndToEndTests
 
         // Create tokens.
         Lexer lexer = new Lexer(sourceCode);
-        List<Token> tokens = lexer.Tokenize();
+        (List<Token> tokens, List<ILexerError> tokenizeErrors) = lexer.Tokenize();
+        Assert.Empty(tokenizeErrors);
 
         // Create parse tree.
         Parser parser = new(tokens);
-        ParseTree.Program parseTree = parser.ParseProgram();
+        (ParseTree.Program parseTree, List<IParserError> parseErrors) = parser.ParseProgram();
+        Assert.Empty(parseErrors);
 
         // Translate parse tree to AST.
         ASTBuilder builder = new();

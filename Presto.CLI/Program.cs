@@ -6,13 +6,13 @@ class Program
     {
         string sourceCode = "Console.WriteLine(\"Hello, world!\");";
 
-        // Create tokens.
+        // Tokenize.
         Lexer lexer = new Lexer(sourceCode);
-        (List<Token> tokens, List<ILexerError> errors) = lexer.Tokenize();
+        (List<Token> tokens, List<ILexerError> tokenizeErrors) = lexer.Tokenize();
 
-        if (errors.Any())
+        if (tokenizeErrors.Any())
         {
-            foreach (ILexerError error in errors)
+            foreach (ILexerError error in tokenizeErrors)
             {
                 Console.WriteLine($"ERROR {error.TextRange}: {error.GetDescription()}");
             }
@@ -20,9 +20,19 @@ class Program
             return;
         }
 
-        // Create parse tree.
+        // Parse.
         Parser parser = new(tokens);
-        ParseTree.Program parseTree = parser.ParseProgram();
+        (ParseTree.Program parseTree, List<IParserError> parseErrors) = parser.ParseProgram();
+
+        if (parseErrors.Any())
+        {
+            foreach (IParserError error in parseErrors)
+            {
+                Console.WriteLine($"ERROR {error.TextRange}: {error.GetDescription()}");
+            }
+
+            return;
+        }
 
         // Translate parse tree to AST.
         ASTBuilder builder = new();
