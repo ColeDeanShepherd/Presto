@@ -8,7 +8,17 @@ class Program
 
         // Create tokens.
         Lexer lexer = new Lexer(sourceCode);
-        List<Token> tokens = lexer.Tokenize();
+        (List<Token> tokens, List<ILexerError> errors) = lexer.Tokenize();
+
+        if (errors.Any())
+        {
+            foreach (ILexerError error in errors)
+            {
+                Console.WriteLine($"ERROR {error.TextRange}: {error.GetDescription()}");
+            }
+
+            return;
+        }
 
         // Create parse tree.
         Parser parser = new(tokens);
