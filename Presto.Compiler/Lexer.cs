@@ -17,7 +17,7 @@ public readonly record struct TextPosition(
 {
     public override string ToString()
     {
-        return $"({LineIndex}, {ColumnIndex})";
+        return $"({LineIndex + 1}, {ColumnIndex + 1})";
     }
 }
 
@@ -71,6 +71,14 @@ public record EndOfSourceCodeError(
 
 public class Lexer
 {
+    public static readonly Dictionary<char, TokenType> TokenTypesBySingleCharacters = new()
+    {
+        { '.', TokenType.Period },
+        { '(', TokenType.LeftParen },
+        { ')', TokenType.RightParen },
+        { ';', TokenType.Semicolon },
+    };
+
     public Lexer(string sourceCode)
     {
         this.sourceCode = sourceCode;
@@ -85,10 +93,7 @@ public class Lexer
 
         while (!IsDoneReading)
         {
-            char? nullableNextChar = PeekChar();
-            DBC.Assert(nullableNextChar != null);
-
-            char nextChar = nullableNextChar!.Value;
+            char nextChar = PeekChar()!.Value;
 
             if (IsValidIdentifierChar(nextChar, identifierCharIndex: 0))
             {
@@ -103,33 +108,9 @@ public class Lexer
                     tokens.Add(stringLiteral);
                 }
             }
-            else if (nextChar == '.')
+            else if (TokenTypesBySingleCharacters.ContainsKey(nextChar))
             {
-                Token? token = ReadSingleCharacterToken(nextChar, TokenType.Period);
-                if (token != null)
-                {
-                    tokens.Add(token);
-                }
-            }
-            else if (nextChar == '(')
-            {
-                Token? token = ReadSingleCharacterToken(nextChar, TokenType.LeftParen);
-                if (token != null)
-                {
-                    tokens.Add(token);
-                }
-            }
-            else if (nextChar == ')')
-            {
-                Token? token = ReadSingleCharacterToken(nextChar, TokenType.RightParen);
-                if (token != null)
-                {
-                    tokens.Add(token);
-                }
-            }
-            else if (nextChar == ';')
-            {
-                Token? token = ReadSingleCharacterToken(nextChar, TokenType.Semicolon);
+                Token? token = ReadSingleCharacterToken(nextChar, TokenTypesBySingleCharacters[nextChar]);
                 if (token != null)
                 {
                     tokens.Add(token);
@@ -215,9 +196,9 @@ public class Lexer
         return nextChar;
     }
 
-    private bool IsValidIdentifierChar(char c, int identifierCharIndex)
+    private bool IsValidIdentifierChar(char c, uint identifierCharIndex)
     {
-        if (identifierCharIndex <= 0)
+        if (identifierCharIndex == 0)
         {
             return char.IsLetter(c) || (c == '_');
         }
@@ -232,7 +213,7 @@ public class Lexer
         TextPosition textPosition = this.textPosition;
         int startCharIndex = nextCharIndex;
 
-        int GetIdentifierCharIndex() => nextCharIndex - startCharIndex;
+        uint GetIdentifierCharIndex() => (uint)(nextCharIndex - startCharIndex);
 
         while (!IsDoneReading && (IsValidIdentifierChar(PeekChar()!.Value, GetIdentifierCharIndex())))
         {
@@ -240,6 +221,19 @@ public class Lexer
         }
 
         int tokenTextLength = nextCharIndex - startCharIndex;
+
+        if (tokenTextLength == 0)
+        {
+            if (IsDoneReading)
+            {
+                errors.Add(new EndOfSourceCodeError(this.textPosition));
+            }
+            else
+            {
+                errors.Add(new UnexpectedCharacterError(new TextRange(textPosition, GetNextTextPosition()), PeekChar()!.Value));
+            }
+        }
+
         string tokenText = sourceCode.Substring(startCharIndex, tokenTextLength);
         return new Token(TokenType.Identifier, tokenText, textPosition);
     }
