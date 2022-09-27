@@ -25,6 +25,15 @@ public class EndToEndTests
         AssertCodeGenerated(sourceCode, expectedGeneratedCode);
     }
 
+    [Fact]
+    public void HelloWorldWithVariable()
+    {
+        const string sourceCode = "let msg: string = \"Hello, world!\"; Console.WriteLine(\"Hello, world!\");";
+        const string expectedGeneratedCode = "string msg = \"Hello, world!\";Console.WriteLine(\"Hello, world!\");";
+
+        AssertCodeGenerated(sourceCode, expectedGeneratedCode);
+    }
+
     #endregion Tests
 
     #region Helper Methods

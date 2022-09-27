@@ -2,7 +2,11 @@
 
 /*
 grammar Presto;
-program: (expression ';')*
+program: (statement ';')*
+statement:
+    let_statement
+    | expression
+let_statement: "let" identifier ':' qualified_name '=' expression
 expression:
     string_literal
     | identifier
@@ -10,13 +14,22 @@ expression:
     | member_access_operator
 call_expression: expression '(' (expression ',')* expression ')'
 member_access_operator: expression '.' expression
+qualified_name: (identifier '.')* identifier
 identifier: [_0-9a-zA-Z]+
 string_literal: '"' [^"]* '"'
 */
 
-public interface IExpression { }
+public interface IStatement { }
 
-public record Program(List<IExpression> Expressions);
+public interface IExpression : IStatement { }
+
+public record Program(List<IStatement> Statements);
+
+public record LetStatement(
+    Identifier VariableName,
+    Identifier TypeName,
+    IExpression Value
+) : IStatement;
 
 public record CallExpression(
     IExpression FunctionExpression,

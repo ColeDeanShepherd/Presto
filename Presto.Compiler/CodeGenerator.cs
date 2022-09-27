@@ -1,4 +1,5 @@
 ﻿using Presto.AST;
+using System.Linq.Expressions;
 using System.Text;
 
 namespace Presto;
@@ -7,13 +8,50 @@ public class CodeGenerator
 {
     public string GenerateCode(Program program)
     {
-        foreach (IExpression expr in program.Expressions)
+        foreach (IStatement statement in program.Statements)
         {
-            GenerateCode(expr);
+            GenerateCode(statement);
             GenerateCode(';');
         }
 
         return codeBuilder.ToString();
+    }
+
+    public void GenerateCode(IStatement statement)
+    {
+        if (statement is LetStatement letStatement)
+        {
+            GenerateCode(letStatement);
+        }
+        else if (statement is IExpression expression)
+        {
+            GenerateCode(expression);
+        }
+        else
+        {
+            throw new NotImplementedException();
+        }
+    }
+
+    public void GenerateCode(LetStatement letStatement)
+    {
+        GenerateCode(letStatement.Type);
+        GenerateCode(' ');
+        GenerateCode(letStatement.VariableName);
+        GenerateCode(" = ");
+        GenerateCode(letStatement.Value);
+    }
+
+    public void GenerateCode(IType type)
+    {
+        if (type is StringType)
+        {
+            GenerateCode("string");
+        }
+        else
+        {
+            throw new NotImplementedException();
+        }
     }
 
     public void GenerateCode(IExpression expression)

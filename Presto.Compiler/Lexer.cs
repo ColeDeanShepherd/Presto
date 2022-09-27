@@ -9,7 +9,13 @@ public enum TokenType
     LeftParen,
     RightParen,
     Semicolon,
-    Comma
+    Comma,
+    Colon,
+    Equals,
+
+    Whitespace,
+
+    LetKeyword
 };
 
 public readonly record struct TextPosition(
@@ -89,6 +95,13 @@ public class Lexer
         { ')', TokenType.RightParen },
         { ';', TokenType.Semicolon },
         { ',', TokenType.Comma },
+        { ':', TokenType.Colon },
+        { '=', TokenType.Equals }
+    };
+
+    public static readonly Dictionary<string, TokenType> KeywordTokenTypesByText = new()
+    {
+        { "let", TokenType.LetKeyword }
     };
 
     public Lexer(string sourceCode)
@@ -109,7 +122,7 @@ public class Lexer
 
             if (IsValidIdentifierChar(nextChar, identifierCharIndex: 0))
             {
-                tokens.Add(ReadIdentifier());
+                tokens.Add(ReadIdentifierOrKeyword());
             }
             else if (nextChar == '"')
             {
@@ -127,6 +140,10 @@ public class Lexer
                 {
                     tokens.Add(token);
                 }
+            }
+            else if (char.IsWhiteSpace(nextChar))
+            {
+                tokens.Add(ReadWhitespace());
             }
             else
             {
@@ -220,7 +237,7 @@ public class Lexer
         }
     }
 
-    private Token ReadIdentifier()
+    private Token ReadIdentifierOrKeyword()
     {
         TextPosition startTextPosition = this.textPosition;
         int startCharIndex = nextCharIndex;
@@ -248,7 +265,8 @@ public class Lexer
 
         TextPosition endTextPosition = this.textPosition;
         string tokenText = sourceCode.Substring(startCharIndex, tokenTextLength);
-        return new Token(TokenType.Identifier, tokenText, new TextRange(startTextPosition, endTextPosition));
+        var tokenType = KeywordTokenTypesByText.GetValueOrDefault(tokenText, TokenType.Identifier);
+        return new Token(tokenType, tokenText, new TextRange(startTextPosition, endTextPosition));
     }
 
     private Token? ReadStringLiteral()
@@ -288,6 +306,35 @@ public class Lexer
         TextPosition endTextPosition = this.textPosition;
         string tokenText = sourceCode.Substring(valueStartCharIndex, tokenTextLength);
         return new Token(TokenType.StringLiteral, tokenText, new TextRange(startTextPosition, endTextPosition));
+    }
+
+    private Token ReadWhitespace()
+    {
+        TextPosition startTextPosition = this.textPosition;
+        int startCharIndex = nextCharIndex;
+
+        while (!IsDoneReading && char.IsWhiteSpace(PeekChar()!.Value))
+        {
+            ReadChar();
+        }
+
+        int tokenTextLength = nextCharIndex - startCharIndex;
+
+        if (tokenTextLength == 0)
+        {
+            if (IsDoneReading)
+            {
+                errors.Add(new EndOfSourceCodeError(this.textPosition));
+            }
+            else
+            {
+                errors.Add(new UnexpectedCharacterError(new TextRange(startTextPosition, GetNextTextPosition()), PeekChar()!.Value));
+            }
+        }
+
+        TextPosition endTextPosition = this.textPosition;
+        string tokenText = sourceCode.Substring(startCharIndex, tokenTextLength);
+        return new Token(TokenType.Whitespace, tokenText, new TextRange(startTextPosition, endTextPosition));
     }
 
     private Token? ReadSingleCharacterToken(char c, TokenType tokenType)

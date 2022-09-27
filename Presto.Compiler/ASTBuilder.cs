@@ -14,7 +14,7 @@ public class ASTBuilder
 
         program = new Program(
             globalNamespace,
-            Expressions: new List<IExpression>());
+            Statements: new List<IStatement>());
 
         scope = globalNamespace;
     }
@@ -37,13 +37,37 @@ public class ASTBuilder
         // Add "WriteLine" function to "Console" namespace.
         consoleNamespace.Declarations.Add(writeLineFunction);
 
-        program.Expressions.AddRange(
-            parseTree.Expressions
+        program.Statements.AddRange(
+            parseTree.Statements
                 .Select(Visit)
                 .ToList()
         );
 
         return program;
+    }
+
+    public IStatement Visit(ParseTree.IStatement statement)
+    {
+        if (statement is ParseTree.LetStatement)
+        {
+            return Visit((ParseTree.LetStatement)statement);
+        }
+        if (statement is ParseTree.IExpression)
+        {
+            return Visit((ParseTree.IExpression)statement);
+        }
+        else
+        {
+            throw new NotImplementedException($"Unknown statement type {statement.GetType().Name}");
+        }
+    }
+
+    public LetStatement Visit(ParseTree.LetStatement letStatement)
+    {
+        return new LetStatement(
+            letStatement.VariableName.Text,
+            ResolveType(letStatement.TypeName),
+            Visit(letStatement.Value));
     }
 
     public IExpression Visit(ParseTree.IExpression expression)
@@ -157,6 +181,18 @@ public class ASTBuilder
         else
         {
             throw new NotImplementedException($"Unknown function expression type {expression.GetType().Name}");
+        }
+    }
+
+    public IType ResolveType(ParseTree.Identifier identifier)
+    {
+        if (identifier.Text == "string")
+        {
+            return Types.StringType;
+        }
+        else
+        {
+            throw new NotImplementedException();
         }
     }
 

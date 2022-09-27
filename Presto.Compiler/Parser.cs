@@ -44,21 +44,80 @@ public class Parser
 
     public (Program, List<IParserError>) ParseProgram()
     {
-        Program program = new(new List<IExpression>());
+        Program program = new(new List<IStatement>());
 
         while (!IsDoneReading)
         {
-            IExpression? expression = ParseExpression();
+            IStatement? statement = ParseStatement();
             
-            if (expression != null)
+            if (statement != null)
             {
-                program.Expressions.Add(expression);
+                program.Statements.Add(statement);
             }
 
             ReadExpectedToken(TokenType.Semicolon);
         }
 
         return (program, errors);
+    }
+
+    public IStatement? ParseStatement()
+    {
+        Token? nextToken = PeekToken();
+        if (nextToken == null)
+        {
+            return null;
+        }
+
+        if (nextToken.Type == TokenType.LetKeyword)
+        {
+            return ParseLetStatement();
+        }
+        else
+        {
+            return ParseExpression();
+        }
+    }
+
+    public LetStatement? ParseLetStatement()
+    {
+        if (ReadExpectedToken(TokenType.LetKeyword) == null)
+        {
+            return null;
+        }
+
+        Identifier? variableName = ParseIdentifier();
+        if (variableName == null)
+        {
+            return null;
+        }
+
+        if (ReadExpectedToken(TokenType.Colon) == null)
+        {
+            return null;
+        }
+
+        Identifier? typeName = ParseIdentifier();
+        if (typeName == null)
+        {
+            return null;
+        }
+
+        if (ReadExpectedToken(TokenType.Equals) == null)
+        {
+            return null;
+        }
+
+        IExpression? value = ParseExpression();
+        if (value == null)
+        {
+            return null;
+        }
+
+        return new LetStatement(
+            variableName,
+            typeName,
+            value);
     }
 
     /// <summary>
@@ -228,6 +287,17 @@ public class Parser
         return callExpression;
     }                                          
 
+    private Identifier? ParseIdentifier()
+    {
+        Token? token = ReadExpectedToken(TokenType.Identifier);
+        if (token == null)
+        {
+            return null;
+        }
+
+        return new Identifier(token.Text);
+    }
+
     private List<Token> tokens;
     private int nextTokenIndex = 0;
     private List<IParserError> errors;
@@ -257,6 +327,8 @@ public class Parser
 
     private Token? TryPeekToken()
     {
+        SkipWhitespace();
+
         return IsStillReading
             ? tokens[nextTokenIndex]
             : null;
@@ -277,6 +349,8 @@ public class Parser
 
     private Token? TryReadToken()
     {
+        SkipWhitespace();
+
         if (IsStillReading)
         {
             Token token = tokens[nextTokenIndex];
@@ -313,6 +387,14 @@ public class Parser
         }
 
         return nextToken;
+    }
+
+    private void SkipWhitespace()
+    {
+        while (!IsDoneReading && tokens[nextTokenIndex].Type == TokenType.Whitespace)
+        {
+            nextTokenIndex++;
+        }
     }
 
     #endregion Helpers

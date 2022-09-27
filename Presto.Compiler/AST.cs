@@ -6,7 +6,7 @@ public interface IDeclarationExpression : IDeclaration, IExpression { }
 
 public record Program(
     Namespace GlobalNamespace,
-    List<IExpression> Expressions
+    List<IStatement> Statements
 );
 
 public record Namespace(
@@ -23,7 +23,24 @@ public record Function(
     Namespace ParentNamespace
 ) : IDeclarationExpression;
 
-public interface IExpression { }
+public interface IStatement { }
+
+public interface IType { }
+
+public static class Types
+{
+    public static readonly StringType StringType = new();
+}
+
+public record StringType() : IType;
+
+public record LetStatement(
+    string VariableName,
+    IType Type,
+    IExpression Value
+) : IStatement;
+
+public interface IExpression : IStatement { }
 
 public record FunctionCall(
     Function Function,
