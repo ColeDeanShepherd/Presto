@@ -38,13 +38,17 @@ public record LetStatement(
     string VariableName,
     IType Type,
     IExpression Value
-) : IStatement;
+) : IDeclaration, IStatement;
 
 public interface IExpression : IStatement { }
 
 public record FunctionCall(
     Function Function,
     List<IExpression> Arguments
+) : IExpression;
+
+public record VariableReference(
+    LetStatement LetStatement
 ) : IExpression;
 
 public record StringLiteral(

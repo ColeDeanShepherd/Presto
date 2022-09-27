@@ -28,8 +28,8 @@ public class EndToEndTests
     [Fact]
     public void HelloWorldWithVariable()
     {
-        const string sourceCode = "let msg: string = \"Hello, world!\"; Console.WriteLine(\"Hello, world!\");";
-        const string expectedGeneratedCode = "string msg = \"Hello, world!\";Console.WriteLine(\"Hello, world!\");";
+        const string sourceCode = "let msg: string = \"Hello, world!\"; Console.WriteLine(msg);";
+        const string expectedGeneratedCode = "string msg = \"Hello, world!\";Console.WriteLine(msg);";
 
         AssertCodeGenerated(sourceCode, expectedGeneratedCode);
     }

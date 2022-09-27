@@ -64,10 +64,14 @@ public class ASTBuilder
 
     public LetStatement Visit(ParseTree.LetStatement letStatement)
     {
-        return new LetStatement(
+        LetStatement result = new(
             letStatement.VariableName.Text,
             ResolveType(letStatement.TypeName),
             Visit(letStatement.Value));
+
+        scope.Declarations.Add(result);
+
+        return result;
     }
 
     public IExpression Visit(ParseTree.IExpression expression)
@@ -87,6 +91,10 @@ public class ASTBuilder
             if (declaration is IDeclarationExpression)
             {
                 return (IDeclarationExpression)declaration;
+            }
+            else if (declaration is LetStatement letStatement)
+            {
+                return new VariableReference(letStatement);
             }
             else
             {
@@ -143,7 +151,7 @@ public class ASTBuilder
 
         do
         {
-            IDeclaration? declaration = scope.Declarations
+            IDeclaration? declaration = nullableScope.Declarations
                 .FirstOrDefault(decl => GetNameFromDeclaration(decl) == identifier.Text);
 
             if (declaration != null)
@@ -205,6 +213,10 @@ public class ASTBuilder
         else if (declaration is Function)
         {
             return ((Function)declaration).Name;
+        }
+        else if (declaration is LetStatement letStatement)
+        {
+            return letStatement.VariableName;
         }
         else
         {

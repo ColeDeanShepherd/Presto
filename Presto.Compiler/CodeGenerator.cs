@@ -64,6 +64,10 @@ public class CodeGenerator
         {
             GenerateCode((StringLiteral)expression);
         }
+        else if (expression is VariableReference variableReference)
+        {
+            GenerateCode(variableReference);
+        }
         else
         {
             throw new NotImplementedException($"Unknown expression type {expression.GetType().Name}");
@@ -103,6 +107,11 @@ public class CodeGenerator
         }
 
         GenerateCode(name);
+    }
+
+    public void GenerateCode(VariableReference variableReference)
+    {
+        GenerateCode(variableReference.LetStatement.VariableName);
     }
 
     public void GenerateCode(StringLiteral stringLiteral)
