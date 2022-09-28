@@ -18,8 +18,8 @@ public record UnexpectedTokenError(
     public string GetDescription()
     {
         return (expectedTokenType == null)
-            ? $"Unexpected token: '{encounteredTokenType}'."
-            : $"Expected token '{expectedTokenType}' but encountered '{encounteredTokenType}'.";
+            ? $"Unexpected token: {encounteredTokenType}."
+            : $"Expected token {expectedTokenType} but encountered {encounteredTokenType}.";
     }
 };
 
@@ -216,10 +216,12 @@ public class Parser
 
         switch (nextToken.Type)
         {
-            case TokenType.Identifier:
-                return new Identifier(nextToken.Text);
+            case TokenType.Number:
+                return new NumberLiteral(nextToken.Text);
             case TokenType.StringLiteral:
                 return new StringLiteral(nextToken.Text);
+            case TokenType.Identifier:
+                return new Identifier(nextToken.Text);
             default:
                 errors.Add(new UnexpectedTokenError(TextRange, nextToken.Type));
                 return null;

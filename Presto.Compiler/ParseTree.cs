@@ -8,7 +8,8 @@ statement:
     | expression
 let_statement: "let" identifier ':' qualified_name '=' expression
 expression:
-    string_literal
+      number
+    | string_literal
     | identifier
     | call_expression
     | member_access_operator
@@ -16,10 +17,13 @@ call_expression: expression '(' (expression ',')* expression ')'
 member_access_operator: expression '.' expression
 qualified_name: (identifier '.')* identifier
 identifier: [_0-9a-zA-Z]+
+number: [0-9]+
 string_literal: '"' [^"]* '"'
 */
 
-public interface IStatement { }
+public interface INode { }
+
+public interface IStatement : INode { }
 
 public interface IExpression : IStatement { }
 
@@ -42,6 +46,10 @@ public record MemberAccessOperator(
 ) : IExpression;
 
 public record Identifier(
+    string Text
+) : IExpression;
+
+public record NumberLiteral(
     string Text
 ) : IExpression;
 

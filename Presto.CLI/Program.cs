@@ -36,7 +36,17 @@ class Program
 
         // Translate parse tree to AST.
         ASTBuilder builder = new();
-        AST.Program program = builder.BuildAST(parseTree);
+        (AST.Program program, List<IASTBuilderError> buildAstErrors) = builder.BuildAST(parseTree);
+
+        if (buildAstErrors.Any())
+        {
+            foreach (IASTBuilderError error in buildAstErrors)
+            {
+                Console.WriteLine($"ERROR: {error.GetDescription()}");
+            }
+
+            return;
+        }
 
         // Generate code.
         CodeGenerator codeGenerator = new();

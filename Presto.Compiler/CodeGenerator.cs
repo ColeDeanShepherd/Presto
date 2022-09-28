@@ -1,5 +1,4 @@
 ﻿using Presto.AST;
-using System.Linq.Expressions;
 using System.Text;
 
 namespace Presto;
@@ -56,9 +55,9 @@ public class CodeGenerator
 
     public void GenerateCode(IExpression expression)
     {
-        if (expression is FunctionCall)
+        if (expression is NumberLiteral number)
         {
-            GenerateCode((FunctionCall)expression);
+            GenerateCode(number);
         }
         else if (expression is StringLiteral)
         {
@@ -67,6 +66,10 @@ public class CodeGenerator
         else if (expression is VariableReference variableReference)
         {
             GenerateCode(variableReference);
+        }
+        else if (expression is FunctionCall)
+        {
+            GenerateCode((FunctionCall)expression);
         }
         else
         {
@@ -109,9 +112,9 @@ public class CodeGenerator
         GenerateCode(name);
     }
 
-    public void GenerateCode(VariableReference variableReference)
+    public void GenerateCode(NumberLiteral number)
     {
-        GenerateCode(variableReference.LetStatement.VariableName);
+        GenerateCode(number.ValueAsString);
     }
 
     public void GenerateCode(StringLiteral stringLiteral)
@@ -119,6 +122,11 @@ public class CodeGenerator
         GenerateCode('"');
         GenerateCode(stringLiteral.Value);
         GenerateCode('"');
+    }
+
+    public void GenerateCode(VariableReference variableReference)
+    {
+        GenerateCode(variableReference.LetStatement.VariableName);
     }
 
     public void GenerateCode(string s)

@@ -20,19 +20,37 @@ public record Namespace(
 
 public record Function(
     string Name,
-    Namespace ParentNamespace
+    Namespace ParentNamespace,
+    List<ParameterDeclaration> ParameterDeclarations
 ) : IDeclarationExpression;
+
+public record ParameterDeclaration(
+    string Name,
+    IType Type
+) : IDeclaration;
 
 public interface IStatement { }
 
-public interface IType { }
+public interface IType
+{
+    string Name { get; }
+}
 
 public static class Types
 {
+    public static readonly IntegerType Int32Type = new();
     public static readonly StringType StringType = new();
 }
 
-public record StringType() : IType;
+public record IntegerType() : IType
+{
+    public string Name => "int";
+}
+
+public record StringType() : IType
+{
+    public string Name => "string";
+}
 
 public record LetStatement(
     string VariableName,
@@ -47,13 +65,18 @@ public record FunctionCall(
     List<IExpression> Arguments
 ) : IExpression;
 
+public record StringLiteral(
+    string Value
+) : IExpression;
+
+public record NumberLiteral(
+    string ValueAsString
+) : IExpression;
+
 public record VariableReference(
     LetStatement LetStatement
 ) : IExpression;
 
-public record StringLiteral(
-    string Value
-) : IExpression;
 
 public static class ASTUtil
 {
