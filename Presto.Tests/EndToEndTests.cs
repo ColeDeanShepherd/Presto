@@ -19,6 +19,15 @@ public class EndToEndTests
     }
 
     [Fact]
+    public void Literals()
+    {
+        const string sourceCode = "\"\";2;";
+        const string expectedGeneratedCode = "\"\";2;";
+
+        AssertCodeGenerated(sourceCode, expectedGeneratedCode);
+    }
+
+    [Fact]
     public void UnresolvedIdentifier()
     {
         const string sourceCode = "Asdf;";
