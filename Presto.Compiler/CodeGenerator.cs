@@ -22,6 +22,10 @@ public class CodeGenerator
         {
             GenerateCode(letStatement);
         }
+        else if (statement is StructDefinition structDefinition)
+        {
+            GenerateCode(structDefinition);
+        }
         else if (statement is IExpression expression)
         {
             GenerateCode(expression);
@@ -41,11 +45,32 @@ public class CodeGenerator
         GenerateCode(letStatement.Value);
     }
 
+    public void GenerateCode(StructDefinition structDefinition)
+    {
+        GenerateCode("class ");
+        GenerateCode(structDefinition.StructName);
+        GenerateCode(" { ");
+        GenerateStringDelimited(structDefinition.FieldDefinitions, x => GenerateCode(x), "; ");
+        GenerateCode(" }");
+    }
+
+    public void GenerateCode(FieldDefinition fieldDefinition)
+    {
+        GenerateCode("public ");
+        GenerateCode(fieldDefinition.FieldType);
+        GenerateCode(' ');
+        GenerateCode(fieldDefinition.FieldName);
+    }
+
     public void GenerateCode(IType type)
     {
         if (type is StringType)
         {
             GenerateCode("string");
+        }
+        else if (type is BoolType)
+        {
+            GenerateCode("bool");
         }
         else
         {
@@ -81,21 +106,33 @@ public class CodeGenerator
     {
         GenerateFullyQualifiedName(functionCall.Function.Name, functionCall.Function.ParentNamespace);
         GenerateCode('(');
+        GenerateStringSeparated(functionCall.Arguments, arg => GenerateCode(arg), ", ");
+        GenerateCode(')');
+    }
 
-        bool isFirstArg = true;
-        foreach (IExpression arg in functionCall.Arguments)
+    public void GenerateStringSeparated<TNode>(List<TNode> nodes, Action<TNode> generateNodeCode, string separator)
+    {
+        bool isFirstNode = true;
+        foreach (TNode node in nodes)
         {
-            if (!isFirstArg)
+            if (!isFirstNode)
             {
-                GenerateCode(", ");
+                GenerateCode(separator);
             }
 
-            GenerateCode(arg);
+            generateNodeCode(node);
 
-            isFirstArg = false;
+            isFirstNode = false;
         }
+    }
 
-        GenerateCode(')');
+    public void GenerateStringDelimited<TNode>(List<TNode> nodes, Action<TNode> generateNodeCode, string delimiter)
+    {
+        foreach (TNode node in nodes)
+        {
+            generateNodeCode(node);
+            GenerateCode(delimiter);
+        }
     }
 
     public void GenerateFullyQualifiedName(string name, Namespace parentNamespace)

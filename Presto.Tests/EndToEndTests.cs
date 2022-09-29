@@ -106,6 +106,15 @@ public class EndToEndTests
         AssertCodeGenerated(sourceCode, expectedGeneratedCode);
     }
 
+    [Fact]
+    public void Struct()
+    {
+        const string sourceCode = "struct ToDo { description: string, isComplete: bool };";
+        const string expectedGeneratedCode = "class ToDo { public string description; public bool isComplete;  };";
+
+        AssertCodeGenerated(sourceCode, expectedGeneratedCode);
+    }
+
     #endregion Tests
 
     #region Helper Methods

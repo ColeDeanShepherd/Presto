@@ -13,10 +13,13 @@ public enum TokenType
     Comma,
     Colon,
     Equals,
+    LeftCurlyBracket,
+    RightCurlyBracket,
 
     Whitespace,
 
-    LetKeyword
+    LetKeyword,
+    StructKeyword
 };
 
 public readonly record struct TextPosition(
@@ -97,12 +100,15 @@ public class Lexer
         { ';', TokenType.Semicolon },
         { ',', TokenType.Comma },
         { ':', TokenType.Colon },
-        { '=', TokenType.Equals }
+        { '=', TokenType.Equals },
+        { '{', TokenType.LeftCurlyBracket },
+        { '}', TokenType.RightCurlyBracket }
     };
 
     public static readonly Dictionary<string, TokenType> KeywordTokenTypesByText = new()
     {
-        { "let", TokenType.LetKeyword }
+        { "let", TokenType.LetKeyword },
+        { "struct", TokenType.StructKeyword },
     };
 
     public Lexer(string sourceCode)

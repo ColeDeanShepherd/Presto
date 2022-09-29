@@ -102,11 +102,15 @@ public class ASTBuilder
 
     public IStatement? Visit(ParseTree.IStatement statement)
     {
-        if (statement is ParseTree.LetStatement)
+        if (statement is ParseTree.LetStatement letStatement)
         {
-            return Visit((ParseTree.LetStatement)statement);
+            return Visit(letStatement);
         }
-        if (statement is ParseTree.IExpression)
+        else if (statement is ParseTree.StructDefinition structDeclaration)
+        {
+            return Visit(structDeclaration);
+        }
+        else if (statement is ParseTree.IExpression)
         {
             return Visit((ParseTree.IExpression)statement);
         }
@@ -142,6 +146,30 @@ public class ASTBuilder
             letStatement.VariableName.Text,
             variableType,
             value);
+
+        scope.Declarations.Add(result);
+
+        return result;
+    }
+
+    public StructDefinition? Visit(ParseTree.StructDefinition structDefinition)
+    {
+        List<FieldDefinition> fieldDefinitions = new();
+
+        foreach (var fieldDeclaration in structDefinition.FieldDeclarations)
+        {
+            IType fieldType = ResolveType(fieldDeclaration.TypeName);
+            if (fieldType == null)
+            {
+                return null;
+            }
+
+            fieldDefinitions.Add(new FieldDefinition(fieldDeclaration.FieldName.Text, fieldType));
+        }
+
+        StructDefinition result = new(
+            structDefinition.StructName.Text,
+            fieldDefinitions);
 
         scope.Declarations.Add(result);
 
@@ -329,11 +357,27 @@ public class ASTBuilder
         }
     }
 
+    public IType ResolveType(ParseTree.QualifiedName qualifiedName)
+    {
+        if (qualifiedName.Identifiers.Count == 1)
+        {
+            return ResolveType(qualifiedName.Identifiers[0]);
+        }
+        else
+        {
+            throw new NotImplementedException();
+        }
+    }
+
     public IType ResolveType(ParseTree.Identifier identifier)
     {
         if (identifier.Text == "string")
         {
             return Types.StringType;
+        }
+        else if (identifier.Text == "bool")
+        {
+            return Types.BoolType;
         }
         else
         {

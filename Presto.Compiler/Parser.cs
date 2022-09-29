@@ -73,6 +73,10 @@ public class Parser
         {
             return ParseLetStatement();
         }
+        else if (nextToken.Type == TokenType.StructKeyword)
+        {
+            return ParseStructDeclaration();
+        }
         else
         {
             return ParseExpression();
@@ -97,7 +101,7 @@ public class Parser
             return null;
         }
 
-        Identifier? typeName = ParseIdentifier();
+        QualifiedName? typeName = ParseQualifiedName();
         if (typeName == null)
         {
             return null;
@@ -118,6 +122,62 @@ public class Parser
             variableName,
             typeName,
             value);
+    }
+
+    public StructDefinition? ParseStructDeclaration()
+    {
+        if (ReadExpectedToken(TokenType.StructKeyword) == null)
+        {
+            return null;
+        }
+
+        Identifier? structName = ParseIdentifier();
+        if (structName == null)
+        {
+            return null;
+        }
+
+        if (ReadExpectedToken(TokenType.LeftCurlyBracket) == null)
+        {
+            return null;
+        }
+
+        List<FieldDeclaration>? fieldDeclarations = ParseTokenSeparatedList(ParseFieldDeclaration, TokenType.Comma);
+        if (fieldDeclarations == null)
+        {
+            return null;
+        }
+
+        if (ReadExpectedToken(TokenType.RightCurlyBracket) == null)
+        {
+            return null;
+        }
+
+        return new StructDefinition(
+            structName,
+            fieldDeclarations);
+    }
+
+    public FieldDeclaration? ParseFieldDeclaration()
+    {
+        Identifier? fieldName = ParseIdentifier();
+        if (fieldName == null)
+        {
+            return null;
+        }
+
+        if (ReadExpectedToken(TokenType.Colon) == null)
+        {
+            return null;
+        }
+
+        QualifiedName? typeName = ParseQualifiedName();
+        if (typeName == null)
+        {
+            return null;
+        }
+
+        return new FieldDeclaration(fieldName, typeName);
     }
 
     /// <summary>
@@ -288,6 +348,48 @@ public class Parser
 
         return callExpression;
     }                                          
+
+    private List<TNode>? ParseTokenSeparatedList<TNode>(Func<TNode?> parseNode, TokenType separatorTokenType)
+    {
+        List<TNode> nodes = new();
+
+        while (true)
+        {
+            TNode? node = parseNode();
+            if (node == null)
+            {
+                return null;
+            }
+
+            nodes.Add(node);
+
+            Token? nextToken = PeekToken();
+            if ((nextToken == null) || (nextToken.Type != separatorTokenType))
+            {
+                break;
+            }
+            else
+            {
+                if (ReadExpectedToken(separatorTokenType) == null)
+                {
+                    return null;
+                }
+            }
+        }
+
+        return nodes;
+    }
+
+    private QualifiedName? ParseQualifiedName()
+    {
+        List<Identifier>? identifiers = ParseTokenSeparatedList(ParseIdentifier, TokenType.Period);
+        if (identifiers == null)
+        {
+            return null;
+        }
+
+        return new QualifiedName(identifiers);
+    }
 
     private Identifier? ParseIdentifier()
     {

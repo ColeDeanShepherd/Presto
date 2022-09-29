@@ -40,6 +40,7 @@ public static class Types
 {
     public static readonly IntegerType Int32Type = new();
     public static readonly StringType StringType = new();
+    public static readonly BoolType BoolType = new();
 }
 
 public record IntegerType() : IType
@@ -52,11 +53,26 @@ public record StringType() : IType
     public string Name => "string";
 }
 
+public record BoolType() : IType
+{
+    public string Name => "bool";
+}
+
 public record LetStatement(
     string VariableName,
     IType Type,
     IExpression Value
 ) : IDeclaration, IStatement;
+
+public record StructDefinition(
+    string StructName,
+    List<FieldDefinition> FieldDefinitions
+) : IDeclaration, IStatement;
+
+public record FieldDefinition(
+    string FieldName,
+    IType FieldType
+) : IDeclaration;
 
 public interface IExpression : IStatement { }
 
