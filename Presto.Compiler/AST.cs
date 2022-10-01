@@ -93,7 +93,6 @@ public record VariableReference(
     LetStatement LetStatement
 ) : IExpression;
 
-
 public static class ASTUtil
 {
     public static IEnumerable<Namespace> EnumerateNamespaceHierarchy(Namespace ns)

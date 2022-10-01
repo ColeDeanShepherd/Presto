@@ -130,12 +130,6 @@ public class ASTBuilder
 
     public LetStatement? Visit(ParseTree.LetStatement letStatement)
     {
-        if (scope.Declarations.Any(x => GetNameFromDeclaration(x) == letStatement.VariableName.Text))
-        {
-            errors.Add(new DuplicateNameError(letStatement.VariableName.Text));
-            return null;
-        }
-
         IType? variableType = ResolveType(letStatement.TypeName);
         if (variableType == null)
         {
@@ -160,7 +154,10 @@ public class ASTBuilder
             variableType,
             value);
 
-        scope.Declarations.Add(result);
+        if (!AddToScope(result))
+        {
+            return null;
+        }
 
         return result;
     }
@@ -186,13 +183,14 @@ public class ASTBuilder
             fieldDefinitions.Add(new FieldDefinition(fieldDeclaration.FieldName.Text, fieldType));
         }
 
-
-
         StructDefinition result = new(
             structDefinition.StructName.Text,
             fieldDefinitions);
 
-        scope.Declarations.Add(result);
+        if (!AddToScope(result))
+        {
+            return null;
+        }
 
         return result;
     }
@@ -408,17 +406,21 @@ public class ASTBuilder
 
     public string GetNameFromDeclaration(IDeclaration declaration)
     {
-        if (declaration is Namespace)
+        if (declaration is Namespace ns)
         {
-            return ((Namespace)declaration).Name;
+            return ns.Name;
         }
-        else if (declaration is Function)
+        else if (declaration is Function function)
         {
-            return ((Function)declaration).Name;
+            return function.Name;
         }
         else if (declaration is LetStatement letStatement)
         {
             return letStatement.VariableName;
+        }
+        else if (declaration is StructDefinition structDefinition)
+        {
+            return structDefinition.StructName;
         }
         else
         {
@@ -440,6 +442,19 @@ public class ASTBuilder
         {
             throw new NotImplementedException($"Unknown declaration expression type {expression.GetType().Name}");
         }
+    }
+
+    public bool AddToScope(IDeclaration declaration)
+    {
+        string declarationName = GetNameFromDeclaration(declaration);
+        if (scope.Declarations.Any(x => GetNameFromDeclaration(x) == declarationName))
+        {
+            errors.Add(new DuplicateNameError(declarationName));
+            return false;
+        }
+
+        scope.Declarations.Add(declaration);
+        return true;
     }
 
     private Program program;

@@ -150,6 +150,19 @@ public class EndToEndTests
             });
     }
 
+    [Fact]
+    public void DuplicateStructNames()
+    {
+        const string sourceCode = "struct ToDo { }; struct ToDo { };";
+
+        AssertCompileFailed(
+            sourceCode,
+            expectedAstBuilderErrors: new List<IASTBuilderError>
+            {
+                new DuplicateNameError("ToDo")
+            });
+    }
+
     #endregion Tests
 
     #region Helper Methods
