@@ -46,8 +46,15 @@ public class Parser
     {
         Program program = new(new List<IStatement>());
 
-        while (!IsDoneReading)
+        while (true)
         {
+            SkipWhitespaceAndComments();
+
+            if (IsDoneReading)
+            {
+                break;
+            }
+
             IStatement? statement = ParseStatement();
             
             if (statement != null)
@@ -444,7 +451,7 @@ public class Parser
 
     private Token? TryPeekToken()
     {
-        SkipWhitespace();
+        SkipWhitespaceAndComments();
 
         return IsStillReading
             ? tokens[nextTokenIndex]
@@ -466,7 +473,7 @@ public class Parser
 
     private Token? TryReadToken()
     {
-        SkipWhitespace();
+        SkipWhitespaceAndComments();
 
         if (IsStillReading)
         {
@@ -506,9 +513,9 @@ public class Parser
         return nextToken;
     }
 
-    private void SkipWhitespace()
+    private void SkipWhitespaceAndComments()
     {
-        while (!IsDoneReading && tokens[nextTokenIndex].Type == TokenType.Whitespace)
+        while (!IsDoneReading && ((tokens[nextTokenIndex].Type == TokenType.Whitespace) || (tokens[nextTokenIndex].Type == TokenType.SingleLineComment)))
         {
             nextTokenIndex++;
         }

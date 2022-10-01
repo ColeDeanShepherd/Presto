@@ -6,6 +6,8 @@ public enum TokenType
     Number,
     StringLiteral,
 
+    SingleLineComment,
+
     Period,
     LeftParen,
     RightParen,
@@ -152,6 +154,15 @@ public class Lexer
                 if (stringLiteral != null)
                 {
                     tokens.Add(stringLiteral);
+                }
+            }
+            else if (nextChar == '#')
+            {
+                Token singleLineComment = ReadSingleLineComment();
+
+                if (singleLineComment != null)
+                {
+                    tokens.Add(singleLineComment);
                 }
             }
             else if (TokenTypesBySingleCharacters.ContainsKey(nextChar))
@@ -360,6 +371,37 @@ public class Lexer
         TextPosition endTextPosition = this.textPosition;
         string tokenText = sourceCode.Substring(valueStartCharIndex, tokenTextLength);
         return new Token(TokenType.StringLiteral, tokenText, new TextRange(startTextPosition, endTextPosition));
+    }
+
+    private Token? ReadSingleLineComment()
+    {
+        TextPosition startTextPosition = this.textPosition;
+
+        if (ReadExpectedChar('#') == null)
+        {
+            return null;
+        }
+
+        int valueStartCharIndex = nextCharIndex;
+
+        while (true)
+        {
+            char? nextChar = TryPeekChar();
+
+            if ((nextChar == null) || (nextChar.Value == '\r') || (nextChar.Value == '\n'))
+            {
+                break;
+            }
+
+            ReadChar();
+        }
+
+        int tokenTextLength = nextCharIndex - valueStartCharIndex;
+
+
+        TextPosition endTextPosition = this.textPosition;
+        string tokenText = sourceCode.Substring(valueStartCharIndex, tokenTextLength);
+        return new Token(TokenType.SingleLineComment, tokenText, new TextRange(startTextPosition, endTextPosition));
     }
 
     private Token ReadWhitespace()

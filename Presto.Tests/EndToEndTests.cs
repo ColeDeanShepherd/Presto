@@ -19,6 +19,15 @@ public class EndToEndTests
     }
 
     [Fact]
+    public void SingleLineComment()
+    {
+        const string sourceCode = "# This is a comment.";
+        const string expectedGeneratedCode = "";
+
+        AssertCompileSucceeded(sourceCode, expectedGeneratedCode);
+    }
+
+    [Fact]
     public void Literals()
     {
         const string sourceCode = "\"\"2";
@@ -164,13 +173,26 @@ public class EndToEndTests
     }
 
     [Fact]
+    public void EmptyFunction()
+    {
+        const string sourceCode = "fn x() {}";
+        const string expectedGeneratedCode = "void x() { }";
+
+        AssertCompileSucceeded(sourceCode, expectedGeneratedCode);
+    }
+
+    [Fact]
     public void CompilesComplicatedProgram()
     {
         const string sourceCode =
-@"struct ToDo { description: string, isComplete: bool }";
+@"struct ToDo { description: string, isComplete: bool }
+fn unsafe
+# Actions: AddToDo,RemoveToDo,CompleteToDo,UncompleteToDo,ChangeToDoDescription";
 
         AssertCompileSucceeded(sourceCode);
     }
+
+
 
     #endregion Tests
 
