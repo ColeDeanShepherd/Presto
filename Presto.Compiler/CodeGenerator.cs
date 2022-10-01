@@ -10,7 +10,11 @@ public class CodeGenerator
         foreach (IStatement statement in program.Statements)
         {
             GenerateCode(statement);
-            GenerateCode(';');
+
+            if (DoesStatementRequireSemicolonDelimiter(statement))
+            {
+                GenerateCode(';');
+            }
         }
 
         return codeBuilder.ToString();
@@ -51,7 +55,7 @@ public class CodeGenerator
         GenerateCode(structDefinition.StructName);
         GenerateCode(" { ");
         GenerateStringDelimited(structDefinition.FieldDefinitions, x => GenerateCode(x), "; ");
-        GenerateCode(" }");
+        GenerateCode('}');
     }
 
     public void GenerateCode(FieldDefinition fieldDefinition)
@@ -119,10 +123,31 @@ public class CodeGenerator
             {
                 GenerateCode(separator);
             }
+            else
+            {
+                isFirstNode = false;
+            }
 
             generateNodeCode(node);
+        }
+    }
 
-            isFirstNode = false;
+    public void GenerateStringDelimitedAndSeparated<TNode>(List<TNode> nodes, Action<TNode> generateNodeCode, string delimiter, string separator)
+    {
+        bool isFirstNode = true;
+        foreach (TNode node in nodes)
+        {
+            if (!isFirstNode)
+            {
+                GenerateCode(separator);
+            }
+            else
+            {
+                isFirstNode = false;
+            }
+
+            generateNodeCode(node);
+            GenerateCode(delimiter);
         }
     }
 
@@ -177,4 +202,16 @@ public class CodeGenerator
     }
 
     private StringBuilder codeBuilder = new();
+
+    private bool DoesStatementRequireSemicolonDelimiter(IStatement statement)
+    {
+        if (statement is StructDefinition)
+        {
+            return false;
+        }
+        else
+        {
+            return true;
+        }
+    }
 }

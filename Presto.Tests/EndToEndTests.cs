@@ -98,6 +98,19 @@ public class EndToEndTests
     }
 
     [Fact]
+    public void VariableDeclaration_DuplicateName()
+    {
+        const string sourceCode = "let msg: string = \"\"; let msg: string = \"\";";
+
+        AssertCompileFailed(
+            sourceCode,
+            expectedAstBuilderErrors: new List<IASTBuilderError>
+            {
+                new DuplicateNameError("msg")
+            });
+    }
+
+    [Fact]
     public void HelloWorldWithVariable()
     {
         const string sourceCode = "let msg: string = \"Hello, world!\"; Console.WriteLine(msg);";
@@ -107,12 +120,34 @@ public class EndToEndTests
     }
 
     [Fact]
+    public void EmptyStruct()
+    {
+        const string sourceCode = "struct ToDo { };";
+        const string expectedGeneratedCode = "class ToDo { }";
+
+        AssertCodeGenerated(sourceCode, expectedGeneratedCode);
+    }
+
+    [Fact]
     public void Struct()
     {
         const string sourceCode = "struct ToDo { description: string, isComplete: bool };";
-        const string expectedGeneratedCode = "class ToDo { public string description; public bool isComplete;  };";
+        const string expectedGeneratedCode = "class ToDo { public string description; public bool isComplete; }";
 
         AssertCodeGenerated(sourceCode, expectedGeneratedCode);
+    }
+
+    [Fact]
+    public void Struct_DuplicateFieldName()
+    {
+        const string sourceCode = "struct ToDo { description: string, description: bool };";
+
+        AssertCompileFailed(
+            sourceCode,
+            expectedAstBuilderErrors: new List<IASTBuilderError>
+            {
+                new DuplicateNameError("description")
+            });
     }
 
     #endregion Tests

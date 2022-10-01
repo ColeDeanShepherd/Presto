@@ -49,6 +49,13 @@ public record InvalidTypeError(
     }
 }
 
+public record DuplicateNameError(
+    string Name
+) : IASTBuilderError
+{
+    public string GetDescription() => $"Duplicate name: \"{Name}\"";
+}
+
 public class ASTBuilder
 {
     public ASTBuilder()
@@ -123,6 +130,12 @@ public class ASTBuilder
 
     public LetStatement? Visit(ParseTree.LetStatement letStatement)
     {
+        if (scope.Declarations.Any(x => GetNameFromDeclaration(x) == letStatement.VariableName.Text))
+        {
+            errors.Add(new DuplicateNameError(letStatement.VariableName.Text));
+            return null;
+        }
+
         IType? variableType = ResolveType(letStatement.TypeName);
         if (variableType == null)
         {
@@ -158,6 +171,12 @@ public class ASTBuilder
 
         foreach (var fieldDeclaration in structDefinition.FieldDeclarations)
         {
+            if (fieldDefinitions.Any(x => x.FieldName == fieldDeclaration.FieldName.Text))
+            {
+                errors.Add(new DuplicateNameError(fieldDeclaration.FieldName.Text));
+                continue;
+            }
+
             IType fieldType = ResolveType(fieldDeclaration.TypeName);
             if (fieldType == null)
             {
@@ -166,6 +185,8 @@ public class ASTBuilder
 
             fieldDefinitions.Add(new FieldDefinition(fieldDeclaration.FieldName.Text, fieldType));
         }
+
+
 
         StructDefinition result = new(
             structDefinition.StructName.Text,

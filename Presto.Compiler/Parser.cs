@@ -142,7 +142,7 @@ public class Parser
             return null;
         }
 
-        List<FieldDeclaration>? fieldDeclarations = ParseTokenSeparatedList(ParseFieldDeclaration, TokenType.Comma);
+        List<FieldDeclaration>? fieldDeclarations = ParseTokenSeparatedList(ParseFieldDeclaration, TokenType.Comma, TokenType.RightCurlyBracket);
         if (fieldDeclarations == null)
         {
             return null;
@@ -349,12 +349,27 @@ public class Parser
         return callExpression;
     }                                          
 
-    private List<TNode>? ParseTokenSeparatedList<TNode>(Func<TNode?> parseNode, TokenType separatorTokenType)
+    private List<TNode>? ParseTokenSeparatedList<TNode>(Func<TNode?> parseNode, TokenType separatorTokenType, TokenType? closingTokenType = null)
     {
         List<TNode> nodes = new();
 
         while (true)
         {
+            Token? nextToken;
+
+            if (closingTokenType != null)
+            {
+                nextToken = PeekToken();
+                if (nextToken == null)
+                {
+                    return null;
+                }
+                else if (nextToken.Type == closingTokenType)
+                {
+                    break;
+                }
+            }
+
             TNode? node = parseNode();
             if (node == null)
             {
@@ -363,7 +378,7 @@ public class Parser
 
             nodes.Add(node);
 
-            Token? nextToken = PeekToken();
+            nextToken = PeekToken();
             if ((nextToken == null) || (nextToken.Type != separatorTokenType))
             {
                 break;
