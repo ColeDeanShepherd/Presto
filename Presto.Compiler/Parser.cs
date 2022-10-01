@@ -54,8 +54,6 @@ public class Parser
             {
                 program.Statements.Add(statement);
             }
-
-            ReadExpectedToken(TokenType.Semicolon);
         }
 
         return (program, errors);

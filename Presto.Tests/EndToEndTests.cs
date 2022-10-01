@@ -15,22 +15,22 @@ public class EndToEndTests
         const string sourceCode = "";
         const string expectedGeneratedCode = "";
 
-        AssertCodeGenerated(sourceCode, expectedGeneratedCode);
+        AssertCompileSucceeded(sourceCode, expectedGeneratedCode);
     }
 
     [Fact]
     public void Literals()
     {
-        const string sourceCode = "\"\";2;";
+        const string sourceCode = "\"\"2";
         const string expectedGeneratedCode = "\"\";2;";
 
-        AssertCodeGenerated(sourceCode, expectedGeneratedCode);
+        AssertCompileSucceeded(sourceCode, expectedGeneratedCode);
     }
 
     [Fact]
     public void UnresolvedIdentifier()
     {
-        const string sourceCode = "Asdf;";
+        const string sourceCode = "Asdf";
 
         AssertCompileFailed(
             sourceCode,
@@ -43,16 +43,16 @@ public class EndToEndTests
     [Fact]
     public void FunctionCall()
     {
-        const string sourceCode = "Console.WriteLine(\"Hello, world!\");";
+        const string sourceCode = "Console.WriteLine(\"Hello, world!\")";
         const string expectedGeneratedCode = "Console.WriteLine(\"Hello, world!\");";
 
-        AssertCodeGenerated(sourceCode, expectedGeneratedCode);
+        AssertCompileSucceeded(sourceCode, expectedGeneratedCode);
     }
 
     [Fact]
     public void FunctionCall_InvalidNumArguments()
     {
-        const string sourceCode = "Console.WriteLine();";
+        const string sourceCode = "Console.WriteLine()";
 
         AssertCompileFailed(
             sourceCode,
@@ -65,7 +65,7 @@ public class EndToEndTests
     [Fact]
     public void FunctionCall_ArgumentWrongType()
     {
-        const string sourceCode = "Console.WriteLine(1);";
+        const string sourceCode = "Console.WriteLine(1)";
 
         AssertCompileFailed(
             sourceCode,
@@ -78,16 +78,16 @@ public class EndToEndTests
     [Fact]
     public void VariableDeclaration()
     {
-        const string sourceCode = "let msg: string = \"Hello, world!\";";
+        const string sourceCode = "let msg: string = \"Hello, world!\"";
         const string expectedGeneratedCode = "string msg = \"Hello, world!\";";
 
-        AssertCodeGenerated(sourceCode, expectedGeneratedCode);
+        AssertCompileSucceeded(sourceCode, expectedGeneratedCode);
     }
 
     [Fact]
     public void VariableDeclaration_WrongValueType()
     {
-        const string sourceCode = "let msg: string = 1;";
+        const string sourceCode = "let msg: string = 1";
 
         AssertCompileFailed(
             sourceCode,
@@ -100,7 +100,7 @@ public class EndToEndTests
     [Fact]
     public void VariableDeclaration_DuplicateName()
     {
-        const string sourceCode = "let msg: string = \"\"; let msg: string = \"\";";
+        const string sourceCode = "let msg: string = \"\" let msg: string = \"\"";
 
         AssertCompileFailed(
             sourceCode,
@@ -113,34 +113,34 @@ public class EndToEndTests
     [Fact]
     public void HelloWorldWithVariable()
     {
-        const string sourceCode = "let msg: string = \"Hello, world!\"; Console.WriteLine(msg);";
+        const string sourceCode = "let msg: string = \"Hello, world!\" Console.WriteLine(msg)";
         const string expectedGeneratedCode = "string msg = \"Hello, world!\";Console.WriteLine(msg);";
 
-        AssertCodeGenerated(sourceCode, expectedGeneratedCode);
+        AssertCompileSucceeded(sourceCode, expectedGeneratedCode);
     }
 
     [Fact]
     public void EmptyStruct()
     {
-        const string sourceCode = "struct ToDo { };";
+        const string sourceCode = "struct ToDo { }";
         const string expectedGeneratedCode = "class ToDo { }";
 
-        AssertCodeGenerated(sourceCode, expectedGeneratedCode);
+        AssertCompileSucceeded(sourceCode, expectedGeneratedCode);
     }
 
     [Fact]
     public void Struct()
     {
-        const string sourceCode = "struct ToDo { description: string, isComplete: bool };";
+        const string sourceCode = "struct ToDo { description: string, isComplete: bool }";
         const string expectedGeneratedCode = "class ToDo { public string description; public bool isComplete; }";
 
-        AssertCodeGenerated(sourceCode, expectedGeneratedCode);
+        AssertCompileSucceeded(sourceCode, expectedGeneratedCode);
     }
 
     [Fact]
     public void Struct_DuplicateFieldName()
     {
-        const string sourceCode = "struct ToDo { description: string, description: bool };";
+        const string sourceCode = "struct ToDo { description: string, description: bool }";
 
         AssertCompileFailed(
             sourceCode,
@@ -153,7 +153,7 @@ public class EndToEndTests
     [Fact]
     public void DuplicateStructNames()
     {
-        const string sourceCode = "struct ToDo { }; struct ToDo { };";
+        const string sourceCode = "struct ToDo { } struct ToDo { }";
 
         AssertCompileFailed(
             sourceCode,
@@ -163,11 +163,20 @@ public class EndToEndTests
             });
     }
 
+    [Fact]
+    public void CompilesComplicatedProgram()
+    {
+        const string sourceCode =
+@"struct ToDo { description: string, isComplete: bool }";
+
+        AssertCompileSucceeded(sourceCode);
+    }
+
     #endregion Tests
 
     #region Helper Methods
 
-    private void AssertCodeGenerated(string sourceCode, string expectedGeneratedCode)
+    private void AssertCompileSucceeded(string sourceCode, string? expectedGeneratedCode = null)
     {
         // Create tokens.
         Lexer lexer = new Lexer(sourceCode);
@@ -188,7 +197,10 @@ public class EndToEndTests
         CodeGenerator codeGenerator = new();
         string generatedCode = codeGenerator.GenerateCode(program);
 
-        Assert.Equal(expectedGeneratedCode, generatedCode);
+        if (expectedGeneratedCode != null)
+        {
+            Assert.Equal(expectedGeneratedCode, generatedCode);
+        }
     }
 
     private void AssertCompileFailed(
