@@ -87,7 +87,7 @@ public class EndToEndTests
     [Fact]
     public void VariableDeclaration()
     {
-        const string sourceCode = "let msg: string = \"Hello, world!\"";
+        const string sourceCode = "let msg: String = \"Hello, world!\"";
         const string expectedGeneratedCode = "string msg = \"Hello, world!\";";
 
         AssertCompileSucceeded(sourceCode, expectedGeneratedCode);
@@ -96,7 +96,7 @@ public class EndToEndTests
     [Fact]
     public void VariableDeclaration_WrongValueType()
     {
-        const string sourceCode = "let msg: string = 1";
+        const string sourceCode = "let msg: String = 1";
 
         AssertCompileFailed(
             sourceCode,
@@ -109,7 +109,7 @@ public class EndToEndTests
     [Fact]
     public void VariableDeclaration_DuplicateName()
     {
-        const string sourceCode = "let msg: string = \"\" let msg: string = \"\"";
+        const string sourceCode = "let msg: String = \"\" let msg: String = \"\"";
 
         AssertCompileFailed(
             sourceCode,
@@ -122,7 +122,7 @@ public class EndToEndTests
     [Fact]
     public void HelloWorldWithVariable()
     {
-        const string sourceCode = "let msg: string = \"Hello, world!\" Console.WriteLine(msg)";
+        const string sourceCode = "let msg: String = \"Hello, world!\" Console.WriteLine(msg)";
         const string expectedGeneratedCode = "string msg = \"Hello, world!\";Console.WriteLine(msg);";
 
         AssertCompileSucceeded(sourceCode, expectedGeneratedCode);
@@ -140,7 +140,7 @@ public class EndToEndTests
     [Fact]
     public void Struct()
     {
-        const string sourceCode = "struct ToDo { description: string, isComplete: bool }";
+        const string sourceCode = "struct ToDo { description: String, isComplete: Bool }";
         const string expectedGeneratedCode = "class ToDo { public string description; public bool isComplete; }";
 
         AssertCompileSucceeded(sourceCode, expectedGeneratedCode);
@@ -149,7 +149,7 @@ public class EndToEndTests
     [Fact]
     public void Struct_DuplicateFieldName()
     {
-        const string sourceCode = "struct ToDo { description: string, description: bool }";
+        const string sourceCode = "struct ToDo { description: String, description: bool }";
 
         AssertCompileFailed(
             sourceCode,
@@ -185,9 +185,21 @@ public class EndToEndTests
     public void CompilesComplicatedProgram()
     {
         const string sourceCode =
-@"struct ToDo { description: string, isComplete: bool }
-fn unsafe
-# Actions: AddToDo,RemoveToDo,CompleteToDo,UncompleteToDo,ChangeToDoDescription";
+@"struct ToDo {
+    description: String,
+    completedAt: Maybe<DateTime>
+}
+
+enum ToDoScheduleRecurrenceInterval {
+    None,
+    Daily,
+    Weekly,
+    Monthly,
+    Yearly
+}
+
+# Actions: AddToDo,RemoveToDo,CompleteToDo,UncompleteToDo,ChangeToDoDescription
+";
 
         AssertCompileSucceeded(sourceCode);
     }

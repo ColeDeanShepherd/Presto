@@ -390,11 +390,11 @@ public class ASTBuilder
 
     public IType ResolveType(ParseTree.Identifier identifier)
     {
-        if (identifier.Text == "string")
+        if (identifier.Text == "String")
         {
             return Types.StringType;
         }
-        else if (identifier.Text == "bool")
+        else if (identifier.Text == "Bool")
         {
             return Types.BoolType;
         }

@@ -45,12 +45,12 @@ public static class Types
 
 public record IntegerType() : IType
 {
-    public string Name => "int";
+    public string Name => "Int";
 }
 
 public record StringType() : IType
 {
-    public string Name => "string";
+    public string Name => "String";
 }
 
 public record BoolType() : IType
