@@ -112,7 +112,7 @@ public class Lexer
         (new Regex(@"^\s+"), TokenType.Whitespace),
         (new Regex(@"^[_a-zA-Z][_0-9a-zA-Z]*"), TokenType.Identifier),
         (new Regex(@"^[0-9]+"), TokenType.Number),
-        (new Regex(@"^""[^""]"""), TokenType.StringLiteral),
+        (new Regex(@"^""[^""]*"""), TokenType.StringLiteral),
         (new Regex(@"^\s+"), TokenType.Whitespace),
         (new Regex(@"^#[^\r\n]*"), TokenType.SingleLineComment)
     };

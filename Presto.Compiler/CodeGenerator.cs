@@ -179,12 +179,8 @@ public class CodeGenerator
         GenerateCode(number.ValueAsString);
     }
 
-    public void GenerateCode(StringLiteral stringLiteral)
-    {
-        GenerateCode('"');
+    public void GenerateCode(StringLiteral stringLiteral) =>
         GenerateCode(stringLiteral.Value);
-        GenerateCode('"');
-    }
 
     public void GenerateCode(VariableReference variableReference)
     {
