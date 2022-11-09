@@ -94,6 +94,7 @@ public class Lexer
         (new Regex("}"), TokenType.RightCurlyBracket),
         (new Regex("let"), TokenType.LetKeyword),
         (new Regex("struct"), TokenType.StructKeyword),
+        (new Regex("fn"), TokenType.FunctionKeyword),
         (new Regex(@"\s+"), TokenType.Whitespace),
         (new Regex(@"[_a-zA-Z][_0-9a-zA-Z]*"), TokenType.Identifier),
         (new Regex(@"[0-9]+"), TokenType.Number),
