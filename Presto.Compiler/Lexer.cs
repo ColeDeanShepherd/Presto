@@ -98,23 +98,23 @@ public class Lexer
 {
     public static List<(Regex Regex, TokenType TokenType)> Rules = new()
     {
-        (new Regex(@"^\."), TokenType.Period),
-        (new Regex(@"^\("), TokenType.LeftParen),
-        (new Regex(@"^\)"), TokenType.RightParen),
-        (new Regex("^;"), TokenType.Semicolon),
-        (new Regex("^,"), TokenType.Comma),
-        (new Regex("^:"), TokenType.Colon),
-        (new Regex("^="), TokenType.Equals),
-        (new Regex("^{"), TokenType.LeftCurlyBracket),
-        (new Regex("^}"), TokenType.RightCurlyBracket),
-        (new Regex("^let"), TokenType.LetKeyword),
-        (new Regex("^struct"), TokenType.StructKeyword),
-        (new Regex(@"^\s+"), TokenType.Whitespace),
-        (new Regex(@"^[_a-zA-Z][_0-9a-zA-Z]*"), TokenType.Identifier),
-        (new Regex(@"^[0-9]+"), TokenType.Number),
-        (new Regex(@"^""[^""]*"""), TokenType.StringLiteral),
-        (new Regex(@"^\s+"), TokenType.Whitespace),
-        (new Regex(@"^#[^\r\n]*"), TokenType.SingleLineComment)
+        (new Regex(@"\."), TokenType.Period),
+        (new Regex(@"\("), TokenType.LeftParen),
+        (new Regex(@"\)"), TokenType.RightParen),
+        (new Regex(";"), TokenType.Semicolon),
+        (new Regex(","), TokenType.Comma),
+        (new Regex(":"), TokenType.Colon),
+        (new Regex("="), TokenType.Equals),
+        (new Regex("{"), TokenType.LeftCurlyBracket),
+        (new Regex("}"), TokenType.RightCurlyBracket),
+        (new Regex("let"), TokenType.LetKeyword),
+        (new Regex("struct"), TokenType.StructKeyword),
+        (new Regex(@"\s+"), TokenType.Whitespace),
+        (new Regex(@"[_a-zA-Z][_0-9a-zA-Z]*"), TokenType.Identifier),
+        (new Regex(@"[0-9]+"), TokenType.Number),
+        (new Regex(@"""[^""]*"""), TokenType.StringLiteral),
+        (new Regex(@"\s+"), TokenType.Whitespace),
+        (new Regex(@"#[^\r\n]*"), TokenType.SingleLineComment)
     };
 
     public Lexer(string sourceCode)
@@ -127,13 +127,17 @@ public class Lexer
 
     public (List<Token>, List<ILexerError>) Tokenize()
     {
+        var rules = Rules
+            .Select(r => (Regex: new Regex($"^{r.Regex}"), TokenType: r.TokenType))
+            .ToList();
+
         List<Token> tokens = new();
 
         while (!IsDoneReading)
         {
             string sourceCodeLeft = sourceCode.Substring(nextCharIndex);
 
-            (Match, TokenType)? match = Rules
+            (Match, TokenType)? match = rules
                 .Select(r => (r.Regex.Match(sourceCodeLeft), r.TokenType))
                 .FirstOrDefault(x => x.Item1.Success);
 
