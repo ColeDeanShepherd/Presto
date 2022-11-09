@@ -73,6 +73,7 @@ public class Parser
         {
             TokenType.LetKeyword => ParseLetStatement(),
             TokenType.StructKeyword => ParseStructDeclaration(),
+            TokenType.FunctionKeyword => ParseFunctionDefinition(),
             _ => ParseExpression()
         };
     }
@@ -150,6 +151,79 @@ public class Parser
         return new StructDefinition(
             structName,
             fieldDeclarations);
+    }
+
+    public FunctionDefinition? ParseFunctionDefinition()
+    {
+        if (ReadExpectedToken(TokenType.FunctionKeyword) == null)
+        {
+            return null;
+        }
+
+        Identifier? name = ParseIdentifier();
+        if (name == null)
+        {
+            return null;
+        }
+
+        if (ReadExpectedToken(TokenType.LeftParen) == null)
+        {
+            return null;
+        }
+
+        List<ParameterDefinition>? parameterDefinitions = ParseTokenSeparatedList(ParseParameterDefinition, TokenType.Comma, TokenType.RightParen);
+        if (parameterDefinitions == null)
+        {
+            return null;
+        }
+
+        if (ReadExpectedToken(TokenType.RightParen) == null)
+        {
+            return null;
+        }
+
+        if (ReadExpectedToken(TokenType.LeftCurlyBracket) == null)
+        {
+            return null;
+        }
+
+        List<IStatement>? bodyStatements = ParseTokenSeparatedList(ParseStatement, TokenType.Semicolon, TokenType.RightCurlyBracket);
+        if (bodyStatements == null)
+        {
+            return null;
+        }
+
+        if (ReadExpectedToken(TokenType.RightCurlyBracket) == null)
+        {
+            return null;
+        }
+
+        return new FunctionDefinition(
+            name,
+            parameterDefinitions,
+            bodyStatements);
+    }
+
+    public ParameterDefinition? ParseParameterDefinition()
+    {
+        Identifier? fieldName = ParseIdentifier();
+        if (fieldName == null)
+        {
+            return null;
+        }
+
+        if (ReadExpectedToken(TokenType.Colon) == null)
+        {
+            return null;
+        }
+
+        QualifiedName? typeName = ParseQualifiedName();
+        if (typeName == null)
+        {
+            return null;
+        }
+
+        return new ParameterDefinition(fieldName, typeName);
     }
 
     public FieldDeclaration? ParseFieldDeclaration()

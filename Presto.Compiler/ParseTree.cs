@@ -1,7 +1,4 @@
-﻿using System.Security.AccessControl;
-using System.Security.Cryptography.X509Certificates;
-
-namespace Presto.ParseTree;
+﻿namespace Presto.ParseTree;
 
 /*
 grammar Presto;
@@ -45,6 +42,17 @@ public record StructDefinition(
     Identifier StructName,
     List<FieldDeclaration> FieldDeclarations
 ) : IStatement;
+
+public record FunctionDefinition(
+    Identifier FunctionName,
+    List<ParameterDefinition> ParameterDefinitions,
+    List<IStatement> Body
+) : IStatement;
+
+public record ParameterDefinition(
+    Identifier FieldName,
+    QualifiedName TypeName
+);
 
 public record FieldDeclaration(
     Identifier FieldName,

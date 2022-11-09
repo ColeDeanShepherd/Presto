@@ -23,7 +23,8 @@ public enum TokenType
     Whitespace,
 
     LetKeyword,
-    StructKeyword
+    StructKeyword,
+    FunctionKeyword
 };
 
 public readonly record struct TextPosition(

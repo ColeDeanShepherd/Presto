@@ -204,8 +204,6 @@ enum ToDoScheduleRecurrenceInterval {
         AssertCompileSucceeded(sourceCode);
     }
 
-
-
     #endregion Tests
 
     #region Helper Methods
