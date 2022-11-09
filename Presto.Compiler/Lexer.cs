@@ -30,30 +30,19 @@ public readonly record struct TextPosition(
     int LineIndex,
     int ColumnIndex)
 {
-    public override string ToString()
-    {
-        return $"({LineIndex + 1}, {ColumnIndex + 1})";
-    }
+    public override string ToString() => $"({LineIndex + 1}, {ColumnIndex + 1})";
 
-    public TextPosition AddColumns(int deltaColumns)
-    {
-        if ((ColumnIndex + deltaColumns) < 0)
-        {
-            throw new ArgumentOutOfRangeException(nameof(deltaColumns), $"Sum {nameof(TextPosition)} has a negative {nameof(ColumnIndex)}");
-        }
-
-        return new TextPosition(LineIndex, ColumnIndex + deltaColumns);
-    }
+    public TextPosition AddColumns(int deltaColumns) =>
+        ((ColumnIndex + deltaColumns) < 0)
+            ? throw new ArgumentOutOfRangeException(nameof(deltaColumns), $"Sum {nameof(TextPosition)} has a negative {nameof(ColumnIndex)}")
+            : new TextPosition(LineIndex, ColumnIndex + deltaColumns);
 }
 
 public readonly record struct TextRange(
     TextPosition StartPosition,
     TextPosition EndPosition)
 {
-    public override string ToString()
-    {
-        return $"({StartPosition}, {EndPosition})";
-    }
+    public override string ToString() => $"({StartPosition}, {EndPosition})";
 }
 
 public record Token(
@@ -74,12 +63,10 @@ public record UnexpectedCharacterError(
     char? expectedCharacter = null
 ) : ILexerError
 {
-    public string GetDescription()
-    {
-        return (expectedCharacter == null)
+    public string GetDescription() =>
+        (expectedCharacter == null)
             ? $"Unexpected character: '{encounteredCharacter}'."
             : $"Expected character '{expectedCharacter}' but encountered '{encounteredCharacter}'.";
-    }
 };
 
 public record EndOfSourceCodeError(
@@ -88,10 +75,7 @@ public record EndOfSourceCodeError(
 {
     public TextRange TextRange => new(TextPosition, TextPosition);
 
-    public string GetDescription()
-    {
-        return $"Unexpectedly reached the end of the source code.";
-    }
+    public string GetDescription() => "Unexpectedly reached the end of the source code.";
 };
 
 public class Lexer
@@ -177,12 +161,10 @@ public class Lexer
     private bool IsStillReading => nextCharIndex < sourceCode.Length;
     private bool IsDoneReading => nextCharIndex >= sourceCode.Length;
 
-    private char? TryPeekChar()
-    {
-        return IsStillReading
+    private char? TryPeekChar() =>
+        IsStillReading
             ? sourceCode[nextCharIndex]
             : null;
-    }
 
     private char? PeekChar()
     {
@@ -230,14 +212,10 @@ public class Lexer
         {
             char c = sourceCode[nextCharIndex];
 
-            if (c != '\n')
-            {
-                return new TextPosition(textPosition.LineIndex, textPosition.ColumnIndex + 1);
-            }
-            else
-            {
-                return new TextPosition(textPosition.LineIndex + 1, 0);
-            }
+            return
+                (c != '\n')
+                    ? new TextPosition(textPosition.LineIndex, textPosition.ColumnIndex + 1)
+                    : new TextPosition(textPosition.LineIndex + 1, 0);
         }
         else
         {
