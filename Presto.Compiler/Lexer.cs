@@ -220,19 +220,6 @@ public class Lexer
         return nextChar;
     }
 
-    private char? ReadExpectedChar(char expectedChar)
-    {
-        char? nextChar = ReadChar();
-
-        if ((nextChar != null) && (nextChar != expectedChar))
-        {
-            errors.Add(new UnexpectedCharacterError(new TextRange(textPosition, GetNextTextPosition()), nextChar.Value, expectedChar));
-            return null;
-        }
-
-        return nextChar;
-    }
-
     private TextPosition GetNextTextPosition()
     {
         if (IsStillReading)
