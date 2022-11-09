@@ -15,22 +15,17 @@ public record UnexpectedTokenError(
     TokenType? expectedTokenType = null
 ) : IParserError
 {
-    public string GetDescription()
-    {
-        return (expectedTokenType == null)
+    public string GetDescription() =>
+        (expectedTokenType == null)
             ? $"Unexpected token: {encounteredTokenType}."
             : $"Expected token {expectedTokenType} but encountered {encounteredTokenType}.";
-    }
 };
 
 public record EndOfTokensError(
     TextRange TextRange
 ) : IParserError
 {
-    public string GetDescription()
-    {
-        return $"Unexpectedly reached the end of the tokens.";
-    }
+    public string GetDescription() => "Unexpectedly reached the end of the tokens.";
 };
 
 public class Parser
@@ -74,18 +69,12 @@ public class Parser
             return null;
         }
 
-        if (nextToken.Type == TokenType.LetKeyword)
+        return nextToken.Type switch
         {
-            return ParseLetStatement();
-        }
-        else if (nextToken.Type == TokenType.StructKeyword)
-        {
-            return ParseStructDeclaration();
-        }
-        else
-        {
-            return ParseExpression();
-        }
+            TokenType.LetKeyword => ParseLetStatement(),
+            TokenType.StructKeyword => ParseStructDeclaration(),
+            _ => ParseExpression()
+        };
     }
 
     public LetStatement? ParseLetStatement()
@@ -304,16 +293,12 @@ public class Parser
         }
     }
 
-    private (int, int)? GetInfixBindingPowers(TokenType operatorTokenType)
-    {
-        switch (operatorTokenType)
+    private (int, int)? GetInfixBindingPowers(TokenType operatorTokenType) =>
+        operatorTokenType switch
         {
-            case TokenType.Period:
-                return (14, 13);
-            default:
-                return null;
-        }
-    }
+            TokenType.Period => (14, 13),
+            _ => null
+        };
 
     private CallExpression? ParseCallExpression(IExpression functionExpression)
     {

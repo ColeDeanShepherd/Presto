@@ -112,7 +112,7 @@ public class Lexer
     public (List<Token>, List<ILexerError>) Tokenize()
     {
         var rules = Rules
-            .Select(r => (Regex: new Regex($"^{r.Regex}"), TokenType: r.TokenType))
+            .Map(r => (Regex: new Regex($"^{r.Regex}"), TokenType: r.TokenType))
             .ToList();
 
         List<Token> tokens = new();
@@ -122,7 +122,7 @@ public class Lexer
             string sourceCodeLeft = sourceCode.Substring(nextCharIndex);
 
             (Match, TokenType)? match = rules
-                .Select(r => (r.Regex.Match(sourceCodeLeft), r.TokenType))
+                .Map(r => (r.Regex.Match(sourceCodeLeft), r.TokenType))
                 .FirstOrDefault(x => x.Item1.Success);
 
             if (match.Value.Item1.Success)

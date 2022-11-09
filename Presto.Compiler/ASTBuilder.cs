@@ -98,7 +98,7 @@ public class ASTBuilder
 
         program.Statements.AddRange(
             parseTree.Statements
-                .Select(Visit)
+                .Map(Visit)
                 .Where(x => x != null)
                 .Cast<IStatement>()
                 .ToList()
@@ -250,7 +250,7 @@ public class ASTBuilder
         }
 
         List<IExpression> arguments = callExpression.Arguments
-            .Select(arg => Visit(arg))
+            .Map(arg => Visit(arg))
             .Where(x => x != null)
             .Cast<IExpression>()
             .ToList();
