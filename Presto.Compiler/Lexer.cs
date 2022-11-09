@@ -1,4 +1,6 @@
-﻿namespace Presto;
+﻿using System.Text.RegularExpressions;
+
+namespace Presto;
 
 public enum TokenType
 {
@@ -94,23 +96,25 @@ public record EndOfSourceCodeError(
 
 public class Lexer
 {
-    public static readonly Dictionary<char, TokenType> TokenTypesBySingleCharacters = new()
+    public static List<(Regex Regex, TokenType TokenType)> Rules = new()
     {
-        { '.', TokenType.Period },
-        { '(', TokenType.LeftParen },
-        { ')', TokenType.RightParen },
-        { ';', TokenType.Semicolon },
-        { ',', TokenType.Comma },
-        { ':', TokenType.Colon },
-        { '=', TokenType.Equals },
-        { '{', TokenType.LeftCurlyBracket },
-        { '}', TokenType.RightCurlyBracket }
-    };
-
-    public static readonly Dictionary<string, TokenType> KeywordTokenTypesByText = new()
-    {
-        { "let", TokenType.LetKeyword },
-        { "struct", TokenType.StructKeyword },
+        (new Regex(@"^\."), TokenType.Period),
+        (new Regex(@"^\("), TokenType.LeftParen),
+        (new Regex(@"^\)"), TokenType.RightParen),
+        (new Regex("^;"), TokenType.Semicolon),
+        (new Regex("^,"), TokenType.Comma),
+        (new Regex("^:"), TokenType.Colon),
+        (new Regex("^="), TokenType.Equals),
+        (new Regex("^{"), TokenType.LeftCurlyBracket),
+        (new Regex("^}"), TokenType.RightCurlyBracket),
+        (new Regex("^let"), TokenType.LetKeyword),
+        (new Regex("^struct"), TokenType.StructKeyword),
+        (new Regex(@"^\s+"), TokenType.Whitespace),
+        (new Regex(@"^[_a-zA-Z][_0-9a-zA-Z]*"), TokenType.Identifier),
+        (new Regex(@"^[0-9]+"), TokenType.Number),
+        (new Regex(@"^""[^""]"""), TokenType.StringLiteral),
+        (new Regex(@"^\s+"), TokenType.Whitespace),
+        (new Regex(@"^#[^\r\n]*"), TokenType.SingleLineComment)
     };
 
     public Lexer(string sourceCode)
@@ -127,59 +131,31 @@ public class Lexer
 
         while (!IsDoneReading)
         {
-            char nextChar = PeekChar()!.Value;
+            string sourceCodeLeft = sourceCode.Substring(nextCharIndex);
 
-            if (IsValidIdentifierChar(nextChar, identifierCharIndex: 0))
-            {
-                Token? identifierOrKeyword = ReadIdentifierOrKeyword();
+            (Match, TokenType)? match = Rules
+                .Select(r => (r.Regex.Match(sourceCodeLeft), r.TokenType))
+                .FirstOrDefault(x => x.Item1.Success);
 
-                if (identifierOrKeyword != null)
-                {
-                    tokens.Add(identifierOrKeyword);
-                }
-            }
-            else if (char.IsNumber(nextChar))
+            if (match.Value.Item1.Success)
             {
-                Token? number = ReadNumber();
+                TextPosition startTextPosition = this.textPosition;
 
-                if (number != null)
+                for (int i = 0; i < match.Value.Item1.Length; i++)
                 {
-                    tokens.Add(number);
+                    if (ReadChar() == null)
+                    {
+                        throw new Exception();
+                    }
                 }
-            }
-            else if (nextChar == '"')
-            {
-                Token? stringLiteral = ReadStringLiteral();
 
-                if (stringLiteral != null)
-                {
-                    tokens.Add(stringLiteral);
-                }
-            }
-            else if (nextChar == '#')
-            {
-                Token singleLineComment = ReadSingleLineComment();
+                TextPosition endTextPosition = this.textPosition;
 
-                if (singleLineComment != null)
-                {
-                    tokens.Add(singleLineComment);
-                }
-            }
-            else if (TokenTypesBySingleCharacters.ContainsKey(nextChar))
-            {
-                Token? token = ReadSingleCharacterToken(nextChar, TokenTypesBySingleCharacters[nextChar]);
-                if (token != null)
-                {
-                    tokens.Add(token);
-                }
-            }
-            else if (char.IsWhiteSpace(nextChar))
-            {
-                tokens.Add(ReadWhitespace());
+                tokens.Add(new Token(match.Value.Item2, match.Value.Item1.Value, new TextRange(startTextPosition, endTextPosition)));
             }
             else
             {
-                errors.Add(new UnexpectedCharacterError(new TextRange(textPosition, GetNextTextPosition()), nextChar));
+                errors.Add(new UnexpectedCharacterError(new TextRange(textPosition, GetNextTextPosition()), PeekChar()!.Value));
                 MoveToNextChar();
             }
         }
@@ -255,197 +231,6 @@ public class Lexer
         }
 
         return nextChar;
-    }
-
-    private bool IsValidIdentifierChar(char c, uint identifierCharIndex)
-    {
-        if (identifierCharIndex == 0)
-        {
-            return char.IsLetter(c) || (c == '_');
-        }
-        else
-        {
-            return char.IsLetterOrDigit(c) || (c == '_');
-        }
-    }
-
-    private Token? ReadIdentifierOrKeyword()
-    {
-        TextPosition startTextPosition = this.textPosition;
-        int startCharIndex = nextCharIndex;
-
-        uint GetIdentifierCharIndex() => (uint)(nextCharIndex - startCharIndex);
-
-        while (!IsDoneReading && (IsValidIdentifierChar(PeekChar()!.Value, GetIdentifierCharIndex())))
-        {
-            ReadChar();
-        }
-
-        int tokenTextLength = nextCharIndex - startCharIndex;
-
-        if (tokenTextLength == 0)
-        {
-            if (IsDoneReading)
-            {
-                errors.Add(new EndOfSourceCodeError(this.textPosition));
-            }
-            else
-            {
-                errors.Add(new UnexpectedCharacterError(new TextRange(startTextPosition, GetNextTextPosition()), PeekChar()!.Value));
-            }
-
-            return null;
-        }
-
-        TextPosition endTextPosition = this.textPosition;
-        string tokenText = sourceCode.Substring(startCharIndex, tokenTextLength);
-        var tokenType = KeywordTokenTypesByText.GetValueOrDefault(tokenText, TokenType.Identifier);
-        return new Token(tokenType, tokenText, new TextRange(startTextPosition, endTextPosition));
-    }
-
-    private Token? ReadNumber()
-    {
-        TextPosition startTextPosition = this.textPosition;
-        int startCharIndex = nextCharIndex;
-
-        while (!IsDoneReading && char.IsNumber(PeekChar()!.Value))
-        {
-            ReadChar();
-        }
-
-        int tokenTextLength = nextCharIndex - startCharIndex;
-
-        if (tokenTextLength == 0)
-        {
-            if (IsDoneReading)
-            {
-                errors.Add(new EndOfSourceCodeError(this.textPosition));
-            }
-            else
-            {
-                errors.Add(new UnexpectedCharacterError(new TextRange(startTextPosition, GetNextTextPosition()), PeekChar()!.Value));
-            }
-
-            return null;
-        }
-
-        TextPosition endTextPosition = this.textPosition;
-        string tokenText = sourceCode.Substring(startCharIndex, tokenTextLength);
-        return new Token(TokenType.Number, tokenText, new TextRange(startTextPosition, endTextPosition));
-    }
-
-    private Token? ReadStringLiteral()
-    {
-        TextPosition startTextPosition = this.textPosition;
-
-        if (ReadExpectedChar('"') == null)
-        {
-            return null;
-        }
-
-        int valueStartCharIndex = nextCharIndex;
-
-        while (true)
-        {
-            char? nextChar = PeekChar();
-
-            if (nextChar == null)
-            {
-                return null;
-            }
-            else if (nextChar.Value == '"')
-            {
-                break;
-            }
-
-            ReadChar();
-        }
-
-        int tokenTextLength = nextCharIndex - valueStartCharIndex;
-
-        if (ReadExpectedChar('"') == null)
-        {
-            return null;
-        }
-
-        TextPosition endTextPosition = this.textPosition;
-        string tokenText = sourceCode.Substring(valueStartCharIndex, tokenTextLength);
-        return new Token(TokenType.StringLiteral, tokenText, new TextRange(startTextPosition, endTextPosition));
-    }
-
-    private Token? ReadSingleLineComment()
-    {
-        TextPosition startTextPosition = this.textPosition;
-
-        if (ReadExpectedChar('#') == null)
-        {
-            return null;
-        }
-
-        int valueStartCharIndex = nextCharIndex;
-
-        while (true)
-        {
-            char? nextChar = TryPeekChar();
-
-            if ((nextChar == null) || (nextChar.Value == '\r') || (nextChar.Value == '\n'))
-            {
-                break;
-            }
-
-            ReadChar();
-        }
-
-        int tokenTextLength = nextCharIndex - valueStartCharIndex;
-
-
-        TextPosition endTextPosition = this.textPosition;
-        string tokenText = sourceCode.Substring(valueStartCharIndex, tokenTextLength);
-        return new Token(TokenType.SingleLineComment, tokenText, new TextRange(startTextPosition, endTextPosition));
-    }
-
-    private Token ReadWhitespace()
-    {
-        TextPosition startTextPosition = this.textPosition;
-        int startCharIndex = nextCharIndex;
-
-        while (!IsDoneReading && char.IsWhiteSpace(PeekChar()!.Value))
-        {
-            ReadChar();
-        }
-
-        int tokenTextLength = nextCharIndex - startCharIndex;
-
-        if (tokenTextLength == 0)
-        {
-            if (IsDoneReading)
-            {
-                errors.Add(new EndOfSourceCodeError(this.textPosition));
-            }
-            else
-            {
-                errors.Add(new UnexpectedCharacterError(new TextRange(startTextPosition, GetNextTextPosition()), PeekChar()!.Value));
-            }
-        }
-
-        TextPosition endTextPosition = this.textPosition;
-        string tokenText = sourceCode.Substring(startCharIndex, tokenTextLength);
-        return new Token(TokenType.Whitespace, tokenText, new TextRange(startTextPosition, endTextPosition));
-    }
-
-    private Token? ReadSingleCharacterToken(char c, TokenType tokenType)
-    {
-        TextPosition startTextPosition = this.textPosition;
-
-        char? nextChar = ReadExpectedChar(c);
-        if (nextChar == null)
-        {
-            return null;
-        }
-
-        TextPosition endTextPosition = this.textPosition;
-
-        return new Token(tokenType, nextChar.Value.ToString(), new TextRange(startTextPosition, endTextPosition));
     }
 
     private TextPosition GetNextTextPosition()
