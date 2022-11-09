@@ -282,16 +282,12 @@ public class Parser
         }
     }
 
-    private int? GetPostfixLeftBindingPower(TokenType operatorTokenType)
-    {
-        switch (operatorTokenType)
+    private int? GetPostfixLeftBindingPower(TokenType operatorTokenType) =>
+        operatorTokenType switch
         {
-            case TokenType.LeftParen:
-                return 12;
-            default:
-                return null;
-        }
-    }
+            TokenType.LeftParen => 12,
+            _ => null
+        };
 
     private (int, int)? GetInfixBindingPowers(TokenType operatorTokenType) =>
         operatorTokenType switch
