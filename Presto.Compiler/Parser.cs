@@ -61,192 +61,55 @@ public class Parser
         return (program, errors);
     }
 
-    public IStatement? ParseStatement()
-    {
-        Token? nextToken = PeekToken();
-        if (nextToken == null)
-        {
-            return null;
-        }
-
-        return nextToken.Type switch
+    public IStatement? ParseStatement() =>
+        from nextToken in PeekToken()
+        select (IStatement?)(nextToken.Type switch
         {
             TokenType.LetKeyword => ParseLetStatement(),
             TokenType.StructKeyword => ParseStructDeclaration(),
             TokenType.FunctionKeyword => ParseFunctionDefinition(),
             _ => ParseExpression()
-        };
-    }
+        });
 
-    public LetStatement? ParseLetStatement()
-    {
-        if (ReadExpectedToken(TokenType.LetKeyword) == null)
-        {
-            return null;
-        }
+    public LetStatement? ParseLetStatement() =>
+        from _ in ReadExpectedToken(TokenType.LetKeyword)
+        from variableName in ParseIdentifier()
+        from _2 in ReadExpectedToken(TokenType.Colon)
+        from typeName in ParseQualifiedName()
+        from _3 in ReadExpectedToken(TokenType.Equals)
+        from value in ParseExpression()
+        select new LetStatement(variableName, typeName, value);
 
-        Identifier? variableName = ParseIdentifier();
-        if (variableName == null)
-        {
-            return null;
-        }
+    public StructDefinition? ParseStructDeclaration() =>
+        from _ in ReadExpectedToken(TokenType.StructKeyword)
+        from structName in ParseIdentifier()
+        from _2 in ReadExpectedToken(TokenType.LeftCurlyBracket)
+        from fieldDeclarations in ParseTokenSeparatedList(ParseFieldDeclaration, TokenType.Comma, TokenType.RightCurlyBracket)
+        from _3 in ReadExpectedToken(TokenType.RightCurlyBracket)
+        select new StructDefinition(structName, fieldDeclarations);
 
-        if (ReadExpectedToken(TokenType.Colon) == null)
-        {
-            return null;
-        }
+    public FunctionDefinition? ParseFunctionDefinition() =>
+        from _ in ReadExpectedToken(TokenType.FunctionKeyword)
+        from name in ParseIdentifier()
+        from _2 in ReadExpectedToken(TokenType.LeftParen)
+        from parameterDefinitions in ParseTokenSeparatedList(ParseParameterDefinition, TokenType.Comma, TokenType.RightParen)
+        from _3 in ReadExpectedToken(TokenType.RightParen)
+        from _4 in ReadExpectedToken(TokenType.LeftCurlyBracket)
+        from bodyStatements in ParseTokenSeparatedList(ParseStatement, TokenType.Semicolon, TokenType.RightCurlyBracket)
+        from _5 in ReadExpectedToken(TokenType.RightCurlyBracket)
+        select new FunctionDefinition(name, parameterDefinitions, bodyStatements);
 
-        QualifiedName? typeName = ParseQualifiedName();
-        if (typeName == null)
-        {
-            return null;
-        }
+    public ParameterDefinition? ParseParameterDefinition() =>
+        from fieldName in ParseIdentifier()
+        from _ in ReadExpectedToken(TokenType.Colon)
+        from typeName in ParseQualifiedName()
+        select new ParameterDefinition(fieldName, typeName);
 
-        if (ReadExpectedToken(TokenType.Equals) == null)
-        {
-            return null;
-        }
-
-        IExpression? value = ParseExpression();
-        if (value == null)
-        {
-            return null;
-        }
-
-        return new LetStatement(
-            variableName,
-            typeName,
-            value);
-    }
-
-    public StructDefinition? ParseStructDeclaration()
-    {
-        if (ReadExpectedToken(TokenType.StructKeyword) == null)
-        {
-            return null;
-        }
-
-        Identifier? structName = ParseIdentifier();
-        if (structName == null)
-        {
-            return null;
-        }
-
-        if (ReadExpectedToken(TokenType.LeftCurlyBracket) == null)
-        {
-            return null;
-        }
-
-        List<FieldDeclaration>? fieldDeclarations = ParseTokenSeparatedList(ParseFieldDeclaration, TokenType.Comma, TokenType.RightCurlyBracket);
-        if (fieldDeclarations == null)
-        {
-            return null;
-        }
-
-        if (ReadExpectedToken(TokenType.RightCurlyBracket) == null)
-        {
-            return null;
-        }
-
-        return new StructDefinition(
-            structName,
-            fieldDeclarations);
-    }
-
-    public FunctionDefinition? ParseFunctionDefinition()
-    {
-        if (ReadExpectedToken(TokenType.FunctionKeyword) == null)
-        {
-            return null;
-        }
-
-        Identifier? name = ParseIdentifier();
-        if (name == null)
-        {
-            return null;
-        }
-
-        if (ReadExpectedToken(TokenType.LeftParen) == null)
-        {
-            return null;
-        }
-
-        List<ParameterDefinition>? parameterDefinitions = ParseTokenSeparatedList(ParseParameterDefinition, TokenType.Comma, TokenType.RightParen);
-        if (parameterDefinitions == null)
-        {
-            return null;
-        }
-
-        if (ReadExpectedToken(TokenType.RightParen) == null)
-        {
-            return null;
-        }
-
-        if (ReadExpectedToken(TokenType.LeftCurlyBracket) == null)
-        {
-            return null;
-        }
-
-        List<IStatement>? bodyStatements = ParseTokenSeparatedList(ParseStatement, TokenType.Semicolon, TokenType.RightCurlyBracket);
-        if (bodyStatements == null)
-        {
-            return null;
-        }
-
-        if (ReadExpectedToken(TokenType.RightCurlyBracket) == null)
-        {
-            return null;
-        }
-
-        return new FunctionDefinition(
-            name,
-            parameterDefinitions,
-            bodyStatements);
-    }
-
-    public ParameterDefinition? ParseParameterDefinition()
-    {
-        Identifier? fieldName = ParseIdentifier();
-        if (fieldName == null)
-        {
-            return null;
-        }
-
-        if (ReadExpectedToken(TokenType.Colon) == null)
-        {
-            return null;
-        }
-
-        QualifiedName? typeName = ParseQualifiedName();
-        if (typeName == null)
-        {
-            return null;
-        }
-
-        return new ParameterDefinition(fieldName, typeName);
-    }
-
-    public FieldDeclaration? ParseFieldDeclaration()
-    {
-        Identifier? fieldName = ParseIdentifier();
-        if (fieldName == null)
-        {
-            return null;
-        }
-
-        if (ReadExpectedToken(TokenType.Colon) == null)
-        {
-            return null;
-        }
-
-        QualifiedName? typeName = ParseQualifiedName();
-        if (typeName == null)
-        {
-            return null;
-        }
-
-        return new FieldDeclaration(fieldName, typeName);
-    }
+    public FieldDeclaration? ParseFieldDeclaration() =>
+        from fieldName in ParseIdentifier()
+        from _ in ReadExpectedToken(TokenType.Colon)
+        from typeName in ParseQualifiedName()
+        select new FieldDeclaration(fieldName, typeName);
 
     /// <summary>
     /// Pratt parser based on https://matklad.github.io/2020/04/13/simple-but-powerful-pratt-parsing.html
