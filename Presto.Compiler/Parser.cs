@@ -111,12 +111,14 @@ public class Parser
         from typeName in ParseQualifiedName()
         select new FieldDeclaration(fieldName, typeName);
 
+    public IExpression? ParseExpression() => ParseExpression(0);
+
     /// <summary>
     /// Pratt parser based on https://matklad.github.io/2020/04/13/simple-but-powerful-pratt-parsing.html
     /// </summary>
     /// <param name="minBindingPower"></param>
     /// <returns>An expression.</returns>
-    public IExpression? ParseExpression(int minBindingPower = 0)
+    public IExpression? ParseExpression(int minBindingPower)
     {
         // Parse prefix expression.
         IExpression? prefixExpression = ParsePrefixExpression();
@@ -233,44 +235,11 @@ public class Parser
             _ => null
         };
 
-    private CallExpression? ParseCallExpression(IExpression functionExpression)
-    {
-        CallExpression callExpression = new(functionExpression, new List<IExpression>());
-
-        if (ReadExpectedToken(TokenType.LeftParen) == null)
-        {
-            return null;
-        }
-
-        bool isFirstArgument = true;
-
-        while (!IsDoneReading && (PeekToken()!.Type != TokenType.RightParen))
-        {
-            IExpression? expression = ParseExpression();
-            if (expression == null)
-            {
-                return null;
-            }
-
-            callExpression.Arguments.Add(expression);
-
-            if (isFirstArgument)
-            {
-                isFirstArgument = false;
-            }
-            else
-            {
-                ReadExpectedToken(TokenType.Comma);
-            }
-        }
-
-        if (ReadExpectedToken(TokenType.RightParen) == null)
-        {
-            return null;
-        }
-
-        return callExpression;
-    }                                          
+    private CallExpression? ParseCallExpression(IExpression functionExpression) =>
+        from _ in ReadExpectedToken(TokenType.LeftParen)
+        from arguments in ParseTokenSeparatedList(ParseExpression, TokenType.Comma, TokenType.RightParen)
+        from _2 in ReadExpectedToken(TokenType.RightParen)
+        select new CallExpression(functionExpression, arguments);
 
     private List<TNode>? ParseTokenSeparatedList<TNode>(Func<TNode?> parseNode, TokenType separatorTokenType, TokenType? closingTokenType = null)
     {
@@ -318,27 +287,13 @@ public class Parser
         return nodes;
     }
 
-    private QualifiedName? ParseQualifiedName()
-    {
-        List<Identifier>? identifiers = ParseTokenSeparatedList(ParseIdentifier, TokenType.Period);
-        if (identifiers == null)
-        {
-            return null;
-        }
+    private QualifiedName? ParseQualifiedName() =>
+        from identifiers in ParseTokenSeparatedList(ParseIdentifier, TokenType.Period)
+        select new QualifiedName(identifiers);
 
-        return new QualifiedName(identifiers);
-    }
-
-    private Identifier? ParseIdentifier()
-    {
-        Token? token = ReadExpectedToken(TokenType.Identifier);
-        if (token == null)
-        {
-            return null;
-        }
-
-        return new Identifier(token.Text);
-    }
+    private Identifier? ParseIdentifier() =>
+        from token in ReadExpectedToken(TokenType.Identifier)
+        select new Identifier(token.Text);
 
     private List<Token> tokens;
     private int nextTokenIndex = 0;
