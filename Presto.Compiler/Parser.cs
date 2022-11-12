@@ -1,4 +1,5 @@
-﻿using Presto.ParseTree;
+﻿using Presto.Compiler;
+using Presto.ParseTree;
 
 namespace Presto;
 
@@ -27,6 +28,403 @@ public record EndOfTokensError(
 {
     public string GetDescription() => "Unexpectedly reached the end of the tokens.";
 };
+
+public class GrammarParser
+{
+    public GrammarParser(List<GrammarRule> grammar, List<Token> tokens)
+    {
+        this.grammar = grammar;
+        grammarRulesByName = grammar.ToDictionary(g => g.Name);
+        this.tokens = tokens;
+        nextTokenIndex = 0;
+        errors = new List<IParserError>();
+    }
+
+    public (Program?, List<IParserError>) Parse()
+    {
+        var rootRule = grammar.First();
+        ParseRule(rootRule);
+
+        return (null, errors);
+    }
+
+    private bool ParseRule(GrammarRule rule)
+    {
+        foreach (var node in rule.Nodes)
+        {
+            if (!ParseNode(node))
+            {
+                return false;
+            }
+        }
+
+        return true;
+    }
+
+    bool ParseNode(IGrammarNode node)
+    {
+        throw new NotFiniteNumberException();
+
+        if (node is TokenGrammarNode tokenNode)
+        {
+            var token = ReadExpectedToken(tokenNode.TokenType);
+            return token != null;
+        }
+        else if (node is OneOfGrammarNode oneOf)
+        {
+            foreach (var childNode in oneOf.Nodes)
+            {
+
+            }
+        }
+        else if (node is OptionalGrammarNode optional)
+        {
+            throw new NotImplementedException();
+        }
+        else if (node is ZeroOrMoreGrammarNode zeroOrMore)
+        {
+            return ParseXOrMoreNode(zeroOrMore.Node, 0);
+        }
+        else if (node is OneOrMoreGrammarNode oneOrMore)
+        {
+            return ParseXOrMoreNode(oneOrMore.Node, 1);
+        }
+        else if (node is TokenSeparatedGrammarNode tokenSeparated)
+        {
+            throw new NotImplementedException();
+        }
+        else if (node is GroupGrammarNode group)
+        {
+            throw new NotImplementedException();
+        }
+        else if (node is GrammarRuleReference reference)
+        {
+            var resolvedRule = grammarRulesByName[reference.Name];
+            return ParseRule(resolvedRule);
+        }
+        else if (node is ExpressionGrammarNode expr)
+        {
+            throw new NotImplementedException();
+        }
+        else
+        {
+            throw new NotImplementedException();
+        }
+    }
+
+    public IExpression? ParseExpression() => ParseExpression(0);
+
+    /// <summary>
+    /// Pratt parser based on https://matklad.github.io/2020/04/13/simple-but-powerful-pratt-parsing.html
+    /// </summary>
+    /// <param name="minBindingPower"></param>
+    /// <returns>An expression.</returns>
+    public IExpression? ParseExpression(int minBindingPower)
+    {
+        // Parse prefix expression.
+        IExpression? prefixExpression = ParsePrefixExpression();
+        if (prefixExpression == null)
+        {
+            return null;
+        }
+
+        while (true)
+        {
+            Token? operatorToken = TryPeekToken();
+            if (operatorToken == null) { break; }
+
+            // Parse postfix operators.
+            int? postfixLeftBindingPower = GetPostfixLeftBindingPower(operatorToken.Type);
+
+            if (postfixLeftBindingPower.HasValue)
+            {
+                if (postfixLeftBindingPower.Value < minBindingPower)
+                {
+                    break;
+                }
+
+                switch (operatorToken.Type)
+                {
+                    //case TokenType.LeftParen:
+                    //    prefixExpression = ParseCallExpression(prefixExpression!);
+                    //    if (prefixExpression == null)
+                    //    {
+                    //        return null;
+                    //    }
+                    //    break;
+                    default:
+                        errors.Add(new UnexpectedTokenError(TextRange, operatorToken.Type));
+                        return null;
+                }
+
+                continue;
+            }
+
+            // Parse infix operators.
+            (int, int)? infixBindingPowers = GetInfixBindingPowers(operatorToken.Type);
+
+            if (infixBindingPowers.HasValue)
+            {
+                int leftBindingPower = infixBindingPowers.Value.Item1;
+                int rightBindingPower = infixBindingPowers.Value.Item2;
+
+                if (leftBindingPower < minBindingPower)
+                {
+                    break;
+                }
+;
+                switch (operatorToken.Type)
+                {
+                    case TokenType.Period:
+                        ReadExpectedToken(TokenType.Period);
+
+                        IExpression? rightExpr = ParseExpression(rightBindingPower);
+                        if (rightExpr == null)
+                        {
+                            return null;
+                        }
+
+                        prefixExpression = new MemberAccessOperator(prefixExpression, rightExpr);
+                        break;
+                    default:
+                        errors.Add(new UnexpectedTokenError(TextRange, operatorToken.Type));
+                        return null;
+                }
+
+                continue;
+            }
+
+            break;
+        }
+
+        return prefixExpression;
+    }
+
+    public IExpression? ParsePrefixExpression()
+    {
+        Token? nextToken = ReadToken();
+        if (nextToken == null)
+        {
+            return null;
+        }
+
+        switch (nextToken.Type)
+        {
+            case TokenType.Number:
+                return new NumberLiteral(nextToken.Text);
+            case TokenType.StringLiteral:
+                return new StringLiteral(nextToken.Text);
+            case TokenType.Identifier:
+                return new Identifier(nextToken.Text);
+            default:
+                errors.Add(new UnexpectedTokenError(TextRange, nextToken.Type));
+                return null;
+        }
+    }
+
+    private bool ParseXOrMoreNode(IGrammarNode node, uint x)
+    {
+        uint numParsed = 0;
+
+        while (true)
+        {
+            if (IsDoneReading)
+            {
+                break;
+            }
+
+            Token? nextToken = PeekToken();
+            if (nextToken == null)
+            {
+                return false;
+            }
+
+            var firstTokenTypes = GrammarHelpers.GetFirstTokenTypes(grammar, node);
+
+            if (firstTokenTypes.Contains(nextToken.Type))
+            {
+                if (ParseNode(node))
+                {
+                    numParsed++;
+                }
+                else
+                {
+                    return false;
+                }
+            }
+            else
+            {
+                break;
+            }
+        }
+
+        return numParsed >= x;
+    }
+
+    private int? GetPostfixLeftBindingPower(TokenType operatorTokenType) =>
+        operatorTokenType switch
+        {
+            TokenType.LeftParen => 12,
+            _ => null
+        };
+
+    private (int, int)? GetInfixBindingPowers(TokenType operatorTokenType) =>
+        operatorTokenType switch
+        {
+            TokenType.Period => (14, 13),
+            _ => null
+        };
+
+    private List<TNode>? ParseTokenSeparatedList<TNode>(Func<TNode?> parseNode, TokenType separatorTokenType, TokenType? closingTokenType = null)
+    {
+        List<TNode> nodes = new();
+
+        while (true)
+        {
+            Token? nextToken;
+
+            if (closingTokenType != null)
+            {
+                nextToken = PeekToken();
+                if (nextToken == null)
+                {
+                    return null;
+                }
+                else if (nextToken.Type == closingTokenType)
+                {
+                    break;
+                }
+            }
+
+            TNode? node = parseNode();
+            if (node == null)
+            {
+                return null;
+            }
+
+            nodes.Add(node);
+
+            nextToken = PeekToken();
+            if ((nextToken == null) || (nextToken.Type != separatorTokenType))
+            {
+                break;
+            }
+            else
+            {
+                if (ReadExpectedToken(separatorTokenType) == null)
+                {
+                    return null;
+                }
+            }
+        }
+
+        return nodes;
+    }
+
+    private List<GrammarRule> grammar;
+    private Dictionary<string, GrammarRule> grammarRulesByName;
+    private Dictionary<IGrammarNode, HashSet<TokenType>> firstTokenTypesByRuleName;
+    private List<Token> tokens;
+    private int nextTokenIndex = 0;
+    private List<IParserError> errors;
+
+    #region Helpers
+
+    private bool IsStillReading => nextTokenIndex < tokens.Count;
+    private bool IsDoneReading => nextTokenIndex >= tokens.Count;
+    private TextRange TextRange
+    {
+        get
+        {
+            if (nextTokenIndex < tokens.Count)
+            {
+                return tokens[nextTokenIndex].TextRange;
+            }
+            else if (tokens.Any())
+            {
+                return tokens[nextTokenIndex - 1].TextRange;
+            }
+            else
+            {
+                return new TextRange(new TextPosition(0, 0), new TextPosition(0, 0));
+            }
+        }
+    }
+
+    private Token? TryPeekToken()
+    {
+        SkipWhitespaceAndComments();
+
+        return IsStillReading
+            ? tokens[nextTokenIndex]
+            : null;
+    }
+
+    private Token? PeekToken()
+    {
+        Token? nextToken = TryPeekToken();
+
+        if (nextToken == null)
+        {
+            errors.Add(new EndOfTokensError(TextRange));
+            return null;
+        }
+
+        return nextToken;
+    }
+
+    private Token? TryReadToken()
+    {
+        SkipWhitespaceAndComments();
+
+        if (IsStillReading)
+        {
+            Token token = tokens[nextTokenIndex];
+            nextTokenIndex++;
+            return token;
+        }
+        else
+        {
+            return null;
+        }
+    }
+
+    private Token? ReadToken()
+    {
+        Token? nextToken = TryReadToken();
+
+        if (nextToken == null)
+        {
+            errors.Add(new EndOfTokensError(TextRange));
+            return null;
+        }
+
+        return nextToken;
+    }
+
+    private Token? ReadExpectedToken(TokenType expectedTokenType)
+    {
+        Token? nextToken = ReadToken();
+
+        if ((nextToken != null) && (nextToken.Type != expectedTokenType))
+        {
+            errors.Add(new UnexpectedTokenError(TextRange, nextToken.Type, expectedTokenType));
+            return null;
+        }
+
+        return nextToken;
+    }
+
+    private void SkipWhitespaceAndComments()
+    {
+        while (!IsDoneReading && ((tokens[nextTokenIndex].Type == TokenType.Whitespace) || (tokens[nextTokenIndex].Type == TokenType.SingleLineComment)))
+        {
+            nextTokenIndex++;
+        }
+    }
+
+    #endregion Helpers
+}
 
 public class Parser
 {

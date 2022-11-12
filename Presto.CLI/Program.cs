@@ -1,9 +1,17 @@
-﻿namespace Presto.CLI;
+﻿using Presto.Compiler;
+
+namespace Presto.CLI;
 
 class Program
 {
     static async Task Main(string[] args)
     {
+        var grammar = PrestoGrammarConstants.Grammar;
+        var p1 = GrammarHelpers.PrintGrammar(grammar);
+        var p2 = GrammarHelpers.ResolveReferences(grammar);
+
+
+
         string sourceCode = "Console.WriteLine(\"Hello, world!\");";
 
         // Tokenize.
@@ -21,8 +29,8 @@ class Program
         }
 
         // Parse.
-        Parser parser = new(tokens);
-        (ParseTree.Program parseTree, List<IParserError> parseErrors) = parser.ParseProgram();
+        GrammarParser parser = new(PrestoGrammarConstants.Grammar, tokens);
+        (ParseTree.Program? parseTree, List<IParserError> parseErrors) = parser.Parse();
 
         if (parseErrors.Any())
         {

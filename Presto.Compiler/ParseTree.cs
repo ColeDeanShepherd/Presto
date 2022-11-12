@@ -1,29 +1,5 @@
 ﻿namespace Presto.ParseTree;
 
-/*
-grammar Presto;
-program: (statement ';')*
-statement:
-    let_statement
-    | struct_declaration
-    | expression
-let_statement: "let" identifier ':' qualified_name '=' expression
-struct_declaration: "struct" identifier '{' ((field_declaration ',')* field_declaration)? '}'
-field_declaration: identifier ':' qualified_name
-expression:
-      number
-    | string_literal
-    | identifier
-    | call_expression
-    | member_access_operator
-call_expression: expression '(' ((expression ',')* expression)? ')'
-member_access_operator: expression '.' expression
-qualified_name: (identifier '.')* identifier
-identifier: [_0-9a-zA-Z]+
-number: [0-9]+
-string_literal: '"' [^"]* '"'
-*/
-
 public interface INode { }
 
 public interface IStatement : INode { }
