@@ -42,8 +42,8 @@ public record GroupGrammarNode(
 
 public record ExpressionGrammarNode(
     IGrammarNode PrefixExpressionNode,
-    Dictionary<TokenType, int?> PostfixOperatorLeftBindingPowers,
-    Dictionary<TokenType, (int, int)?> InfixOperatorBindingPowers
+    Dictionary<TokenType, (int, IGrammarNode)> PostfixOperatorLeftBindingPowers,
+    Dictionary<TokenType, (int, int, IGrammarNode)> InfixOperatorBindingPowers
 ) : IGrammarNode;
 
 public record GrammarRuleReference(
@@ -113,14 +113,20 @@ public static class GrammarHelpers
         }
         else if (node is GrammarRuleReference reference)
         {
-            return rulesByName[reference.Name];
+            return ResolveReferences(rulesByName, rulesByName[reference.Name]);
         }
         else if (node is ExpressionGrammarNode expr)
         {
             return new ExpressionGrammarNode(
                 ResolveReferences(rulesByName, expr.PrefixExpressionNode),
-                expr.PostfixOperatorLeftBindingPowers,
-                expr.InfixOperatorBindingPowers);
+                expr.PostfixOperatorLeftBindingPowers
+                    .ToDictionary(
+                        kvp => kvp.Key,
+                        kvp => (kvp.Value.Item1, ResolveReferences(rulesByName, kvp.Value.Item2))),
+                expr.InfixOperatorBindingPowers
+                    .ToDictionary(
+                        kvp => kvp.Key,
+                        kvp => (kvp.Value.Item1, kvp.Value.Item2, ResolveReferences(rulesByName, kvp.Value.Item3))));
         }
         else
         {
@@ -134,7 +140,11 @@ public static class GrammarHelpers
 
         string Print(IGrammarNode node)
         {
-            if (node is TokenGrammarNode token)
+            if (node is GrammarRule rule)
+            {
+                return rule.Name;
+            }
+            else if (node is TokenGrammarNode token)
             {
                 return token.TokenType.ToString();
             }
@@ -167,7 +177,7 @@ public static class GrammarHelpers
             }
             else if (node is GrammarRuleReference reference)
             {
-                return reference.Name;
+                return $"Ref({reference.Name})";
             }
             else if (node is ExpressionGrammarNode expr)
             {

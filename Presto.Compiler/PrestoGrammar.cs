@@ -19,18 +19,18 @@ public static class PrestoGrammarConstants
                     Token(TokenType.StringLiteral),
                     Token(TokenType.Identifier)
                 ),
-                PostfixOperatorLeftBindingPowers: new Dictionary<TokenType, int?>
+                PostfixOperatorLeftBindingPowers: new Dictionary<TokenType, (int, IGrammarNode)>
                 {
-                    { TokenType.LeftParen, 12 },
+                    { TokenType.LeftParen, (12, RuleRef("CallExpression")) },
                 },
-                InfixOperatorBindingPowers: new Dictionary<TokenType, (int, int)?>
+                InfixOperatorBindingPowers: new Dictionary<TokenType, (int, int, IGrammarNode)>
                 {
-                    { TokenType.Period, (14, 13) }
+                    { TokenType.Period, (14, 13, RuleRef("MemberAccessOperator")) }
                 }
             )
         ),
         Rule("CallExpression", RuleRef("Expression"), Token(TokenType.LeftParen), TokenSeparated(RuleRef("Expression"), TokenType.Comma), Token(TokenType.RightParen)),
-        Rule("MemberAccessOperator", RuleRef("Expression"), Token(TokenType.Period), Token(TokenType.Identifier)),
+        Rule("MemberAccessOperator", RuleRef("Expression"), Token(TokenType.Period), RuleRef("Expression")), // TODO: is 2nd expr OK?
         Rule("QualifiedName", TokenSeparated(Token(TokenType.Identifier), TokenType.Period, OneOrMore: true))
     };
 }

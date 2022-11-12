@@ -1,4 +1,11 @@
-﻿namespace Presto.ParseTree;
+﻿using Presto.Compiler;
+
+namespace Presto.ParseTree;
+
+public record ParseTreeNode(
+    IGrammarNode GrammarNode,
+    List<ParseTreeNode> Children
+);
 
 public interface INode { }
 

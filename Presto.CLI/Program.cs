@@ -1,4 +1,5 @@
 ﻿using Presto.Compiler;
+using Presto.ParseTree;
 
 namespace Presto.CLI;
 
@@ -6,12 +7,6 @@ class Program
 {
     static async Task Main(string[] args)
     {
-        var grammar = PrestoGrammarConstants.Grammar;
-        var p1 = GrammarHelpers.PrintGrammar(grammar);
-        var p2 = GrammarHelpers.ResolveReferences(grammar);
-
-
-
         string sourceCode = "Console.WriteLine(\"Hello, world!\");";
 
         // Tokenize.
@@ -29,8 +24,11 @@ class Program
         }
 
         // Parse.
-        GrammarParser parser = new(PrestoGrammarConstants.Grammar, tokens);
-        (ParseTree.Program? parseTree, List<IParserError> parseErrors) = parser.Parse();
+        var grammar = PrestoGrammarConstants.Grammar;
+        //var grammar = GrammarHelpers.ResolveReferences(PrestoGrammarConstants.Grammar);
+
+        GrammarParser parser = new(grammar, tokens);
+        (ParseTreeNode? parseTree, List<IParserError> parseErrors) = parser.Parse();
 
         if (parseErrors.Any())
         {
@@ -43,25 +41,25 @@ class Program
         }
 
         // Translate parse tree to AST.
-        ASTBuilder builder = new();
-        (AST.Program program, List<IASTBuilderError> buildAstErrors) = builder.BuildAST(parseTree);
+        //ASTBuilder builder = new();
+        //(AST.Program program, List<IASTBuilderError> buildAstErrors) = builder.BuildAST(parseTree);
 
-        if (buildAstErrors.Any())
-        {
-            foreach (IASTBuilderError error in buildAstErrors)
-            {
-                Console.WriteLine($"ERROR: {error.GetDescription()}");
-            }
+        //if (buildAstErrors.Any())
+        //{
+        //    foreach (IASTBuilderError error in buildAstErrors)
+        //    {
+        //        Console.WriteLine($"ERROR: {error.GetDescription()}");
+        //    }
 
-            return;
-        }
+        //    return;
+        //}
 
-        // Generate code.
-        CodeGenerator codeGenerator = new();
-        string generatedCode = codeGenerator.GenerateCode(program);
+        //// Generate code.
+        //CodeGenerator codeGenerator = new();
+        //string generatedCode = codeGenerator.GenerateCode(program);
 
-        // Run the code!.
-        CSharpCodeRunner codeRunner = new();
-        await codeRunner.RunCode(generatedCode);
+        //// Run the code!.
+        //CSharpCodeRunner codeRunner = new();
+        //await codeRunner.RunCode(generatedCode);
     }
 }

@@ -1,5 +1,6 @@
 ﻿using Presto.Compiler;
 using Presto.ParseTree;
+using System.Xml.Linq;
 
 namespace Presto;
 
@@ -34,52 +35,90 @@ public class GrammarParser
     public GrammarParser(List<GrammarRule> grammar, List<Token> tokens)
     {
         this.grammar = grammar;
-        grammarRulesByName = grammar.ToDictionary(g => g.Name);
+        expressionGrammarNode =
+            grammar
+                .Where(r => (r.Nodes.Count == 1) && (r.Nodes.First() is ExpressionGrammarNode))
+                .Select(r => r.Nodes.First())
+                .Cast<ExpressionGrammarNode>()
+                .First();
         this.tokens = tokens;
         nextTokenIndex = 0;
+        minExprBindingPowerStack = new Stack<int>();
         errors = new List<IParserError>();
     }
 
-    public (Program?, List<IParserError>) Parse()
+    public (ParseTreeNode?, List<IParserError>) Parse()
     {
         var rootRule = grammar.First();
-        ParseRule(rootRule);
 
-        return (null, errors);
+        return (ParseNode(rootRule), errors);
     }
 
-    private bool ParseRule(GrammarRule rule)
+    private ParseTreeNode? ParseNode(IGrammarNode node)
     {
-        foreach (var node in rule.Nodes)
+        if (node is GrammarRule rule)
         {
-            if (!ParseNode(node))
+            List<ParseTreeNode> children = new();
+
+            foreach (var n in rule.Nodes)
             {
-                return false;
+                var child = ParseNode(n);
+
+                if (child == null)
+                {
+                    return null;
+                }
+
+                children.Add(child);
             }
+
+            return new ParseTreeNode(node, children);
         }
-
-        return true;
-    }
-
-    bool ParseNode(IGrammarNode node)
-    {
-        throw new NotFiniteNumberException();
-
-        if (node is TokenGrammarNode tokenNode)
+        else if (node is TokenGrammarNode tokenNode)
         {
             var token = ReadExpectedToken(tokenNode.TokenType);
-            return token != null;
+            return (token != null)
+                ? new ParseTreeNode(node, new List<ParseTreeNode>())
+                : null;
         }
         else if (node is OneOfGrammarNode oneOf)
         {
             foreach (var childNode in oneOf.Nodes)
             {
+                var firstTokenTypes = GrammarHelpers.GetFirstTokenTypes(grammar, childNode);
 
+                var token = PeekToken();
+                if (token == null)
+                {
+                    return null;
+                }
+
+                if (firstTokenTypes.Contains(token.Type))
+                {
+                    return ParseNode(childNode);
+                }
             }
+
+            return null;
         }
         else if (node is OptionalGrammarNode optional)
         {
-            throw new NotImplementedException();
+            if (IsDoneReading)
+            {
+                return null;
+            }
+
+            var firstTokenTypes = GrammarHelpers.GetFirstTokenTypes(grammar, optional.Node);
+
+            var token = PeekToken();
+            if (token == null)
+            {
+                return null;
+            }
+
+            return firstTokenTypes.Contains(token.Type)
+                ? ParseNode(optional.Node)
+                : null;
         }
         else if (node is ZeroOrMoreGrammarNode zeroOrMore)
         {
@@ -91,20 +130,36 @@ public class GrammarParser
         }
         else if (node is TokenSeparatedGrammarNode tokenSeparated)
         {
-            throw new NotImplementedException();
+            return ParseTokenSeparatedNode(tokenSeparated);
         }
         else if (node is GroupGrammarNode group)
         {
-            throw new NotImplementedException();
-        }
-        else if (node is GrammarRuleReference reference)
-        {
-            var resolvedRule = grammarRulesByName[reference.Name];
-            return ParseRule(resolvedRule);
+            List<ParseTreeNode> children = new();
+
+            foreach (var n in group.Nodes)
+            {
+                var child = ParseNode(n);
+
+                if (child != null)
+                {
+                    children.Add(child);
+                }
+                else
+                {
+                    return null;
+                }
+            }
+
+            return new ParseTreeNode(group, children);
         }
         else if (node is ExpressionGrammarNode expr)
         {
-            throw new NotImplementedException();
+            return ParseExpression();
+        }
+        else if (node is GrammarRuleReference ruleRef)
+        {
+            var resolvedRule = grammar.First(r => r.Name == ruleRef.Name);
+            return ParseNode(resolvedRule);
         }
         else
         {
@@ -112,17 +167,56 @@ public class GrammarParser
         }
     }
 
-    public IExpression? ParseExpression() => ParseExpression(0);
+    private ParseTreeNode? ParseRuleGivenFirstChild(GrammarRule rule, ParseTreeNode firstChild)
+    {
+        List<ParseTreeNode> children = new()
+        {
+            firstChild
+        };
+
+        foreach (var n in rule.Nodes.Skip(1))
+        {
+            var child = ParseNode(n);
+
+            if (child == null)
+            {
+                return null;
+            }
+
+            children.Add(child);
+        }
+
+        return new ParseTreeNode(rule, children);
+    }
+
+    private GrammarRule? ResolveRule(IGrammarNode node)
+    {
+        if (node is GrammarRule rule)
+        {
+            return rule;
+        }
+        else if (node is GrammarRuleReference ruleRef)
+        {
+            return grammar.First(r => r.Name == ruleRef.Name);
+        }
+        else
+        {
+            return null;
+        }
+    }
 
     /// <summary>
     /// Pratt parser based on https://matklad.github.io/2020/04/13/simple-but-powerful-pratt-parsing.html
     /// </summary>
-    /// <param name="minBindingPower"></param>
     /// <returns>An expression.</returns>
-    public IExpression? ParseExpression(int minBindingPower)
+    public ParseTreeNode? ParseExpression()
     {
+        var minBindingPower = minExprBindingPowerStack.Any()
+            ? minExprBindingPowerStack.Peek()
+            : 0;
+
         // Parse prefix expression.
-        IExpression? prefixExpression = ParsePrefixExpression();
+        ParseTreeNode? prefixExpression = ParsePrefixExpression();
         if (prefixExpression == null)
         {
             return null;
@@ -134,61 +228,59 @@ public class GrammarParser
             if (operatorToken == null) { break; }
 
             // Parse postfix operators.
-            int? postfixLeftBindingPower = GetPostfixLeftBindingPower(operatorToken.Type);
+            (int leftBindingPower, IGrammarNode ruleNode)? postfixLeftBindingPower = GetPostfixLeftBindingPower(operatorToken.Type);
 
             if (postfixLeftBindingPower.HasValue)
             {
-                if (postfixLeftBindingPower.Value < minBindingPower)
+                int leftBindingPower = postfixLeftBindingPower.Value.leftBindingPower;
+                GrammarRule? rule = ResolveRule(postfixLeftBindingPower.Value.ruleNode);
+
+                if (rule == null)
+                {
+                    return null; // TODO: error
+                }
+
+                if (leftBindingPower < minBindingPower)
                 {
                     break;
                 }
 
-                switch (operatorToken.Type)
+                prefixExpression = ParseRuleGivenFirstChild(rule, prefixExpression!);
+                if (prefixExpression == null)
                 {
-                    //case TokenType.LeftParen:
-                    //    prefixExpression = ParseCallExpression(prefixExpression!);
-                    //    if (prefixExpression == null)
-                    //    {
-                    //        return null;
-                    //    }
-                    //    break;
-                    default:
-                        errors.Add(new UnexpectedTokenError(TextRange, operatorToken.Type));
-                        return null;
+                    return null;
                 }
 
                 continue;
             }
 
             // Parse infix operators.
-            (int, int)? infixBindingPowers = GetInfixBindingPowers(operatorToken.Type);
+            (int leftBindingPower, int rightBindingPower, IGrammarNode ruleNode)? infixBindingPowers = GetInfixBindingPowers(operatorToken.Type);
 
             if (infixBindingPowers.HasValue)
             {
-                int leftBindingPower = infixBindingPowers.Value.Item1;
-                int rightBindingPower = infixBindingPowers.Value.Item2;
+                int leftBindingPower = infixBindingPowers.Value.leftBindingPower;
+                int rightBindingPower = infixBindingPowers.Value.rightBindingPower;
+                GrammarRule? rule = ResolveRule(infixBindingPowers.Value.ruleNode);
+
+                if (rule == null)
+                {
+                    return null; // TODO: error
+                }
 
                 if (leftBindingPower < minBindingPower)
                 {
                     break;
                 }
-;
-                switch (operatorToken.Type)
+
+                // TODO: pass binding power
+                minExprBindingPowerStack.Push(rightBindingPower);
+                prefixExpression = ParseRuleGivenFirstChild(rule, prefixExpression!);
+                minExprBindingPowerStack.Pop();
+
+                if (prefixExpression == null)
                 {
-                    case TokenType.Period:
-                        ReadExpectedToken(TokenType.Period);
-
-                        IExpression? rightExpr = ParseExpression(rightBindingPower);
-                        if (rightExpr == null)
-                        {
-                            return null;
-                        }
-
-                        prefixExpression = new MemberAccessOperator(prefixExpression, rightExpr);
-                        break;
-                    default:
-                        errors.Add(new UnexpectedTokenError(TextRange, operatorToken.Type));
-                        return null;
+                    return null;
                 }
 
                 continue;
@@ -200,31 +292,17 @@ public class GrammarParser
         return prefixExpression;
     }
 
-    public IExpression? ParsePrefixExpression()
+    public ParseTreeNode? ParsePrefixExpression()
     {
-        Token? nextToken = ReadToken();
-        if (nextToken == null)
-        {
-            return null;
-        }
-
-        switch (nextToken.Type)
-        {
-            case TokenType.Number:
-                return new NumberLiteral(nextToken.Text);
-            case TokenType.StringLiteral:
-                return new StringLiteral(nextToken.Text);
-            case TokenType.Identifier:
-                return new Identifier(nextToken.Text);
-            default:
-                errors.Add(new UnexpectedTokenError(TextRange, nextToken.Type));
-                return null;
-        }
+        return ParseNode(expressionGrammarNode.PrefixExpressionNode);
     }
 
-    private bool ParseXOrMoreNode(IGrammarNode node, uint x)
+    private ParseTreeNode? ParseXOrMoreNode(IGrammarNode node, uint x)
     {
         uint numParsed = 0;
+
+        var firstTokenTypes = GrammarHelpers.GetFirstTokenTypes(grammar, node);
+        List<ParseTreeNode> children = new();
 
         while (true)
         {
@@ -236,20 +314,21 @@ public class GrammarParser
             Token? nextToken = PeekToken();
             if (nextToken == null)
             {
-                return false;
+                return null;
             }
-
-            var firstTokenTypes = GrammarHelpers.GetFirstTokenTypes(grammar, node);
 
             if (firstTokenTypes.Contains(nextToken.Type))
             {
-                if (ParseNode(node))
+                var child = ParseNode(node);
+
+                if (child != null)
                 {
+                    children.Add(child);
                     numParsed++;
                 }
                 else
                 {
-                    return false;
+                    return null;
                 }
             }
             else
@@ -258,75 +337,93 @@ public class GrammarParser
             }
         }
 
-        return numParsed >= x;
+        return (numParsed >= x)
+            ? new ParseTreeNode(node, children)
+            : null; // TODO: error
     }
 
-    private int? GetPostfixLeftBindingPower(TokenType operatorTokenType) =>
-        operatorTokenType switch
-        {
-            TokenType.LeftParen => 12,
-            _ => null
-        };
-
-    private (int, int)? GetInfixBindingPowers(TokenType operatorTokenType) =>
-        operatorTokenType switch
-        {
-            TokenType.Period => (14, 13),
-            _ => null
-        };
-
-    private List<TNode>? ParseTokenSeparatedList<TNode>(Func<TNode?> parseNode, TokenType separatorTokenType, TokenType? closingTokenType = null)
+    private ParseTreeNode? ParseTokenSeparatedNode(TokenSeparatedGrammarNode tokenSeparated)
     {
-        List<TNode> nodes = new();
+        uint numParsed = 0;
+
+        var firstTokenTypes = GrammarHelpers.GetFirstTokenTypes(grammar, tokenSeparated.Node);
+        List<ParseTreeNode> children = new();
 
         while (true)
         {
+            if (IsDoneReading)
+            {
+                break;
+            }
+
             Token? nextToken;
 
-            if (closingTokenType != null)
+            if (numParsed > 0)
             {
                 nextToken = PeekToken();
                 if (nextToken == null)
                 {
                     return null;
                 }
-                else if (nextToken.Type == closingTokenType)
+
+                if (nextToken.Type != tokenSeparated.TokenType)
                 {
                     break;
                 }
-            }
 
-            TNode? node = parseNode();
-            if (node == null)
-            {
-                return null;
-            }
-
-            nodes.Add(node);
-
-            nextToken = PeekToken();
-            if ((nextToken == null) || (nextToken.Type != separatorTokenType))
-            {
-                break;
-            }
-            else
-            {
-                if (ReadExpectedToken(separatorTokenType) == null)
+                if (ReadExpectedToken(tokenSeparated.TokenType) == null)
                 {
                     return null;
                 }
             }
+
+            nextToken = PeekToken();
+            if (nextToken == null)
+            {
+                return null;
+            }
+
+            if (firstTokenTypes.Contains(nextToken.Type))
+            {
+                var child = ParseNode(tokenSeparated.Node);
+
+                if (child != null)
+                {
+                    children.Add(child);
+                    numParsed++;
+                }
+                else
+                {
+                    return null;
+                }
+            }
+            else
+            {
+                break;
+            }
         }
 
-        return nodes;
+        return (!tokenSeparated.OneOrMore || (numParsed >= 1))
+            ? new ParseTreeNode(tokenSeparated, children)
+            : null; // TODO: errors?
     }
 
+    private (int, IGrammarNode)? GetPostfixLeftBindingPower(TokenType operatorTokenType) =>
+        expressionGrammarNode.PostfixOperatorLeftBindingPowers.ContainsKey(operatorTokenType)
+            ? expressionGrammarNode.PostfixOperatorLeftBindingPowers[operatorTokenType]
+        : null;
+
+    private (int, int, IGrammarNode)? GetInfixBindingPowers(TokenType operatorTokenType) =>
+        expressionGrammarNode.InfixOperatorBindingPowers.ContainsKey(operatorTokenType)
+            ? expressionGrammarNode.InfixOperatorBindingPowers[operatorTokenType]
+        : null;
+
     private List<GrammarRule> grammar;
-    private Dictionary<string, GrammarRule> grammarRulesByName;
-    private Dictionary<IGrammarNode, HashSet<TokenType>> firstTokenTypesByRuleName;
     private List<Token> tokens;
     private int nextTokenIndex = 0;
     private List<IParserError> errors;
+    private ExpressionGrammarNode expressionGrammarNode;
+    private Stack<int> minExprBindingPowerStack;
 
     #region Helpers
 
