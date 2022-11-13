@@ -30,6 +30,8 @@ class Program
         GrammarParser parser = new(grammar, tokens);
         (ParseTreeNode? parseTree, List<IParserError> parseErrors) = parser.Parse();
 
+        string asdf = ParseTreeNodeHelpers.PrintTree(parseTree);
+
         if (parseErrors.Any())
         {
             foreach (IParserError error in parseErrors)

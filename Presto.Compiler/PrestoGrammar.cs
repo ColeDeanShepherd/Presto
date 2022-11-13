@@ -6,7 +6,7 @@ public static class PrestoGrammarConstants
 {
     public static readonly List<GrammarRule> Grammar = new()
     {
-        Rule("Program", Group(RuleRef("Statement"), Token(TokenType.Semicolon)).ZeroOrMore()),
+        Rule("Program", TokenTerminated(RuleRef("Statement"), TokenType.Semicolon).ZeroOrMore()),
         Rule("Statement", OneOf(RuleRef("LetStatement"), RuleRef("StructDeclaration"), RuleRef("Expression"))),
         Rule("LetStatement", Token(TokenType.LetKeyword), Token(TokenType.Identifier), Token(TokenType.Colon), RuleRef("QualifiedName"), Token(TokenType.Equals), RuleRef("Expression")),
         Rule("StructDeclaration", Token(TokenType.StructKeyword), Token(TokenType.Identifier), Token(TokenType.LeftCurlyBracket), TokenSeparated(RuleRef("FieldDeclaration"), TokenType.Comma), Token(TokenType.RightCurlyBracket)),

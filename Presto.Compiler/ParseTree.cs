@@ -1,4 +1,5 @@
 ﻿using Presto.Compiler;
+using System.Text;
 
 namespace Presto.ParseTree;
 
@@ -6,6 +7,35 @@ public record ParseTreeNode(
     IGrammarNode GrammarNode,
     List<ParseTreeNode> Children
 );
+
+public static class ParseTreeNodeHelpers
+{
+    public static string PrintTree(ParseTreeNode node)
+    {
+        StringBuilder sb = new();
+
+        void Print(ParseTreeNode node, uint indentationLevel)
+        {
+            PrintIndentation(indentationLevel);
+            sb.AppendLine(node.GrammarNode.GetType().Name);
+
+            indentationLevel++;
+            foreach (var child in node.Children)
+            {
+                Print(child, indentationLevel);
+            }
+        }
+
+        void PrintIndentation(uint indentationLevel)
+        {
+            sb.Append(' ', (int)(2 * indentationLevel));
+        }
+
+        Print(node, 0);
+
+        return sb.ToString();
+    }
+}
 
 public interface INode { }
 

@@ -36,6 +36,11 @@ public record TokenSeparatedGrammarNode(
     bool OneOrMore
 ) : IGrammarNode;
 
+public record TokenTerminatedGrammarNode(
+    IGrammarNode Node,
+    TokenType TokenType
+) : IGrammarNode;
+
 public record GroupGrammarNode(
     List<IGrammarNode> Nodes
 ) : IGrammarNode;
@@ -59,6 +64,7 @@ public static class GrammarBuilder
     public static ZeroOrMoreGrammarNode ZeroOrMore(this IGrammarNode Node) => new ZeroOrMoreGrammarNode(Node);
     public static OneOrMoreGrammarNode OneOrMore(this IGrammarNode Node) => new OneOrMoreGrammarNode(Node);
     public static TokenSeparatedGrammarNode TokenSeparated(IGrammarNode Node, TokenType TokenType, bool OneOrMore = false) => new TokenSeparatedGrammarNode(Node, TokenType, OneOrMore);
+    public static TokenTerminatedGrammarNode TokenTerminated(IGrammarNode Node, TokenType TokenType) => new TokenTerminatedGrammarNode(Node, TokenType);
     public static GroupGrammarNode Group(params IGrammarNode[] Nodes) => new GroupGrammarNode(Nodes.ToList());
     public static GrammarRuleReference RuleRef(string Name) => new GrammarRuleReference(Name);
 }
@@ -106,6 +112,10 @@ public static class GrammarHelpers
         else if (node is TokenSeparatedGrammarNode tokenSeparated)
         {
             return new TokenSeparatedGrammarNode(ResolveReferences(rulesByName, tokenSeparated.Node), tokenSeparated.TokenType, tokenSeparated.OneOrMore);
+        }
+        else if (node is TokenTerminatedGrammarNode tokenTerminated)
+        {
+            return new TokenTerminatedGrammarNode(ResolveReferences(rulesByName, tokenTerminated.Node), tokenTerminated.TokenType);
         }
         else if (node is GroupGrammarNode group)
         {
@@ -171,6 +181,10 @@ public static class GrammarHelpers
                     ? result
                     : $"({result})?";
             }
+            else if (node is TokenTerminatedGrammarNode tokenTerminated)
+            {
+                return $"({Print(tokenTerminated.Node)} {tokenTerminated.TokenType})*";
+            }
             else if (node is GroupGrammarNode group)
             {
                 return $"({string.Join(' ', group.Nodes.Select(Print))})";
@@ -232,6 +246,10 @@ public static class GrammarHelpers
         else if (node is TokenSeparatedGrammarNode tokenSeparated)
         {
             return GetFirstTokenTypes(grammar, tokenSeparated.Node);
+        }
+        else if (node is TokenTerminatedGrammarNode tokenTerminated)
+        {
+            return GetFirstTokenTypes(grammar, tokenTerminated.Node);
         }
         else if (node is GroupGrammarNode group)
         {
