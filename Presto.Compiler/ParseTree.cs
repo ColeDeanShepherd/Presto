@@ -1,28 +1,45 @@
-﻿using Presto.Compiler;
-using System.Text;
+﻿using System.Text;
 
 namespace Presto.ParseTree;
 
+public interface IParseTreeNode { }
+
 public record ParseTreeNode(
-    IGrammarNode GrammarNode,
-    List<ParseTreeNode> Children
-);
+    string GrammarRuleName,
+    List<IParseTreeNode> Children
+) : IParseTreeNode;
+
+public record TerminalParseTreeNode(
+    Token token
+) : IParseTreeNode;
 
 public static class ParseTreeNodeHelpers
 {
-    public static string PrintTree(ParseTreeNode node)
+    public static string PrintTree(IParseTreeNode node)
     {
         StringBuilder sb = new();
 
-        void Print(ParseTreeNode node, uint indentationLevel)
+        void Print(IParseTreeNode node, uint indentationLevel)
         {
             PrintIndentation(indentationLevel);
-            sb.AppendLine(node.GrammarNode.GetType().Name);
 
-            indentationLevel++;
-            foreach (var child in node.Children)
+            if (node is ParseTreeNode ptn)
             {
-                Print(child, indentationLevel);
+                sb.AppendLine(ptn.GrammarRuleName);
+
+                indentationLevel++;
+                foreach (var child in ptn.Children)
+                {
+                    Print(child, indentationLevel);
+                }
+            }
+            else if (node is TerminalParseTreeNode tptn)
+            {
+                sb.AppendLine(tptn.token.Text);
+            }
+            else
+            {
+                throw new NotImplementedException();
             }
         }
 

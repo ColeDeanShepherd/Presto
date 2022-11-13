@@ -51,14 +51,14 @@ public class GrammarParser
     {
         var rootRule = grammar.First();
 
-        return (ParseNode(rootRule)?.Single(), errors);
+        return (ParseNode(rootRule)?.Single() as ParseTreeNode, errors);
     }
 
-    private List<ParseTreeNode>? ParseNode(IGrammarNode node)
+    private List<IParseTreeNode>? ParseNode(IGrammarNode node)
     {
         if (node is GrammarRule rule)
         {
-            List<ParseTreeNode> children = new();
+            List<IParseTreeNode> children = new();
 
             foreach (var n in rule.Nodes)
             {
@@ -72,13 +72,13 @@ public class GrammarParser
                 children.AddRange(newChildren);
             }
 
-            return new List<ParseTreeNode> { new ParseTreeNode(node, children) };
+            return new List<IParseTreeNode> { new ParseTreeNode(rule.Name, children) };
         }
         else if (node is TokenGrammarNode tokenNode)
         {
             var token = ReadExpectedToken(tokenNode.TokenType);
             return (token != null)
-                ? new List<ParseTreeNode> { new ParseTreeNode(node, new List<ParseTreeNode>()) }
+                ? new List<IParseTreeNode> { new TerminalParseTreeNode(token) }
                 : null;
         }
         else if (node is OneOfGrammarNode oneOf)
@@ -138,7 +138,7 @@ public class GrammarParser
         }
         else if (node is GroupGrammarNode group)
         {
-            List<ParseTreeNode> children = new();
+            List<IParseTreeNode> children = new();
 
             foreach (var n in group.Nodes)
             {
@@ -161,7 +161,7 @@ public class GrammarParser
             var expression = ParseExpression();
 
             return (expression != null)
-                ? new List<ParseTreeNode> { expression }
+                ? new List<IParseTreeNode> { expression }
                 : null;
         }
         else if (node is GrammarRuleReference ruleRef)
@@ -175,9 +175,9 @@ public class GrammarParser
         }
     }
 
-    private ParseTreeNode? ParseRuleGivenFirstChild(GrammarRule rule, ParseTreeNode firstChild)
+    private ParseTreeNode? ParseRuleGivenFirstChild(GrammarRule rule, IParseTreeNode firstChild)
     {
-        List<ParseTreeNode> children = new()
+        List<IParseTreeNode> children = new()
         {
             firstChild
         };
@@ -194,7 +194,7 @@ public class GrammarParser
             children.AddRange(newChildren);
         }
 
-        return new ParseTreeNode(rule, children);
+        return new ParseTreeNode(rule.Name, children);
     }
 
     private GrammarRule? ResolveRule(IGrammarNode node)
@@ -217,14 +217,14 @@ public class GrammarParser
     /// Pratt parser based on https://matklad.github.io/2020/04/13/simple-but-powerful-pratt-parsing.html
     /// </summary>
     /// <returns>An expression.</returns>
-    public ParseTreeNode? ParseExpression()
+    public IParseTreeNode? ParseExpression()
     {
         var minBindingPower = minExprBindingPowerStack.Any()
             ? minExprBindingPowerStack.Peek()
             : 0;
 
         // Parse prefix expression.
-        ParseTreeNode? prefixExpression = ParsePrefixExpression();
+        IParseTreeNode? prefixExpression = ParsePrefixExpression();
         if (prefixExpression == null)
         {
             return null;
@@ -300,17 +300,17 @@ public class GrammarParser
         return prefixExpression;
     }
 
-    public ParseTreeNode? ParsePrefixExpression()
+    public IParseTreeNode? ParsePrefixExpression()
     {
         return ParseNode(expressionGrammarNode.PrefixExpressionNode)?.Single();
     }
 
-    private List<ParseTreeNode>? ParseXOrMoreNode(IGrammarNode node, uint x)
+    private List<IParseTreeNode>? ParseXOrMoreNode(IGrammarNode node, uint x)
     {
         uint numParsed = 0;
 
         var firstTokenTypes = GrammarHelpers.GetFirstTokenTypes(grammar, node);
-        List<ParseTreeNode> children = new();
+        List<IParseTreeNode> children = new();
 
         while (true)
         {
@@ -350,12 +350,12 @@ public class GrammarParser
             : null; // TODO: error
     }
 
-    private List<ParseTreeNode>? ParseTokenSeparatedNode(TokenSeparatedGrammarNode tokenSeparated)
+    private List<IParseTreeNode>? ParseTokenSeparatedNode(TokenSeparatedGrammarNode tokenSeparated)
     {
         uint numParsed = 0;
 
         var firstTokenTypes = GrammarHelpers.GetFirstTokenTypes(grammar, tokenSeparated.Node);
-        List<ParseTreeNode> children = new();
+        List<IParseTreeNode> children = new();
 
         while (true)
         {
@@ -416,10 +416,10 @@ public class GrammarParser
             : null; // TODO: errors?
     }
 
-    private List<ParseTreeNode>? ParseTokenTerminatedNode(TokenTerminatedGrammarNode tokenTerminated)
+    private List<IParseTreeNode>? ParseTokenTerminatedNode(TokenTerminatedGrammarNode tokenTerminated)
     {
         var firstTokenTypes = GrammarHelpers.GetFirstTokenTypes(grammar, tokenTerminated.Node);
-        List<ParseTreeNode> children = new();
+        List<IParseTreeNode> children = new();
 
         while (true)
         {
