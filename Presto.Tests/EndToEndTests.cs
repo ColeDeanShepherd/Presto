@@ -212,7 +212,7 @@ enum ToDoScheduleRecurrenceInterval {
     private void AssertCompileSucceeded(string sourceCode, string? expectedGeneratedCode = null)
     {
         // Create tokens.
-        Lexer lexer = new Lexer(sourceCode);
+        Lexer lexer = new Lexer(PrestoGrammarConstants.LexerGrammar, sourceCode);
         (List<Token> tokens, List<ILexerError> tokenizeErrors) = lexer.Tokenize();
         Assert.Empty(tokenizeErrors);
 
@@ -243,7 +243,7 @@ enum ToDoScheduleRecurrenceInterval {
         List<IASTBuilderError>? expectedAstBuilderErrors = null)
     {
         // Create tokens.
-        Lexer lexer = new Lexer(sourceCode);
+        Lexer lexer = new Lexer(PrestoGrammarConstants.LexerGrammar, sourceCode);
         (List<Token> tokens, List<ILexerError> tokenizeErrors) = lexer.Tokenize();
         (expectedLexerErrors ?? new List<ILexerError>()).WithDeepEqual(tokenizeErrors).Assert();
 

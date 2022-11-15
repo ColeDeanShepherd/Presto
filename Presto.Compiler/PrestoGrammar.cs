@@ -1,10 +1,33 @@
 ﻿namespace Presto.Compiler;
 
 using Presto.ParseTree;
+using System.Text.RegularExpressions;
 using static GrammarBuilder;
 
 public static class PrestoGrammarConstants
 {
+    public static List<(Regex Regex, TokenType TokenType)> LexerGrammar = new()
+    {
+        (new Regex(@"\."), TokenType.Period),
+        (new Regex(@"\("), TokenType.LeftParen),
+        (new Regex(@"\)"), TokenType.RightParen),
+        (new Regex(";"), TokenType.Semicolon),
+        (new Regex(","), TokenType.Comma),
+        (new Regex(":"), TokenType.Colon),
+        (new Regex("="), TokenType.Equals),
+        (new Regex("{"), TokenType.LeftCurlyBracket),
+        (new Regex("}"), TokenType.RightCurlyBracket),
+        (new Regex("let"), TokenType.LetKeyword),
+        (new Regex("struct"), TokenType.StructKeyword),
+        (new Regex("fn"), TokenType.FunctionKeyword),
+        (new Regex(@"\s+"), TokenType.Whitespace),
+        (new Regex(@"[_a-zA-Z][_0-9a-zA-Z]*"), TokenType.Identifier),
+        (new Regex(@"[0-9]+"), TokenType.Number),
+        (new Regex(@"""[^""]*"""), TokenType.StringLiteral),
+        (new Regex(@"\s+"), TokenType.Whitespace),
+        (new Regex(@"#[^\r\n]*"), TokenType.SingleLineComment)
+    };
+
     public static readonly List<GrammarRule> Grammar = new()
     {
         Rule(

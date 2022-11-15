@@ -9,7 +9,7 @@ class Program
         string sourceCode = "Console.WriteLine(\"Hello, world!\")";
 
         // Tokenize.
-        Lexer lexer = new Lexer(sourceCode);
+        Lexer lexer = new Lexer(PrestoGrammarConstants.LexerGrammar, sourceCode);
         (List<Token> tokens, List<ILexerError> tokenizeErrors) = lexer.Tokenize();
 
         if (tokenizeErrors.Any())

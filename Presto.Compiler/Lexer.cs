@@ -80,30 +80,9 @@ public record EndOfSourceCodeError(
 
 public class Lexer
 {
-    public static List<(Regex Regex, TokenType TokenType)> Rules = new()
+    public Lexer(List<(Regex Regex, TokenType TokenType)> grammar, string sourceCode)
     {
-        (new Regex(@"\."), TokenType.Period),
-        (new Regex(@"\("), TokenType.LeftParen),
-        (new Regex(@"\)"), TokenType.RightParen),
-        (new Regex(";"), TokenType.Semicolon),
-        (new Regex(","), TokenType.Comma),
-        (new Regex(":"), TokenType.Colon),
-        (new Regex("="), TokenType.Equals),
-        (new Regex("{"), TokenType.LeftCurlyBracket),
-        (new Regex("}"), TokenType.RightCurlyBracket),
-        (new Regex("let"), TokenType.LetKeyword),
-        (new Regex("struct"), TokenType.StructKeyword),
-        (new Regex("fn"), TokenType.FunctionKeyword),
-        (new Regex(@"\s+"), TokenType.Whitespace),
-        (new Regex(@"[_a-zA-Z][_0-9a-zA-Z]*"), TokenType.Identifier),
-        (new Regex(@"[0-9]+"), TokenType.Number),
-        (new Regex(@"""[^""]*"""), TokenType.StringLiteral),
-        (new Regex(@"\s+"), TokenType.Whitespace),
-        (new Regex(@"#[^\r\n]*"), TokenType.SingleLineComment)
-    };
-
-    public Lexer(string sourceCode)
-    {
+        this.grammar = grammar;
         this.sourceCode = sourceCode;
         nextCharIndex = 0;
         textPosition = new(0, 0);
@@ -112,7 +91,7 @@ public class Lexer
 
     public (List<Token>, List<ILexerError>) Tokenize()
     {
-        var rules = Rules
+        var rules = grammar
             .Map(r => (Regex: new Regex($"^{r.Regex}"), TokenType: r.TokenType))
             .ToList();
 
@@ -152,6 +131,7 @@ public class Lexer
         return (tokens, errors);
     }
 
+    private List<(Regex Regex, TokenType TokenType)> grammar;
     private string sourceCode;
     private int nextCharIndex;
     private TextPosition textPosition;
