@@ -6,7 +6,7 @@ class Program
 {
     static async Task Main(string[] args)
     {
-        string sourceCode = "Console.WriteLine(\"Hello, world!\");";
+        string sourceCode = "Console.WriteLine(\"Hello, world!\")";
 
         // Tokenize.
         Lexer lexer = new Lexer(sourceCode);

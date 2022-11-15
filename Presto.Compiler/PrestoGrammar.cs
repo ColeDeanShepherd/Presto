@@ -10,7 +10,7 @@ public static class PrestoGrammarConstants
         Rule(
             "Program",
             children => new Program(children),
-            TokenTerminated(RuleRef("Statement"), TokenType.Semicolon).ZeroOrMore()),
+            RuleRef("Statement").ZeroOrMore()),
         Rule(
             "Statement",
             children => new Statement(children),

@@ -1,5 +1,6 @@
 using DeepEqual.Syntax;
 using Presto.AST;
+using Presto.Compiler;
 using System.Collections.Generic;
 using Xunit;
 
@@ -216,13 +217,13 @@ enum ToDoScheduleRecurrenceInterval {
         Assert.Empty(tokenizeErrors);
 
         // Create parse tree.
-        Parser parser = new(tokens);
-        (ParseTree.Program parseTree, List<IParserError> parseErrors) = parser.ParseProgram();
+        Parser parser = new(PrestoGrammarConstants.Grammar, tokens);
+        (ParseTree.Program? parseTree, List<IParserError> parseErrors) = parser.Parse();
         Assert.Empty(parseErrors);
 
         // Translate parse tree to AST.
         ASTBuilder builder = new();
-        (AST.Program program, List<IASTBuilderError> buildAstErrors) = builder.BuildAST(parseTree);
+        (AST.Program program, List<IASTBuilderError> buildAstErrors) = builder.BuildAST(parseTree!);
         Assert.Empty(buildAstErrors);
 
         // Generate code.
@@ -247,13 +248,13 @@ enum ToDoScheduleRecurrenceInterval {
         (expectedLexerErrors ?? new List<ILexerError>()).WithDeepEqual(tokenizeErrors).Assert();
 
         // Create parse tree.
-        Parser parser = new(tokens);
-        (ParseTree.Program parseTree, List<IParserError> parseErrors) = parser.ParseProgram();
+        Parser parser = new(PrestoGrammarConstants.Grammar, tokens);
+        (ParseTree.Program? parseTree, List<IParserError> parseErrors) = parser.Parse();
         (expectedParserErrors ?? new List<IParserError>()).WithDeepEqual(parseErrors).Assert();
 
         // Translate parse tree to AST.
         ASTBuilder builder = new();
-        (AST.Program program, List<IASTBuilderError> buildAstErrors) = builder.BuildAST(parseTree);
+        (AST.Program program, List<IASTBuilderError> buildAstErrors) = builder.BuildAST(parseTree!);
         (expectedAstBuilderErrors ?? new List<IASTBuilderError>()).WithDeepEqual(buildAstErrors).Assert();
 
         // Generate code.

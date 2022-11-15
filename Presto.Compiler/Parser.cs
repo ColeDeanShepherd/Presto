@@ -315,15 +315,10 @@ public class Parser
 
         while (true)
         {
-            if (IsDoneReading)
-            {
-                break;
-            }
-
-            Token? nextToken = PeekToken();
+            Token? nextToken = TryPeekToken();
             if (nextToken == null)
             {
-                return null;
+                break;
             }
 
             if (firstTokenTypes.Contains(nextToken.Type))
