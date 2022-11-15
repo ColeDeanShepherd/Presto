@@ -1,5 +1,4 @@
 ﻿using Presto.Compiler;
-using Presto.ParseTree;
 
 namespace Presto.CLI;
 
@@ -27,10 +26,8 @@ class Program
         var grammar = PrestoGrammarConstants.Grammar;
         //var grammar = GrammarHelpers.ResolveReferences(PrestoGrammarConstants.Grammar);
 
-        GrammarParser parser = new(grammar, tokens);
-        (ParseTreeNode? parseTree, List<IParserError> parseErrors) = parser.Parse();
-
-        string asdf = ParseTreeNodeHelpers.PrintTree(parseTree);
+        Parser parser = new(grammar, tokens);
+        (ParseTree.Program? parseTree, List<IParserError> parseErrors) = parser.Parse();
 
         if (parseErrors.Any())
         {
@@ -43,25 +40,25 @@ class Program
         }
 
         // Translate parse tree to AST.
-        //ASTBuilder builder = new();
-        //(AST.Program program, List<IASTBuilderError> buildAstErrors) = builder.BuildAST(parseTree);
+        ASTBuilder builder = new();
+        (AST.Program program, List<IASTBuilderError> buildAstErrors) = builder.BuildAST(parseTree);
 
-        //if (buildAstErrors.Any())
-        //{
-        //    foreach (IASTBuilderError error in buildAstErrors)
-        //    {
-        //        Console.WriteLine($"ERROR: {error.GetDescription()}");
-        //    }
+        if (buildAstErrors.Any())
+        {
+            foreach (IASTBuilderError error in buildAstErrors)
+            {
+                Console.WriteLine($"ERROR: {error.GetDescription()}");
+            }
 
-        //    return;
-        //}
+            return;
+        }
 
-        //// Generate code.
-        //CodeGenerator codeGenerator = new();
-        //string generatedCode = codeGenerator.GenerateCode(program);
+        // Generate code.
+        CodeGenerator codeGenerator = new();
+        string generatedCode = codeGenerator.GenerateCode(program);
 
-        //// Run the code!.
-        //CSharpCodeRunner codeRunner = new();
-        //await codeRunner.RunCode(generatedCode);
+        // Run the code!.
+        CSharpCodeRunner codeRunner = new();
+        await codeRunner.RunCode(generatedCode);
     }
 }

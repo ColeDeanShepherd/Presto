@@ -1,4 +1,5 @@
 ﻿using Presto.AST;
+using Presto.ParseTree;
 
 namespace Presto;
 
@@ -8,7 +9,7 @@ public interface IASTBuilderError
 }
 
 public record UnexpectedNodeError(
-    ParseTree.INode Node
+    ParseTree.IParseTreeNode Node
 ) : IASTBuilderError
 {
     public string GetDescription()
@@ -66,7 +67,7 @@ public class ASTBuilder
             Declarations: new List<IDeclaration>(),
             ParentNamespace: null);
 
-        program = new Program(
+        program = new AST.Program(
             globalNamespace,
             Statements: new List<IStatement>());
 
@@ -107,19 +108,21 @@ public class ASTBuilder
         return (program, errors);
     }
 
-    public IStatement? Visit(ParseTree.IStatement statement)
+    public IStatement? Visit(ParseTree.Statement statement)
     {
-        if (statement is ParseTree.LetStatement letStatement)
+        var child = statement.Children.First();
+
+        if (child is ParseTree.LetStatement letStatement)
         {
             return Visit(letStatement);
         }
-        else if (statement is ParseTree.StructDefinition structDeclaration)
+        else if (child is ParseTree.StructDeclaration structDeclaration)
         {
             return Visit(structDeclaration);
         }
-        else if (statement is ParseTree.IExpression)
+        else if (child is ParseTree.Expression expr)
         {
-            return Visit((ParseTree.IExpression)statement);
+            return Visit(expr);
         }
         else
         {
@@ -128,7 +131,7 @@ public class ASTBuilder
         }
     }
 
-    public LetStatement? Visit(ParseTree.LetStatement letStatement)
+    public AST.LetStatement? Visit(ParseTree.LetStatement letStatement)
     {
         IType? variableType = ResolveType(letStatement.TypeName);
         if (variableType == null)
@@ -149,8 +152,8 @@ public class ASTBuilder
             return null;
         }
 
-        LetStatement result = new(
-            letStatement.VariableName.Text,
+        AST.LetStatement result = new(
+            letStatement.VariableName.Token.Text,
             variableType,
             value);
 
@@ -162,15 +165,15 @@ public class ASTBuilder
         return result;
     }
 
-    public StructDefinition? Visit(ParseTree.StructDefinition structDefinition)
+    public StructDefinition? Visit(ParseTree.StructDeclaration structDefinition)
     {
         List<FieldDefinition> fieldDefinitions = new();
 
         foreach (var fieldDeclaration in structDefinition.FieldDeclarations)
         {
-            if (fieldDefinitions.Any(x => x.FieldName == fieldDeclaration.FieldName.Text))
+            if (fieldDefinitions.Any(x => x.FieldName == fieldDeclaration.FieldName.Token.Text))
             {
-                errors.Add(new DuplicateNameError(fieldDeclaration.FieldName.Text));
+                errors.Add(new DuplicateNameError(fieldDeclaration.FieldName.Token.Text));
                 continue;
             }
 
@@ -180,11 +183,11 @@ public class ASTBuilder
                 return null;
             }
 
-            fieldDefinitions.Add(new FieldDefinition(fieldDeclaration.FieldName.Text, fieldType));
+            fieldDefinitions.Add(new FieldDefinition(fieldDeclaration.FieldName.Token.Text, fieldType));
         }
 
         StructDefinition result = new(
-            structDefinition.StructName.Text,
+            structDefinition.StructName.Token.Text,
             fieldDefinitions);
 
         if (!AddToScope(result))
@@ -195,15 +198,15 @@ public class ASTBuilder
         return result;
     }
 
-    public IExpression? Visit(ParseTree.IExpression expression)
+    public IExpression? Visit(ParseTree.Expression expression)
     {
-        if (expression is ParseTree.CallExpression)
+        if (expression is ParseTree.CallExpression callExpr)
         {
-            return Visit((ParseTree.CallExpression)expression);
+            return Visit(callExpr);
         }
-        else if (expression is ParseTree.MemberAccessOperator)
+        else if (expression is ParseTree.MemberAccessOperator memberAccessOperator)
         {
-            return Visit((ParseTree.MemberAccessOperator)expression);
+            return Visit(memberAccessOperator);
         }
         else if (expression is ParseTree.NumberLiteral number)
         {
@@ -225,7 +228,7 @@ public class ASTBuilder
             {
                 return (IDeclarationExpression)declaration;
             }
-            else if (declaration is LetStatement letStatement)
+            else if (declaration is AST.LetStatement letStatement)
             {
                 return new VariableReference(letStatement);
             }
@@ -234,11 +237,9 @@ public class ASTBuilder
                 throw new NotImplementedException($"Unknown declaration expression type {expression.GetType().Name}");
             }
         }
-        else
-        {
-            errors.Add(new UnexpectedNodeError(expression));
-            return null;
-        }
+
+        errors.Add(new UnexpectedNodeError(expression));
+        return null;
     }
 
     public FunctionCall? Visit(ParseTree.CallExpression callExpression)
@@ -303,17 +304,17 @@ public class ASTBuilder
         }
     }
 
-    public NumberLiteral Visit(ParseTree.NumberLiteral stringLiteral)
+    public AST.NumberLiteral Visit(ParseTree.NumberLiteral numberLiteral)
     {
-        return new NumberLiteral(stringLiteral.Text);
+        return new AST.NumberLiteral(numberLiteral.Value);
     }
 
-    public StringLiteral Visit(ParseTree.StringLiteral stringLiteral)
+    public AST.StringLiteral Visit(ParseTree.StringLiteral stringLiteral)
     {
-        return new StringLiteral(stringLiteral.Value);
+        return new AST.StringLiteral(stringLiteral.Value);
     }
 
-    public IDeclaration? Visit(ParseTree.Identifier identifier)
+    public IDeclaration? Visit(Identifier identifier)
     {
         Namespace? nullableScope = scope;
 
@@ -334,11 +335,11 @@ public class ASTBuilder
         return null;
     }
 
-    public Function ResolveFunction(ParseTree.IExpression expression)
+    public Function ResolveFunction(ParseTree.Expression expression)
     {
-        if (expression is ParseTree.MemberAccessOperator)
+        if (expression is ParseTree.MemberAccessOperator memberAccessOperator)
         {
-            IDeclaration declaration = Visit((ParseTree.MemberAccessOperator)expression);
+            IDeclaration declaration = Visit(memberAccessOperator);
 
             if (declaration is Function)
             {
@@ -358,11 +359,11 @@ public class ASTBuilder
 
     public IType ResolveType(IExpression expression)
     {
-        if (expression is NumberLiteral number)
+        if (expression is AST.NumberLiteral number)
         {
             return Types.Int32Type;
         }
-        else if (expression is StringLiteral stringLiteral)
+        else if (expression is AST.StringLiteral stringLiteral)
         {
             return Types.StringType;
         }
@@ -378,9 +379,9 @@ public class ASTBuilder
 
     public IType ResolveType(ParseTree.QualifiedName qualifiedName)
     {
-        if (qualifiedName.Identifiers.Count == 1)
+        if (qualifiedName.Identifiers.Count() == 1)
         {
-            return ResolveType(qualifiedName.Identifiers[0]);
+            return ResolveIdentifierType(qualifiedName.Identifiers.First());
         }
         else
         {
@@ -388,13 +389,13 @@ public class ASTBuilder
         }
     }
 
-    public IType ResolveType(ParseTree.Identifier identifier)
+    public IType ResolveIdentifierType(TerminalParseTreeNode identifier)
     {
-        if (identifier.Text == "String")
+        if (identifier.Token.Text == "String")
         {
             return Types.StringType;
         }
-        else if (identifier.Text == "Bool")
+        else if (identifier.Token.Text == "Bool")
         {
             return Types.BoolType;
         }
@@ -414,7 +415,7 @@ public class ASTBuilder
         {
             return function.Name;
         }
-        else if (declaration is LetStatement letStatement)
+        else if (declaration is AST.LetStatement letStatement)
         {
             return letStatement.VariableName;
         }
@@ -428,11 +429,11 @@ public class ASTBuilder
         }
     }
 
-    public IDeclaration GetDeclarationFromExpression(ParseTree.IExpression expression)
+    public IDeclaration? GetDeclarationFromExpression(ParseTree.Expression expression)
     {
-        if (expression is ParseTree.MemberAccessOperator)
+        if (expression is ParseTree.MemberAccessOperator memberAccessOperator)
         {
-            return Visit((ParseTree.MemberAccessOperator)expression);
+            return Visit(memberAccessOperator);
         }
         else if (expression is ParseTree.Identifier)
         {
@@ -457,7 +458,7 @@ public class ASTBuilder
         return true;
     }
 
-    private Program program;
+    private AST.Program program;
     private Namespace scope;
     private List<IASTBuilderError> errors;
 }

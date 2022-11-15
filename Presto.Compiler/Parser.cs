@@ -30,9 +30,9 @@ public record EndOfTokensError(
     public string GetDescription() => "Unexpectedly reached the end of the tokens.";
 };
 
-public class GrammarParser
+public class Parser
 {
-    public GrammarParser(List<GrammarRule> grammar, List<Token> tokens)
+    public Parser(List<GrammarRule> grammar, List<Token> tokens)
     {
         this.grammar = grammar;
         expressionGrammarNode =
@@ -47,11 +47,11 @@ public class GrammarParser
         errors = new List<IParserError>();
     }
 
-    public (ParseTreeNode?, List<IParserError>) Parse()
+    public (Program?, List<IParserError>) Parse()
     {
         var rootRule = grammar.First();
 
-        return (ParseNode(rootRule)?.Single() as ParseTreeNode, errors);
+        return (ParseNode(rootRule)?.Single() as Program, errors);
     }
 
     private List<IParseTreeNode>? ParseNode(IGrammarNode node)
@@ -72,7 +72,7 @@ public class GrammarParser
                 children.AddRange(newChildren);
             }
 
-            return new List<IParseTreeNode> { new ParseTreeNode(rule.Name, children) };
+            return new List<IParseTreeNode> { rule.CreateNode(children) };
         }
         else if (node is TokenGrammarNode tokenNode)
         {
@@ -175,7 +175,7 @@ public class GrammarParser
         }
     }
 
-    private ParseTreeNode? ParseRuleGivenFirstChild(GrammarRule rule, IParseTreeNode firstChild)
+    private IParseTreeNode? ParseRuleGivenFirstChild(GrammarRule rule, IParseTreeNode firstChild)
     {
         List<IParseTreeNode> children = new()
         {
@@ -194,7 +194,7 @@ public class GrammarParser
             children.AddRange(newChildren);
         }
 
-        return new ParseTreeNode(rule.Name, children);
+        return rule.CreateNode(children);
     }
 
     private GrammarRule? ResolveRule(IGrammarNode node)
@@ -298,6 +298,7 @@ public class GrammarParser
         }
 
         return prefixExpression;
+        //return new Expression(new List<IParseTreeNode> { prefixExpression });
     }
 
     public IParseTreeNode? ParsePrefixExpression()

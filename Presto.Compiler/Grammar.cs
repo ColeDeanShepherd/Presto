@@ -1,4 +1,5 @@
-﻿using System.Text;
+﻿using Presto.ParseTree;
+using System.Text;
 
 namespace Presto.Compiler;
 
@@ -6,6 +7,7 @@ public interface IGrammarNode { }
 
 public record GrammarRule(
     string Name,
+    Func<List<IParseTreeNode>, IParseTreeNode> CreateNode,
     List<IGrammarNode> Nodes
 ) : IGrammarNode
 { }
@@ -57,7 +59,7 @@ public record GrammarRuleReference(
 
 public static class GrammarBuilder
 {
-    public static GrammarRule Rule(string Name, params IGrammarNode[] Nodes) => new GrammarRule(Name, Nodes.ToList());
+    public static GrammarRule Rule(string Name, Func<List<IParseTreeNode>, IParseTreeNode> createNode, params IGrammarNode[] Nodes) => new GrammarRule(Name, createNode, Nodes.ToList());
     public static TokenGrammarNode Token(TokenType TokenType) => new TokenGrammarNode(TokenType);
     public static OneOfGrammarNode OneOf(params IGrammarNode[] Nodes) => new OneOfGrammarNode(Nodes.ToList());
     public static OptionalGrammarNode OneOf(IGrammarNode Node) => new OptionalGrammarNode(Node);
@@ -87,6 +89,7 @@ public static class GrammarHelpers
         {
             return new GrammarRule(
                 rule.Name,
+                rule.CreateNode,
                 rule.Nodes.Map(n => ResolveReferences(rulesByName, n)).ToList());
         }
         else if (node is TokenGrammarNode token)

@@ -4,11 +4,12 @@ namespace Presto;
 
 public enum TokenType
 {
+    Whitespace,
+    SingleLineComment,
+
     Identifier,
     Number,
     StringLiteral,
-
-    SingleLineComment,
 
     Period,
     LeftParen,
@@ -19,8 +20,6 @@ public enum TokenType
     Equals,
     LeftCurlyBracket,
     RightCurlyBracket,
-
-    Whitespace,
 
     LetKeyword,
     StructKeyword,
