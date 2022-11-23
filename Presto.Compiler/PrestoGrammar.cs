@@ -37,11 +37,17 @@ public static class PrestoGrammarConstants
         Rule(
             "Statement",
             children => new Statement(children),
-            OneOf(RuleRef("LetStatement"), RuleRef("StructDeclaration"), RuleRef("Expression"))),
+            OneOf(RuleRef("LetStatement"), RuleRef("FunctionDefinition"), RuleRef("StructDeclaration"), RuleRef("Expression"))),
         Rule(
             "LetStatement",
             children => new LetStatement(children),
             Token(TokenType.LetKeyword), Token(TokenType.Identifier), Token(TokenType.Colon), RuleRef("QualifiedName"), Token(TokenType.Equals), RuleRef("Expression")),
+        Rule(
+            "FunctionDefinition",
+            children => new FunctionDefinition(children),
+            Token(TokenType.FunctionKeyword), Token(TokenType.Identifier),
+            Token(TokenType.LeftParen), TokenSeparated(RuleRef("FieldDeclaration"), TokenType.Comma), Token(TokenType.RightParen),
+            Token(TokenType.LeftCurlyBracket), Token(TokenType.RightCurlyBracket)),
         Rule(
             "StructDeclaration",
             children => new StructDeclaration(children),

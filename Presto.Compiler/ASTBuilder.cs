@@ -116,6 +116,10 @@ public class ASTBuilder
         {
             return Visit(letStatement);
         }
+        else if (child is FunctionDefinition functionDefinition)
+        {
+            return Visit(functionDefinition);
+        }
         else if (child is ParseTree.StructDeclaration structDeclaration)
         {
             return Visit(structDeclaration);
@@ -156,6 +160,40 @@ public class ASTBuilder
             letStatement.VariableName.Token.Text,
             variableType,
             value);
+
+        if (!AddToScope(result))
+        {
+            return null;
+        }
+
+        return result;
+    }
+
+    public Function? Visit(ParseTree.FunctionDefinition functionDefinition)
+    {
+        List<ParameterDeclaration> parameterDeclarations = new();
+
+        foreach (var paramDecl in functionDefinition.ParameterDeclarations)
+        {
+            if (parameterDeclarations.Any(x => x.Name == paramDecl.FieldName.Token.Text))
+            {
+                errors.Add(new DuplicateNameError(paramDecl.FieldName.Token.Text));
+                continue;
+            }
+
+            IType fieldType = ResolveType(paramDecl.TypeName);
+            if (fieldType == null)
+            {
+                return null;
+            }
+
+            parameterDeclarations.Add(new ParameterDeclaration(paramDecl.FieldName.Token.Text, fieldType));
+        }
+
+        Function result = new(
+            functionDefinition.FunctionName.Token.Text,
+            scope,
+            parameterDeclarations);
 
         if (!AddToScope(result))
         {

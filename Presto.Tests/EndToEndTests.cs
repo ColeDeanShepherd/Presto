@@ -177,7 +177,7 @@ public class EndToEndTests
     public void EmptyFunction()
     {
         const string sourceCode = "fn x() {}";
-        const string expectedGeneratedCode = "void x() { }";
+        const string expectedGeneratedCode = "void x() { };";
 
         AssertCompileSucceeded(sourceCode, expectedGeneratedCode);
     }

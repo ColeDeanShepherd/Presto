@@ -26,6 +26,10 @@ public class CodeGenerator
         {
             GenerateCode(letStatement);
         }
+        else if (statement is Function function)
+        {
+            GenerateCode(function);
+        }
         else if (statement is StructDefinition structDefinition)
         {
             GenerateCode(structDefinition);
@@ -47,6 +51,28 @@ public class CodeGenerator
         GenerateCode(letStatement.VariableName);
         GenerateCode(" = ");
         GenerateCode(letStatement.Value);
+    }
+
+    public void GenerateCode(Function function)
+    {
+        // TODO: return type
+        GenerateCode("void");
+        GenerateCode(' ');
+        GenerateCode(function.Name);
+        GenerateCode('(');
+        GenerateStringSeparated(function.ParameterDeclarations, x => GenerateCode(x), ", ");
+        GenerateCode(')');
+        GenerateCode(' ');
+        GenerateCode('{');
+        GenerateCode(' ');
+        GenerateCode('}');
+    }
+
+    public void GenerateCode(ParameterDeclaration paramDecl)
+    {
+        GenerateCode(paramDecl.Type);
+        GenerateCode(' ');
+        GenerateCode(paramDecl.Name);
     }
 
     public void GenerateCode(StructDefinition structDefinition)

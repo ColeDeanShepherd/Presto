@@ -34,6 +34,14 @@ public record LetStatement : ParseTreeNode
     public QualifiedName TypeName => this.GetChildrenOfType<QualifiedName>().First();
 }
 
+public record FunctionDefinition : ParseTreeNode
+{
+    public FunctionDefinition(List<IParseTreeNode> children) : base(children) { }
+
+    public TerminalParseTreeNode FunctionName => this.GetChildrenOfType(TokenType.Identifier).First();
+    public IEnumerable<FieldDeclaration> ParameterDeclarations => this.GetChildrenOfType<FieldDeclaration>();
+}
+
 public record StructDeclaration : ParseTreeNode
 {
     public StructDeclaration(List<IParseTreeNode> children) : base(children) { }
