@@ -182,27 +182,15 @@ public class EndToEndTests
         AssertCompileSucceeded(sourceCode, expectedGeneratedCode);
     }
 
+    // duplicate
+
     [Fact]
-    public void CompilesComplicatedProgram()
+    public void FibonacciNumberFunction()
     {
-        const string sourceCode =
-@"struct ToDo {
-    description: String,
-    completedAt: Maybe<DateTime>
-}
+        const string sourceCode = "fib(n) = case n of 0 -> 0 1 -> 1 n -> fib(n - 1) + fib(n - 2)";
+        const string expectedGeneratedCode = "void x() { }";
 
-enum ToDoScheduleRecurrenceInterval {
-    None,
-    Daily,
-    Weekly,
-    Monthly,
-    Yearly
-}
-
-# Actions: AddToDo,RemoveToDo,CompleteToDo,UncompleteToDo,ChangeToDoDescription
-";
-
-        AssertCompileSucceeded(sourceCode);
+        AssertCompileSucceeded(sourceCode, expectedGeneratedCode);
     }
 
     #endregion Tests
