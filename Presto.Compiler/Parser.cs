@@ -51,7 +51,16 @@ public class Parser
     {
         var rootRule = grammar.First();
 
-        return (ParseNode(rootRule)?.Single() as Program, errors);
+        var program = ParseNode(rootRule)?.Single() as Program;
+
+        if (!IsDoneReading)
+        {
+            Token nextToken = ReadToken()!;
+
+            errors.Add(new UnexpectedTokenError(TextRange, nextToken.Type));
+        }
+
+        return (program, errors);
     }
 
     private List<IParseTreeNode>? ParseNode(IGrammarNode node)
