@@ -1,4 +1,4 @@
-﻿namespace Presto.AST;
+﻿namespace Presto.Compiler.AST;
 
 public interface IDeclaration { }
 

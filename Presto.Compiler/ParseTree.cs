@@ -1,7 +1,7 @@
-﻿using Presto.AST;
+﻿using Presto.Compiler.AST;
 using System.Text;
 
-namespace Presto.ParseTree;
+namespace Presto.Compiler.ParseTree;
 
 public interface IParseTreeNode { }
 

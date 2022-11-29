@@ -1,32 +1,6 @@
 ﻿using System.Text.RegularExpressions;
 
-namespace Presto;
-
-public enum TokenType
-{
-    Whitespace,
-    SingleLineComment,
-
-    Identifier,
-    Number,
-    StringLiteral,
-
-    Period,
-    LeftParen,
-    RightParen,
-    Semicolon,
-    Comma,
-    Colon,
-    Equals,
-    LeftCurlyBracket,
-    RightCurlyBracket,
-
-    LetKeyword,
-    StructKeyword,
-    FunctionKeyword,
-    CaseKeyword,
-    OfKeyword
-};
+namespace Presto.Compiler;
 
 public readonly record struct TextPosition(
     int LineIndex,

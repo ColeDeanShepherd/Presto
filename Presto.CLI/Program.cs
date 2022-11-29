@@ -1,4 +1,5 @@
 ﻿using Presto.Compiler;
+using Presto.Compiler.AST;
 
 namespace Presto.CLI;
 
@@ -27,7 +28,7 @@ class Program
         //var grammar = GrammarHelpers.ResolveReferences(PrestoGrammarConstants.Grammar);
 
         Parser parser = new(grammar, tokens);
-        (ParseTree.Program? parseTree, List<IParserError> parseErrors) = parser.Parse();
+        (Compiler.ParseTree.Program? parseTree, List<IParserError> parseErrors) = parser.Parse();
 
         if (parseErrors.Any())
         {
@@ -41,7 +42,7 @@ class Program
 
         // Translate parse tree to AST.
         ASTBuilder builder = new();
-        (AST.Program program, List<IASTBuilderError> buildAstErrors) = builder.BuildAST(parseTree!, isLibrary: false);
+        (Compiler.AST.Program program, List<IASTBuilderError> buildAstErrors) = builder.BuildAST(parseTree!, isLibrary: false);
 
         if (buildAstErrors.Any())
         {

@@ -1,7 +1,7 @@
-﻿using Presto.AST;
-using Presto.ParseTree;
+﻿using Presto.Compiler.AST;
+using Presto.Compiler.ParseTree;
 
-namespace Presto;
+namespace Presto.Compiler.AST;
 
 public interface IASTBuilderError
 {
@@ -128,7 +128,7 @@ public class ASTBuilder
         {
             return Visit(letStatement);
         }
-        else if (child is FunctionDefinition functionDefinition)
+        else if (child is ParseTree.FunctionDefinition functionDefinition)
         {
             return Visit(functionDefinition);
         }
@@ -364,7 +364,7 @@ public class ASTBuilder
         return new AST.StringLiteral(stringLiteral.Value);
     }
 
-    public IDeclaration? Visit(Identifier identifier)
+    public IDeclaration? Visit(ParseTree.Identifier identifier)
     {
         Namespace? nullableScope = scope;
 
@@ -439,7 +439,7 @@ public class ASTBuilder
         }
     }
 
-    public IType ResolveIdentifierType(TerminalParseTreeNode identifier)
+    public IType ResolveIdentifierType(ParseTree.TerminalParseTreeNode identifier)
     {
         if (identifier.Token.Text == "String")
         {

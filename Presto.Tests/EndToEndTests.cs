@@ -1,6 +1,6 @@
 using DeepEqual.Syntax;
-using Presto.AST;
 using Presto.Compiler;
+using Presto.Compiler.AST;
 using System.Collections.Generic;
 using Xunit;
 
@@ -59,6 +59,18 @@ public class EndToEndTests
     public void EmptyProgram()
     {
         const string sourceCode = "main = fn () {}";
+        const string expectedGeneratedCode = ";";
+
+        AssertCompileSucceeded(sourceCode, expectedGeneratedCode);
+    }
+
+    [Fact]
+    public void HelloWorld()
+    {
+        const string sourceCode =
+@"main = fn (console: Console [implicit]) {
+    writeLine(""Hello, world!"")
+}";
         const string expectedGeneratedCode = ";";
 
         AssertCompileSucceeded(sourceCode, expectedGeneratedCode);
@@ -221,12 +233,12 @@ public class EndToEndTests
 
         // Create parse tree.
         Parser parser = new(PrestoGrammarConstants.Grammar, tokens);
-        (ParseTree.Program? parseTree, List<IParserError> parseErrors) = parser.Parse();
+        (Compiler.ParseTree.Program? parseTree, List<IParserError> parseErrors) = parser.Parse();
         Assert.Empty(parseErrors);
 
         // Translate parse tree to AST.
         ASTBuilder builder = new();
-        (AST.Program program, List<IASTBuilderError> buildAstErrors) = builder.BuildAST(parseTree!, isLibrary);
+        (Compiler.AST.Program program, List<IASTBuilderError> buildAstErrors) = builder.BuildAST(parseTree!, isLibrary);
         Assert.Empty(buildAstErrors);
 
         // Generate code.
@@ -253,12 +265,12 @@ public class EndToEndTests
 
         // Create parse tree.
         Parser parser = new(PrestoGrammarConstants.Grammar, tokens);
-        (ParseTree.Program? parseTree, List<IParserError> parseErrors) = parser.Parse();
+        (Compiler.ParseTree.Program? parseTree, List<IParserError> parseErrors) = parser.Parse();
         (expectedParserErrors ?? new List<IParserError>()).WithDeepEqual(parseErrors).Assert();
 
         // Translate parse tree to AST.
         ASTBuilder builder = new();
-        (AST.Program program, List<IASTBuilderError> buildAstErrors) = builder.BuildAST(parseTree!, isLibrary);
+        (Compiler.AST.Program program, List<IASTBuilderError> buildAstErrors) = builder.BuildAST(parseTree!, isLibrary);
         (expectedAstBuilderErrors ?? new List<IASTBuilderError>()).WithDeepEqual(buildAstErrors).Assert();
 
         // Generate code.

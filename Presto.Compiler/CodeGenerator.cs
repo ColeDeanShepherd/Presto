@@ -1,7 +1,7 @@
-﻿using Presto.AST;
+﻿using Presto.Compiler.AST;
 using System.Text;
 
-namespace Presto;
+namespace Presto.Compiler;
 
 public class CodeGenerator
 {
