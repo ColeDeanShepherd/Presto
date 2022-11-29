@@ -15,19 +15,21 @@ public static class PrestoGrammarConstants
         (new Regex(","), TokenType.Comma),
         (new Regex(":"), TokenType.Colon),
         (new Regex("="), TokenType.Equals),
-        (new Regex("{"), TokenType.LeftCurlyBracket),
-        (new Regex("}"), TokenType.RightCurlyBracket),
-        (new Regex("let"), TokenType.LetKeyword),
-        (new Regex("struct"), TokenType.StructKeyword),
-        (new Regex("fn"), TokenType.FunctionKeyword),
-        (new Regex("case"), TokenType.CaseKeyword),
-        (new Regex("of"), TokenType.OfKeyword),
         (new Regex(@"\s+"), TokenType.Whitespace),
+        (new Regex("fn"), TokenType.FunctionKeyword),
         (new Regex(@"[_a-zA-Z][_0-9a-zA-Z]*"), TokenType.Identifier),
         (new Regex(@"[0-9]+"), TokenType.Number),
         (new Regex(@"""[^""]*"""), TokenType.StringLiteral),
         (new Regex(@"\s+"), TokenType.Whitespace),
-        (new Regex(@"#[^\r\n]*"), TokenType.SingleLineComment)
+        (new Regex(@"#[^\r\n]*"), TokenType.SingleLineComment),
+
+        // TODO: rework below
+        (new Regex("case"), TokenType.CaseKeyword),
+        (new Regex("of"), TokenType.OfKeyword),
+        (new Regex("{"), TokenType.LeftCurlyBracket),
+        (new Regex("}"), TokenType.RightCurlyBracket),
+        (new Regex("let"), TokenType.LetKeyword),
+        (new Regex("struct"), TokenType.StructKeyword),
     };
 
     public static readonly List<GrammarRule> Grammar = new()
@@ -47,7 +49,7 @@ public static class PrestoGrammarConstants
         Rule(
             "FunctionDefinition",
             children => new FunctionDefinition(children),
-            Token(TokenType.FunctionKeyword), Token(TokenType.Identifier),
+            Token(TokenType.Identifier), Token(TokenType.Equals), Token(TokenType.FunctionKeyword), 
             Token(TokenType.LeftParen), TokenSeparated(RuleRef("FieldDeclaration"), TokenType.Comma), Token(TokenType.RightParen),
             Token(TokenType.LeftCurlyBracket), Token(TokenType.RightCurlyBracket)),
         Rule(

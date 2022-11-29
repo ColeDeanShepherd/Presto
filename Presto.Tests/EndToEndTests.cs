@@ -55,6 +55,15 @@ public class EndToEndTests
             isLibrary: true);
     }
 
+    [Fact]
+    public void EmptyProgram()
+    {
+        const string sourceCode = "main = fn () {}";
+        const string expectedGeneratedCode = ";";
+
+        AssertCompileSucceeded(sourceCode, expectedGeneratedCode);
+    }
+
     /*
     [Fact]
     public void FunctionCall()

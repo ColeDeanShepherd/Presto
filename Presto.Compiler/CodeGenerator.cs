@@ -56,6 +56,12 @@ public class CodeGenerator
     public void GenerateCode(Function function)
     {
         // TODO: return type
+        // TODO: function body
+        if (function.Name == "main")
+        {
+            return;
+        }
+
         GenerateCode("void");
         GenerateCode(' ');
         GenerateCode(function.Name);
