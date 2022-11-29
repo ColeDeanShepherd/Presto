@@ -41,7 +41,7 @@ class Program
 
         // Translate parse tree to AST.
         ASTBuilder builder = new();
-        (AST.Program program, List<IASTBuilderError> buildAstErrors) = builder.BuildAST(parseTree);
+        (AST.Program program, List<IASTBuilderError> buildAstErrors) = builder.BuildAST(parseTree!, isLibrary: false);
 
         if (buildAstErrors.Any())
         {

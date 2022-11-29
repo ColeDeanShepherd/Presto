@@ -23,16 +23,16 @@ public class EndToEndTests
             });
     }
 
-    /*
     [Fact]
     public void SingleLineComment()
     {
         const string sourceCode = "# This is a comment.";
         const string expectedGeneratedCode = "";
 
-        AssertCompileSucceeded(sourceCode, expectedGeneratedCode);
+        AssertCompileSucceeded(sourceCode, expectedGeneratedCode, isLibrary: true);
     }
 
+    /*
     [Fact]
     public void Literals()
     {
@@ -202,7 +202,7 @@ public class EndToEndTests
 
     #region Helper Methods
 
-    private void AssertCompileSucceeded(string sourceCode, string? expectedGeneratedCode = null)
+    private void AssertCompileSucceeded(string sourceCode, string? expectedGeneratedCode = null, bool isLibrary = false)
     {
         // Create tokens.
         Lexer lexer = new Lexer(PrestoGrammarConstants.LexerGrammar, sourceCode);
@@ -216,7 +216,7 @@ public class EndToEndTests
 
         // Translate parse tree to AST.
         ASTBuilder builder = new();
-        (AST.Program program, List<IASTBuilderError> buildAstErrors) = builder.BuildAST(parseTree!);
+        (AST.Program program, List<IASTBuilderError> buildAstErrors) = builder.BuildAST(parseTree!, isLibrary);
         Assert.Empty(buildAstErrors);
 
         // Generate code.
@@ -233,7 +233,8 @@ public class EndToEndTests
         string sourceCode,
         List<ILexerError>? expectedLexerErrors = null,
         List<IParserError>? expectedParserErrors = null,
-        List<IASTBuilderError>? expectedAstBuilderErrors = null)
+        List<IASTBuilderError>? expectedAstBuilderErrors = null,
+        bool isLibrary = false)
     {
         // Create tokens.
         Lexer lexer = new Lexer(PrestoGrammarConstants.LexerGrammar, sourceCode);
@@ -247,7 +248,7 @@ public class EndToEndTests
 
         // Translate parse tree to AST.
         ASTBuilder builder = new();
-        (AST.Program program, List<IASTBuilderError> buildAstErrors) = builder.BuildAST(parseTree!);
+        (AST.Program program, List<IASTBuilderError> buildAstErrors) = builder.BuildAST(parseTree!, isLibrary);
         (expectedAstBuilderErrors ?? new List<IASTBuilderError>()).WithDeepEqual(buildAstErrors).Assert();
 
         // Generate code.

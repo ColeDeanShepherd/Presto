@@ -77,7 +77,7 @@ public class ASTBuilder
         errors = new List<IASTBuilderError>();
     }
 
-    public (AST.Program, List<IASTBuilderError>) BuildAST(ParseTree.Program parseTree)
+    public (AST.Program, List<IASTBuilderError>) BuildAST(ParseTree.Program parseTree, bool isLibrary)
     {
         // Create "Console" namespace.
         Namespace consoleNamespace = new(
@@ -108,7 +108,7 @@ public class ASTBuilder
         );
 
         // Check for the existence of a "main" function.
-        if (!DoesMainFunctionExist(program))
+        if (!isLibrary && !DoesMainFunctionExist(program))
         {
             errors.Add(new NoMainError());
         }
