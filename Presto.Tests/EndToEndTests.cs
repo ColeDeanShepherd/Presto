@@ -32,14 +32,13 @@ public class EndToEndTests
         AssertCompileSucceeded(sourceCode, expectedGeneratedCode, isLibrary: true);
     }
 
-    /*
     [Fact]
     public void Literals()
     {
         const string sourceCode = "\"\"2";
         const string expectedGeneratedCode = "\"\";2;";
 
-        AssertCompileSucceeded(sourceCode, expectedGeneratedCode);
+        AssertCompileSucceeded(sourceCode, expectedGeneratedCode, isLibrary: true);
     }
 
     [Fact]
@@ -52,9 +51,11 @@ public class EndToEndTests
             expectedAstBuilderErrors: new List<IASTBuilderError>
             {
                 new UnresolvedNameError("Asdf")
-            });
+            },
+            isLibrary: true);
     }
 
+    /*
     [Fact]
     public void FunctionCall()
     {
