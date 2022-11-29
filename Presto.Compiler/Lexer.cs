@@ -23,7 +23,9 @@ public enum TokenType
 
     LetKeyword,
     StructKeyword,
-    FunctionKeyword
+    FunctionKeyword,
+    CaseKeyword,
+    OfKeyword
 };
 
 public readonly record struct TextPosition(
@@ -105,7 +107,7 @@ public class Lexer
                 .Map(r => (r.Regex.Match(sourceCodeLeft), r.TokenType))
                 .FirstOrDefault(x => x.Item1.Success);
 
-            if (match.Value.Item1.Success)
+            if ((match.Value.Item1 != null) && match.Value.Item1.Success)
             {
                 TextPosition startTextPosition = this.textPosition;
 

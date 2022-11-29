@@ -8,14 +8,16 @@ public interface IASTBuilderError
     public string GetDescription();
 }
 
+public record NoMainError() : IASTBuilderError
+{
+    public string GetDescription() => "No \"main\" function is defined.";
+}
+
 public record UnexpectedNodeError(
     ParseTree.IParseTreeNode Node
 ) : IASTBuilderError
 {
-    public string GetDescription()
-    {
-        return $"Unexpected node: {Node.GetType()}.";
-    }
+    public string GetDescription() => $"Unexpected node: {Node.GetType()}.";
 };
 
 public record UnresolvedNameError(
@@ -105,8 +107,18 @@ public class ASTBuilder
                 .ToList()
         );
 
+        // Check for the existence of a "main" function.
+        if (!DoesMainFunctionExist(program))
+        {
+            errors.Add(new NoMainError());
+        }
+
         return (program, errors);
     }
+
+    public bool DoesMainFunctionExist(AST.Program program) =>
+        program.Statements
+            .Any(s => (s is Function func) && func.Name == "main");
 
     public IStatement? Visit(ParseTree.Statement statement)
     {

@@ -2,198 +2,81 @@
 A programming language.
 
 ## Ideas
-* Easy deep copy
-* Macros for control flow (ex: do something, if error then return).
-    * Can be done with monads (clunky).
-* Discriminated unions
-    * Source generators?
-* Concurrency with green threads - solve function coloring problem.
-* Less verbose mutable class definition syntax.
-    * C# actually already has this - mutable records.
-* Functions outside of classes.
-    * can be done with "using static CLASS_NAME;"
-* Type aliases
-* Immutable freezing
-* Immutable by default
-* Exhaustive pattern matching
-* Transparent optimization
+* Numbers are boundless by default. Bounded numbers are an optimization.
+* Concurrency with green threads
+    * async operations block the green thread
+    * can explicitly launch a new green thread somehow
+    * green threads can return a value?
+
+## Questions
+* Explicitly mark impure functions?
+* Significant whitespace?
 
 ## Example Programs
-### Hello world
+
+### Empty Program
 
 ```
-# Directly reference impl
-main() = printLn("Hello, world!")
+# Every executable program should define a "main" function.
 
-# Pass in impl
-main(printLnImpl) = printLnImpl("Hello, world"!)
-main(consoleImpl) = consoleImpl.printLn("Hello, world!")
-main(consoleImpl) = printLn(consoleImpl, "Hello, world!")
-
-# Environment
-main() = withEnv(printLn = printLnImpl)
-    printLn("")
-
-OR
-
-main(di) = di.console.printLn("Hello, world!")
-
-OR
-
-di.console = realConsole
-main() = di.console.printLn("")
-
-# Implicit Parameter
-
-setimplicit printLn = realPrintLn
-main(implicit printLn) = printLn("")
-
-# Reader Monad
-
-main(): Reader(printLn) = ask()("")
-
-# Interpreter
-main() = printLn("Hello, world"!)
-runRealIO(main())
+main = fn () {}
 ```
 
-Notes:
-* How to mock println? printLn refers to specific implementation, not interface. How can I fix that?
-  I either need to:
-    * Set the implementation in the environment (implicit param)
-    * Pass in the implementation
-    * run with interpreter
+### "Hello, world!"
 
-
-### Add Function
-add(x, y) = x + y
-x.add(y)
-x `add` y
-
-OR
-add x y = x + y
-OR
-+ x y = x + y
-
-Notes:
-* Need a way to 
-
-### Fibonnaci
-f : Z -> Z
-f(0) = 0
-f(1) = 1
-f(n) = f(n-2) + f(n-1)
-
-OR
-
-f(n: Z): Z = case n
-    0 => 0
-    1 => 1
-    n => f(n-2) + f(n-1)
-
-OR
-
-f : Z -> Z
-f(n) = n
-    | 0 => 0
-    | 1 => 1
-    | n => f(n-2) + f(n-1)
-
-OR
-
-f 0 = 0
-f 1 = 1
-f n = f (n-2) + f (n-1)
-
-OR
-
-
-
-Notes:
-* Operates on some kind of positive integer
-* Can overflow with 32 bit integers
-
-### "Recipe"
 ```
-bakeCake(ingredients) = bake(mixIng(mixWetIng(mixDryIng())))
+# The main function can take global implicit parameters as arguments.
+# These implicit parameters will be the default real-world implementations.
 
-OR
+# NOTE: writeLine can't fail, and console is implicitly passed in
 
-bakeCake(ingredients) = mixDry |> mixWet |> mixIng |> bake
-
-OR
-
-bakeCake(ingredients) = {
-    implicit state
-
-    state = mixDry()
-    state = mixWet()
-    state = mixIng()
-    state = bake()
+main = fn (console: Console [implicit]) {
+    writeLine("Hello, world!")
 }
-
-OR
-
-mix(ingredients) = ... # returns batter
-bake(batter) = ... # returns cake
-makeCake(ingredients) = mix |> bake
 ```
 
-### Number guessing game
+### Print a Random Number
 
 ```
-fn main() = {
-    # generate random number
-    ans = randInt(1, 10)
+main = fn (console: Console [implicit], rand: Rand [implicit]) {
+    num = randInt()
+    writeLine("The random number is: " + num)
+}
+```
 
-    # print rules
-    printLn("The rule of the game is to guess the correct number between 1 and 10!")
+### Number Guessing Game
 
-    # while haven't guessed
+```
+main = fn (console: Console [implicit], rand: Rand [implicit]) {
+    num = randInt()
+
     loop {
-        ## prompt for guess
-        printLn("What's your guess?")
+        writeLine("What's your guess?")
         guess = readInt()
-
-        ## output feedback
-        case guess
-            ans => break;
-            guess < ans => printLn("Your guess is too low")
-            guess > ans => printLn("Your guess is too high")
+        
+        case guess of
+            guess == num: {
+                writeLine("Correct!")
+                break
+            }
+            guess < num: writeLine("Your guess is too low")
+            guess > num: writeLine("Your guess is too high")
     }
-
-    printLn("Correct! You win!")
 }
-
-# TODO: separate pure & impure code, use DI?, use recursion?
-
-fn main() [impure] = {
-    runGame(randImpl, consoleImpl)
-}
-
-fn runGame(rand, console) = {
-    ans = rand.int(1, 10)
-    console.printLn("rules")
-    processGuesses()
-    where
-        fn processGuesses() = {
-            console.printLn("guess?")
-            guess = console.readInt()
-            
-            case guess
-                ans => ();
-                guess < ans => console.printLn("Your guess is too low"); processGuesses()
-                guess > ans => console.printLn("Your guess is too high"); processGuesses()
-        }
-}
-
-OR
-
-
 ```
 
-### Pong
+### Fibonacci
 
-### Navier stokes simulator
+```
+fib = fn (n: Nat): Nat =>
+    case n of
+        0: 0
+        1: 1
+        _: fib(n-1) + fib(n+1)
+```
 
-### Static website
+### Array Indexing
+
+```
+at = fn (t: Type [implicit], n: Nat, arr: Array(t, n), i: BoundedNat(n)): t => arr[i]
+```

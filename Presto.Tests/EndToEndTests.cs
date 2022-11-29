@@ -14,11 +14,16 @@ public class EndToEndTests
     public void Empty()
     {
         const string sourceCode = "";
-        const string expectedGeneratedCode = "";
 
-        AssertCompileSucceeded(sourceCode, expectedGeneratedCode);
+        AssertCompileFailed(
+            sourceCode,
+            expectedAstBuilderErrors: new List<IASTBuilderError>
+            {
+                new NoMainError()
+            });
     }
 
+    /*
     [Fact]
     public void SingleLineComment()
     {
@@ -191,7 +196,7 @@ public class EndToEndTests
         const string expectedGeneratedCode = "void x() { }";
 
         AssertCompileSucceeded(sourceCode, expectedGeneratedCode);
-    }
+    }*/
 
     #endregion Tests
 
