@@ -58,6 +58,13 @@ public record FieldDeclaration : ParseTreeNode
     public QualifiedName TypeName => this.GetChildrenOfType<QualifiedName>().First();
 }
 
+public record AttributeReference : ParseTreeNode
+{
+    public AttributeReference(List<IParseTreeNode> children) : base(children) { }
+
+    public QualifiedName TypeName => this.GetChildrenOfType<QualifiedName>().First();
+}
+
 public abstract record Expression : ParseTreeNode
 {
     protected Expression(List<IParseTreeNode> Children) : base(Children)

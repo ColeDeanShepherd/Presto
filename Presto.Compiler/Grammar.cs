@@ -62,7 +62,7 @@ public static class GrammarBuilder
     public static GrammarRule Rule(string Name, Func<List<IParseTreeNode>, IParseTreeNode> createNode, params IGrammarNode[] Nodes) => new GrammarRule(Name, createNode, Nodes.ToList());
     public static TokenGrammarNode Token(TokenType TokenType) => new TokenGrammarNode(TokenType);
     public static OneOfGrammarNode OneOf(params IGrammarNode[] Nodes) => new OneOfGrammarNode(Nodes.ToList());
-    public static OptionalGrammarNode OneOf(IGrammarNode Node) => new OptionalGrammarNode(Node);
+    public static OptionalGrammarNode Optional(IGrammarNode Node) => new OptionalGrammarNode(Node);
     public static ZeroOrMoreGrammarNode ZeroOrMore(this IGrammarNode Node) => new ZeroOrMoreGrammarNode(Node);
     public static OneOrMoreGrammarNode OneOrMore(this IGrammarNode Node) => new OneOrMoreGrammarNode(Node);
     public static TokenSeparatedGrammarNode TokenSeparated(IGrammarNode Node, TokenType TokenType, bool OneOrMore = false) => new TokenSeparatedGrammarNode(Node, TokenType, OneOrMore);
