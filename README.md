@@ -11,6 +11,7 @@ A programming language.
 ## Questions
 * Explicitly mark impure functions?
 * Significant whitespace?
+* Run on CLR? JVM? BEAM? AOT?
 
 ## Example Programs
 
@@ -34,6 +35,18 @@ main = fn (console: Console [implicit]) {
     writeLine("Hello, world!")
 }
 ```
+
+Implementation notes:
+
+* The grammar requires some lookahead, need to rework parser
+* Need to rework scopes & symbol tables in the AST builder.
+* Need to add "Console" to the global scope
+    * Console is a collection of function impls
+* Need to add real impl type of "Console" to the global scope
+* Need to add implicit console variable to the global scope
+    * Need to figure out how we can manually do this too
+* Need to allow function arg number mismatch (due to implicits)
+* Need to prove presence of implicit at compile time
 
 ### Print a Random Number
 
@@ -78,5 +91,25 @@ fib = fn (n: Nat): Nat =>
 ### Array Indexing
 
 ```
-at = fn (t: Type [implicit], n: Nat, arr: Array(t, n), i: BoundedNat(n)): t => arr[i]
+at = fn (t: Type [implicit], n: Nat [implicit], arr: Array(t, n), i: BoundedNat(n)): t => arr[i]
 ```
+
+### Local mutable variable
+
+### FFI
+
+### Error handling
+
+### Namespaces & modules
+
+### Implicit conversions (subtyping)
+
+### JSON equivalent
+
+### Concurrency
+
+### Type Inference
+
+### Default & optional params
+
+### Function overloading?
