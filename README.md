@@ -12,6 +12,8 @@ A programming language.
 * Explicitly mark impure functions?
 * Significant whitespace?
 * Run on CLR? JVM? BEAM? AOT?
+* How to handle logging
+* How to use monadic error handling with an interface with multiple implementations?
 
 ## Example Programs
 
@@ -32,7 +34,7 @@ main = fn () {}
 # NOTE: writeLine can't fail, and console is implicitly passed in
 
 main = fn (console: Console [implicit]) {
-    writeLine("Hello, world!")
+    console.writeLine("Hello, world!")
 }
 ```
 
@@ -48,12 +50,46 @@ Implementation notes:
 * Need to allow function arg number mismatch (due to implicits)
 * Need to prove presence of implicit at compile time
 
+### Binary Search
+
+```
+# Operates on a sorted collection. Therefore, needs proof of sorted collection.
+# Proof can be an instance of a data type (ex: SortedList)
+# Proof can separate (ex: (List, ProofSorted))
+
+binarySearch = fn (t: Type, c: Collection(t), p: ProofSorted) {
+    # How to ensure that p is a proof for c?
+    ...
+}
+
+OR
+
+binarySearch = fn (t: Type, c: SortedCollection(t)) {
+    ...
+}
+
+# Note that if c is mutable, proofs are invalid after mutation in general.
+# Could force immutability.
+# OR, could void proofs after mutation in language
+```
+
+
+
+
+
+
+
+
+
+
+
+
 ### Print a Random Number
 
 ```
 main = fn (console: Console [implicit], rand: Rand [implicit]) {
-    num = randInt()
-    writeLine("The random number is: " + num)
+    num = rand.randInt()
+    console.writeLine("The random number is: " + num)
 }
 ```
 
@@ -61,21 +97,63 @@ main = fn (console: Console [implicit], rand: Rand [implicit]) {
 
 ```
 main = fn (console: Console [implicit], rand: Rand [implicit]) {
-    num = randInt()
+    num = rand.randInt()
 
-    loop {
-        writeLine("What's your guess?")
-        guess = readInt()
+    repeatUntilEq(processGuess, num)
+    
+    processGuess = fn (console: Console [implicit], num: Int [implicit]) {
+        console.writeLine("What's your guess?")
+        guess = console.readInt()
         
         case guess of
-            guess == num: {
-                writeLine("Correct!")
-                break
-            }
-            guess < num: writeLine("Your guess is too low")
-            guess > num: writeLine("Your guess is too high")
+            guess == num: console.writeLine("Correct!")
+            guess < num: console.writeLine("Your guess is too low")
+            guess > num: console.writeLine("Your guess is too high")
+        
+        guess
     }
 }
+```
+
+OR
+
+```
+main = fn (io: IIO [implicit]) {
+    num = io.rand.randInt()
+
+    repeatUntilEq(processGuess, num)
+    
+    processGuess = fn (io: IIO [implicit]) {
+        io.console.writeLine("What's your guess?")
+        guess = io.console.readInt()
+        
+        case guess of
+            guess == num: io.console.writeLine("Correct!")
+            guess < num: io.console.writeLine("Your guess is too low")
+            guess > num: io.console.writeLine("Your guess is too high")
+        
+        guess
+    }
+}
+```
+
+OR
+
+```
+main: IIO () = do
+    num = randInt()
+    repeatUntilEq processGuess num
+
+processGuess: IIO () = do
+    writeLine("What's your guess?")
+    guess = readInt()
+    
+    case guess of
+        guess == num: writeLine("Correct!")
+        guess < num: writeLine("Your guess is too low")
+        guess > num: writeLine("Your guess is too high")
+    
+    guess
 ```
 
 ### Fibonacci

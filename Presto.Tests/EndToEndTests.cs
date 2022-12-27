@@ -68,9 +68,7 @@ public class EndToEndTests
     public void HelloWorld()
     {
         const string sourceCode =
-@"main = fn (console: Console [implicit]) {
-    writeLine(""Hello, world!"")
-}";
+@"main = fn (console: Console [implicit]) -> writeLine(""Hello, world!"")";
         const string expectedGeneratedCode = ";";
 
         AssertCompileSucceeded(sourceCode, expectedGeneratedCode);
