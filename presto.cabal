@@ -22,7 +22,7 @@ maintainer:         cole@coledeanshepherd.com
 extra-source-files: CHANGELOG.md
 
 library
-    exposed-modules:  MyLib
+    exposed-modules:  AST
 
     -- Modules included in this library but not exported.
     -- other-modules:
