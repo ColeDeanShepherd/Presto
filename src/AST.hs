@@ -10,7 +10,7 @@ data Expr =
 
 data Param = Param
   { paramName :: Ident
-  , paramType :: TypeExpr }
+  , paramType :: Maybe TypeExpr }
 
 newtype TypeExpr = TypeExpr Expr
 
@@ -18,5 +18,5 @@ newtype Ident = Ident String
 
 data Fn = Fn
   { fnParams :: [Param]
-  , fnType :: TypeExpr
+  , fnType :: Maybe TypeExpr
   , fnValue :: Expr }
