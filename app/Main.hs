@@ -2,6 +2,7 @@ module Main where
 
 import AST
 import Parse
+import CodeGen (generateCode)
 
 {-
 id = x -> x
@@ -16,7 +17,11 @@ main = do
   putStrLn "Source code:"
   putStrLn sourceCode
 
+  putStrLn ""
+
   let parseResult = parsePrestoProgram sourceCode in
     case parseResult of
-      Right bindings -> putStrLn "Parse success!"
-      Left e -> print e
+      Right bindings -> do
+        putStrLn "Generated code:"
+        putStrLn $ generateCode bindings
+      Left e -> print ("Parse error: " ++ show e)

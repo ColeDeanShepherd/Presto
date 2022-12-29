@@ -14,7 +14,7 @@ data Param = Param
 
 newtype TypeExpr = TypeExpr Expr
 
-newtype Ident = Ident String
+newtype Ident = Ident { identText :: String }
 
 data Fn = Fn
   { fnParams :: [Param]

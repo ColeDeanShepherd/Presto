@@ -1,4 +1,5 @@
 module Parse where
+
 import Text.ParserCombinators.Parsec
 import AST
 
@@ -40,7 +41,7 @@ fnRule = do
 identRule :: Parser Ident
 identRule = do
   x <- many letter
-  return (Ident $ read x)
+  return (Ident { identText = x })
 
 paramRule :: Parser Param
 paramRule = do

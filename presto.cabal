@@ -24,6 +24,7 @@ extra-source-files: CHANGELOG.md
 library
     exposed-modules:  AST
                     , Parse
+                    , CodeGen
 
     -- Modules included in this library but not exported.
     -- other-modules:
