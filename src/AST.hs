@@ -7,6 +7,8 @@ data Binding = Binding
 data Expr =
     FnExpr Fn
   | BindRef Ident
+  | MatchExpr Expr [MatchRule]
+  | NumberLiteral String
 
 data Param = Param
   { paramName :: Ident
@@ -20,3 +22,7 @@ data Fn = Fn
   { fnParams :: [Param]
   , fnType :: Maybe TypeExpr
   , fnValue :: Expr }
+
+data MatchRule = MatchRule
+  { matchExpr :: Expr
+  , resultExpr :: Expr }

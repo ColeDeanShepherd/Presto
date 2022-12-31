@@ -2,14 +2,17 @@ module Parse where
 
 import Text.ParserCombinators.Parsec
 import AST
+import Debug.Trace (trace)
 
-parsePrestoProgram :: String -> Either ParseError [Binding]
-parsePrestoProgram = parse programRule "(unknown)"
+parsePrestoProgram :: String -> FilePath -> Either ParseError [Binding]
+parsePrestoProgram srcCode filePath = parse programRule filePath srcCode
 
 programRule :: Parser [Binding]
 programRule = do
   spaces
-  sepBy bindingRule spaces
+  bindings <- sepBy bindingRule spaces
+  eof
+  return bindings
 
 bindingRule :: Parser Binding
 bindingRule = do
@@ -22,8 +25,13 @@ bindingRule = do
 
 exprRule :: Parser Expr
 exprRule = do
-      try $ FnExpr `fmap` fnRule
+      numberLiteralRule
+  <|> try (FnExpr `fmap` fnRule)
+  <|> matchRule
   <|> bindRefRule
+
+typeExprRule :: Parser TypeExpr
+typeExprRule = TypeExpr `fmap` exprRule
 
 fnRule :: Parser Fn
 fnRule = do
@@ -40,13 +48,41 @@ fnRule = do
 
 identRule :: Parser Ident
 identRule = do
-  x <- many letter
+  x <- many1 letter
   return (Ident { identText = x })
+
+numberLiteralRule :: Parser Expr
+numberLiteralRule = do
+  x <- many1 digit
+  return (NumberLiteral x)
 
 paramRule :: Parser Param
 paramRule = do
   name <- identRule
-  return (Param { paramName = name, paramType = Nothing })
+  paramType <- optionMaybe (do
+    spaces
+    char ':'
+    spaces
+    typeExprRule)
+  return (Param { paramName = name, paramType = paramType })
 
 bindRefRule :: Parser Expr
 bindRefRule = do BindRef `fmap` identRule
+
+matchRule :: Parser Expr
+matchRule = do
+  string "match"
+  spaces
+  expr <- exprRule
+  spaces
+  rules <- sepBy1 (try matchRuleRule) spaces
+  return (MatchExpr expr rules)
+
+matchRuleRule :: Parser MatchRule
+matchRuleRule = do
+  matchExpr <- exprRule
+  spaces
+  string "->"
+  spaces
+  resultExpr <- exprRule
+  return (MatchRule { matchExpr = matchExpr, resultExpr = resultExpr })
