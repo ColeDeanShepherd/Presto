@@ -1,0 +1,65 @@
+﻿using Presto.Compiler;
+using Presto.Compiler.AST;
+
+namespace Presto.CLI;
+
+class Program
+{
+    static async Task Main(string[] args)
+    {
+        string sourceCode = "Console.WriteLine(\"Hello, world!\")";
+
+        // Tokenize.
+        Lexer lexer = new Lexer(PrestoGrammarConstants.LexerGrammar, sourceCode);
+        (List<Token> tokens, List<ILexerError> tokenizeErrors) = lexer.Tokenize();
+
+        if (tokenizeErrors.Any())
+        {
+            foreach (ILexerError error in tokenizeErrors)
+            {
+                Console.WriteLine($"ERROR {error.TextRange}: {error.GetDescription()}");
+            }
+
+            return;
+        }
+
+        // Parse.
+        var grammar = PrestoGrammarConstants.Grammar;
+        //var grammar = GrammarHelpers.ResolveReferences(PrestoGrammarConstants.Grammar);
+
+        Parser parser = new(grammar, tokens);
+        (Compiler.ParseTree.Program? parseTree, List<IParserError> parseErrors) = parser.Parse();
+
+        if (parseErrors.Any())
+        {
+            foreach (IParserError error in parseErrors)
+            {
+                Console.WriteLine($"ERROR {error.TextRange}: {error.GetDescription()}");
+            }
+
+            return;
+        }
+
+        // Translate parse tree to AST.
+        ASTBuilder builder = new();
+        (Compiler.AST.Program program, List<IASTBuilderError> buildAstErrors) = builder.BuildAST(parseTree!, isLibrary: false);
+
+        if (buildAstErrors.Any())
+        {
+            foreach (IASTBuilderError error in buildAstErrors)
+            {
+                Console.WriteLine($"ERROR: {error.GetDescription()}");
+            }
+
+            return;
+        }
+
+        // Generate code.
+        CodeGenerator codeGenerator = new();
+        string generatedCode = codeGenerator.GenerateCode(program);
+
+        // Run the code!.
+        CSharpCodeRunner codeRunner = new();
+        await codeRunner.RunCode(generatedCode);
+    }
+}
