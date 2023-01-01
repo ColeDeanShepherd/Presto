@@ -4,18 +4,18 @@ id = (x) -> x
 
 fibonacci = (n: UInt) ->
   match n
-    0 -> 0
-    1 -> 1
+    0 -> 0,
+    1 -> 1,
     _ -> fibonacci(n-2) + fibonacci(n-1)
 
 factorial = (n: UInt) ->
   match n
-    0 -> 1
+    0 -> 1,
     _ -> n * factorial(n-1)
 
 repeatUntilEq = (func: , val) ->
   match func()
-    val -> ()
+    val -> (),
     _ -> repeatUntilEq(func, val)
 
 numberGuessingGame = (console: Console, rand: Rand) -> {
@@ -28,8 +28,8 @@ processGuess = (console: Console, ans: Int) -> {
   guess = console.readInt()
   
   match guess
-    guess == ans -> console.writeLine("Correct!")
-    guess < ans -> console.writeLine("Your guess is too low")
+    guess == ans -> console.writeLine("Correct!"),
+    guess < ans -> console.writeLine("Your guess is too low"),
     guess > ans -> console.writeLine("Your guess is too high")
   
   guess

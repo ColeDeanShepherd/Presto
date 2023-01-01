@@ -37,7 +37,7 @@ fnRule :: Parser Fn
 fnRule = do
   char '('
   spaces
-  params <- sepBy paramRule (char ',' >> spaces)
+  params <- sepBy paramRule (spaces >> char ',' >> spaces)
   spaces
   char ')'
   spaces
@@ -48,7 +48,7 @@ fnRule = do
 
 identRule :: Parser Ident
 identRule = do
-  x <- many1 letter
+  x <- many1 (letter <|> char '_')
   return (Ident { identText = x })
 
 numberLiteralRule :: Parser Expr
@@ -75,7 +75,7 @@ matchRule = do
   spaces
   expr <- exprRule
   spaces
-  rules <- sepBy1 (try matchRuleRule) spaces
+  rules <- sepBy1 (try matchRuleRule) (try (spaces >> char ',' >> spaces))
   return (MatchExpr expr rules)
 
 matchRuleRule :: Parser MatchRule
