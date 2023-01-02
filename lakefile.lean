@@ -5,10 +5,6 @@ package presto {
   -- add package configuration options here
 }
 
-lean_lib Presto {
-  -- add library configuration options here
-}
-
 @[default_target]
 lean_exe presto {
   root := `Main
