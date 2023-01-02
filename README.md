@@ -171,23 +171,3 @@ fib = fn (n: Nat): Nat =>
 ```
 at = fn (t: Type [implicit], n: Nat [implicit], arr: Array(t, n), i: BoundedNat(n)): t => arr[i]
 ```
-
-### Local mutable variable
-
-### FFI
-
-### Error handling
-
-### Namespaces & modules
-
-### Implicit conversions (subtyping)
-
-### JSON equivalent
-
-### Concurrency
-
-### Type Inference
-
-### Default & optional params
-
-### Function overloading?
