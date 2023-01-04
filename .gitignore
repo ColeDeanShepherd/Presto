@@ -1,2 +1,5 @@
-/build
-/lake-packages/*
+.vs/
+bin/
+obj/
+
+*.bak
