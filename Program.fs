@@ -36,8 +36,6 @@ type TokenizeState = {
     Errors: List<TokenizeError>
 }
 
-let fileName = "../../../BootstrappedCompiler.pst"
-
 let isDone (state: TokenizeState) = state.TextLeft.Length = 0
 let isNotDone (state: TokenizeState) = not (isDone state)
 
@@ -63,7 +61,7 @@ let peekChar (state: TokenizeState): char =
     if isNotDone state then state.TextLeft[0]
     else failwith "Unexpectedly reached the end of the source code."
 
-let TryReadChar (state: TokenizeState): Option<char> * TokenizeState = 
+let tryReadChar (state: TokenizeState): Option<char> * TokenizeState = 
     if isDone state then (None, state)
     else
         let nextChar = state.TextLeft[0]
@@ -77,7 +75,7 @@ let TryReadChar (state: TokenizeState): Option<char> * TokenizeState =
         )
 
 let readChar (state: TokenizeState): char * TokenizeState =
-    let (maybeNextChar, nextState) = TryReadChar state
+    let (maybeNextChar, nextState) = tryReadChar state
 
     (maybeNextChar.Value, nextState)
 
@@ -135,6 +133,7 @@ let tokenize (sourceCode: string): TokenizeOutput =
 // -----------------------------------
 // Main
 // -----------------------------------
+let fileName = "../../../BootstrappedCompiler.pst"
 let sourceCode = File.ReadAllText fileName
 let tokenizeOutput = tokenize sourceCode
 
