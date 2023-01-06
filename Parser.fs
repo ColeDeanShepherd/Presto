@@ -20,6 +20,7 @@ type ParseNodeType =
     | Function
     | Parameter
     | Token
+    | Whitespace
 
 type ParseNode = {
     Type: ParseNodeType
