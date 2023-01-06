@@ -5,7 +5,7 @@ type TextPosition = {
     ColumnIndex: int
 }
 with
-    override this.ToString() = $"Ln {this.LineIndex}, Col {this.ColumnIndex}"
+    override this.ToString() = $"Ln {1 + this.LineIndex}, Col {1 + this.ColumnIndex}"
     
 type CompileError = {
     Description: string

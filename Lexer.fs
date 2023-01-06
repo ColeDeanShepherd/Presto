@@ -10,6 +10,8 @@ type TokenType =
     | Equals
     | Minus
     | GreaterThan
+    | LeftParen
+    | RightParen
 
 type Token = {
     Type: TokenType
@@ -115,8 +117,12 @@ let iterateTokenize (state: TokenizeState): TokenizeState =
             readSingleCharToken state TokenType.Minus
         else if nextChar = '>' then
             readSingleCharToken state TokenType.GreaterThan
+        else if nextChar = '(' then
+            readSingleCharToken state TokenType.LeftParen
+        else if nextChar = ')' then
+            readSingleCharToken state TokenType.RightParen
         else
-            { state with Errors = state.Errors @ [{ Description = $"Encountered an unexpected character: {nextChar}"; Position = state.Position }] }
+            { state with TextLeft = state.TextLeft[1..]; Errors = state.Errors @ [{ Description = $"Encountered an unexpected character: {nextChar}"; Position = state.Position }] }
 
 let tokenize (sourceCode: string): TokenizeOutput =
     let seedState: TokenizeState = {
