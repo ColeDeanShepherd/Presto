@@ -1,5 +1,6 @@
 ﻿open System.IO
 open Lexer
+open Parser
 
 let fileName = "../../../BootstrappedCompiler.pst"
 

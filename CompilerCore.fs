@@ -1,4 +1,4 @@
-﻿module Core
+﻿module CompilerCore
 
 type TextPosition = {
     LineIndex: int

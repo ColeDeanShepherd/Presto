@@ -1,7 +1,7 @@
 ﻿module Lexer
 
 open System
-open Core
+open CompilerCore
 
 type TokenType =
     | Identifier
@@ -117,7 +117,7 @@ let iterateTokenize (state: TokenizeState): TokenizeState =
             readSingleCharToken state TokenType.GreaterThan
         else
             { state with Errors = state.Errors @ [{ Description = $"Encountered an unexpected character: {nextChar}"; Position = state.Position }] }
-    
+
 let tokenize (sourceCode: string): TokenizeOutput =
     let seedState: TokenizeState = {
         TextLeft = sourceCode
