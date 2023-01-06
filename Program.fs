@@ -2,7 +2,12 @@
 open Lexer
 
 let fileName = "../../../BootstrappedCompiler.pst"
+
 let sourceCode = File.ReadAllText fileName
 let tokenizeOutput = tokenize sourceCode
 
-let x = 3
+if not tokenizeOutput.Errors.IsEmpty then
+    for error in tokenizeOutput.Errors do
+         printfn $"{error}"
+else
+    printfn "Tokenizing succeeded."

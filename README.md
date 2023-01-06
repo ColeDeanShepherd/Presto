@@ -14,6 +14,11 @@ A programming language.
 * Run on CLR? JVM? BEAM? AOT?
 * How to handle logging
 * How to use monadic error handling with an interface with multiple implementations?
+* Interesting problems:
+  * Updating one small piece of state in a large tree (AST transformations, game state transformations).
+    * Concurrently!
+  * High-volume RESTful server
+  * 
 
 ## Example Programs
 

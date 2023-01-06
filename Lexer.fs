@@ -1,14 +1,11 @@
 ﻿module Lexer
 
 open System
-
-type TextPosition = {
-    LineIndex: int
-    ColumnIndex: int
-}
+open Core
 
 type TokenType =
     | Identifier
+    | FnKeyword
     | Whitespace
     | Equals
     | Minus
@@ -20,21 +17,16 @@ type Token = {
     Position: TextPosition
 }
 
-type TokenizeError = {
-    Description: string
-    Position: TextPosition
-}
-
 type TokenizeOutput = {
     Tokens: List<Token>
-    Errors: List<TokenizeError>
+    Errors: List<CompileError>
 }
 
 type TokenizeState = {
     TextLeft: string
     Position: TextPosition
     Tokens: List<Token>
-    Errors: List<TokenizeError>
+    Errors: List<CompileError>
 }
 
 let isDone (state: TokenizeState) = state.TextLeft.Length = 0
@@ -108,7 +100,12 @@ let iterateTokenize (state: TokenizeState): TokenizeState =
         
         if Char.IsLetter nextChar then
             let (tokenText, nextState) = takeCharsWhile state Char.IsLetter
-            { nextState with Tokens = nextState.Tokens @ [{ Type = TokenType.Identifier; Text = tokenText; Position = startPosition }] }
+            let tokenType =
+                match tokenText with
+                | "fn" -> TokenType.FnKeyword
+                | _ -> TokenType.Identifier
+
+            { nextState with Tokens = nextState.Tokens @ [{ Type = tokenType; Text = tokenText; Position = startPosition }] }
         else if Char.IsWhiteSpace nextChar then
             let (tokenText, nextState) = takeCharsWhile state Char.IsWhiteSpace
             { nextState with Tokens = nextState.Tokens @ [{ Type = TokenType.Whitespace; Text = tokenText; Position = startPosition }] }
@@ -129,4 +126,5 @@ let tokenize (sourceCode: string): TokenizeOutput =
         Errors = []
     }
     let finalState = applyWhile iterateTokenize isNotDone seedState
+
     { Tokens = finalState.Tokens; Errors = finalState.Errors }

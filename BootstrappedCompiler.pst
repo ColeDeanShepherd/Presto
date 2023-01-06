@@ -1,1 +1,1 @@
-id = x -> x
+id = fn x -> x
