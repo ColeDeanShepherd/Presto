@@ -11,4 +11,10 @@ if not tokenizeOutput.Errors.IsEmpty then
     for error in tokenizeOutput.Errors do
          printfn $"{error}"
 else
-    printfn "Tokenizing succeeded."
+    let parseOutput = parse tokenizeOutput.Tokens
+
+    if not parseOutput.Errors.IsEmpty then
+        for error in parseOutput.Errors do
+             printfn $"{error}"
+    else
+        printfn "Parsing succeeded."

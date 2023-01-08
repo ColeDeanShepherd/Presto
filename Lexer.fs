@@ -12,6 +12,7 @@ type TokenType =
     | GreaterThan
     | LeftParen
     | RightParen
+    | Comma
 
 type Token = {
     Type: TokenType
@@ -33,12 +34,6 @@ type TokenizeState = {
 
 let isDone (state: TokenizeState) = state.TextLeft.Length = 0
 let isNotDone (state: TokenizeState) = not (isDone state)
-
-let rec applyWhile (fn: ('a -> 'a)) (predicate: ('a -> bool)) (startValue: 'a): 'a =
-    if predicate startValue then
-        applyWhile fn predicate (fn startValue)
-    else
-        startValue
 
 let advanceTextPosition (position: TextPosition) (readChar: char): TextPosition =
     if readChar <> '\n' then
@@ -121,6 +116,8 @@ let iterateTokenize (state: TokenizeState): TokenizeState =
             readSingleCharToken state TokenType.LeftParen
         else if nextChar = ')' then
             readSingleCharToken state TokenType.RightParen
+        else if nextChar = ',' then
+            readSingleCharToken state TokenType.Comma
         else
             { state with TextLeft = state.TextLeft[1..]; Errors = state.Errors @ [{ Description = $"Encountered an unexpected character: {nextChar}"; Position = state.Position }] }
 

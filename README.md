@@ -18,7 +18,9 @@ A programming language.
   * Updating one small piece of state in a large tree (AST transformations, game state transformations).
     * Concurrently!
   * High-volume RESTful server
-  * 
+  * Selecting partial data from SQL, operating on DTOs, etc.
+  * Adding attribute to existing data type
+  * Adding additional data to object identity (ECS type program)
 
 ## Example Programs
 
