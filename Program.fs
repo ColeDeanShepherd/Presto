@@ -1,6 +1,7 @@
 ﻿open System.IO
 open Lexer
 open Parser
+open ASTBuilder
 
 let fileName = "../../../BootstrappedCompiler.pst"
 
@@ -17,4 +18,10 @@ else
         for error in parseOutput.Errors do
              printfn $"{error}"
     else
-        printfn "Parsing succeeded."
+        let buildAstOutput = buildAst parseOutput.Program
+
+        if not buildAstOutput.Errors.IsEmpty then
+            for error in buildAstOutput.Errors do
+                 printfn $"{error}"
+        else
+            printfn "Building the AST succeeded."

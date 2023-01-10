@@ -39,6 +39,23 @@ type ParseState = {
     Errors: List<CompileError>
 }
 
+let rec nodeTextPosition (node: ParseNode): TextPosition =
+    match node.Token with
+    | Some token -> token.Position
+    | None -> nodeTextPosition node.Children.Head
+
+let nonTriviaChild (node: ParseNode): ParseNode =
+    List.find (fun c -> (c.Type <> ParseNodeType.Whitespace)) node.Children
+
+let childOfTokenType (node: ParseNode) (tokenType: TokenType): ParseNode =
+    List.find (fun c -> (c.Type = ParseNodeType.Token) && (c.Token.Value.Type = tokenType)) node.Children
+
+let childOfType (node: ParseNode) (nodeType: ParseNodeType): ParseNode =
+    List.find (fun c -> c.Type = nodeType) node.Children
+
+let childrenOfType (node: ParseNode) (nodeType: ParseNodeType): List<ParseNode> =
+    List.filter (fun c -> c.Type = nodeType) node.Children
+
 let isDone (state: ParseState): bool =
     state.NextTokenIndex < state.Tokens.Length
 
