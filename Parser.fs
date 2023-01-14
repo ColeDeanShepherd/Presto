@@ -204,6 +204,26 @@ let rec parseSeparatedByWhitespace
             | None -> (accumulator, state)
         | None -> (accumulator, state)
 
+let parseParameter (state: ParseState): Option<ParseNode> * ParseState =
+    let (optionIdentifier, state) = parseToken state TokenType.Identifier
+
+    match optionIdentifier with
+    | Some identifier ->
+        (
+            Some {
+                Type = ParseNodeType.Parameter
+                Children = List.concat [ [identifier] ]
+                Token = None
+            },
+            state
+        )
+        //let optionNextToken = tryPeekExpectedToken state TokenType.Colon
+
+        //match optionNextToken with
+        //| Some nextToken = 
+        //| None -> (None, state)
+    | None -> (None, state)
+
 let rec parseFunction (state: ParseState): Option<ParseNode> * ParseState =
     let (optionFnToken, state) = parseToken state TokenType.FnKeyword
 
@@ -215,7 +235,7 @@ let rec parseFunction (state: ParseState): Option<ParseNode> * ParseState =
         match optionLeftParen with
         | Some leftParen ->
             let (whitespace2, state) = parseWhitespace state
-            let (parameters, state) = parseSeparatedByToken state parseExpression TokenType.Comma []
+            let (parameters, state) = parseSeparatedByToken state parseParameter TokenType.Comma []
             let (whitespace3, state) = parseWhitespace state
             let (optionRightParen, state) = parseToken state TokenType.RightParen
 
@@ -246,8 +266,6 @@ let rec parseFunction (state: ParseState): Option<ParseNode> * ParseState =
                         | None -> (None, state)
                     | None -> (None, state)
                 | None -> (None, state)
-
-                
             | None -> (None, state)
         | None -> (None, state)
     | None -> (None, state)
@@ -258,8 +276,34 @@ and parseExpression (state: ParseState): Option<ParseNode> * ParseState =
     match optionNextToken with
     | Some nextToken ->
         match nextToken.Type with
-        | TokenType.FnKeyword -> parseFunction state
-        | TokenType.Identifier -> parseToken state TokenType.Identifier
+        | TokenType.FnKeyword ->
+            let (optionValue, state) = parseFunction state
+
+            match optionValue with
+            | Some value ->
+                (
+                    Some {
+                        Type = ParseNodeType.Expression
+                        Children = [value]
+                        Token = None
+                    },
+                    state
+                )
+            | None -> (None, state)
+        | TokenType.Identifier ->
+            let (optionValue, state) = parseToken state TokenType.Identifier
+
+            match optionValue with
+            | Some value ->
+                (
+                    Some {
+                        Type = ParseNodeType.Expression
+                        Children = [value]
+                        Token = None
+                    },
+                    state
+                )
+            | None -> (None, state)
         | _ ->
             let error = {
                 Description = $"Encountered unexpected token: {nextToken.Text}"
