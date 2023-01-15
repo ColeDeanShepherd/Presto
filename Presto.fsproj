@@ -10,6 +10,7 @@
     <Compile Include="Lexer.fs" />
     <Compile Include="Parser.fs" />
     <Compile Include="ASTBuilder.fs" />
+    <Compile Include="CodeGenerator.fs" />
     <Compile Include="Program.fs" />
   </ItemGroup>
 
