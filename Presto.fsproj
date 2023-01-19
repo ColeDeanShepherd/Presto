@@ -6,6 +6,7 @@
   </PropertyGroup>
 
   <ItemGroup>
+    <None Include="BootstrappedCompiler.pst" />
     <Compile Include="CompilerCore.fs" />
     <Compile Include="Lexer.fs" />
     <Compile Include="Parser.fs" />
@@ -13,5 +14,7 @@
     <Compile Include="CodeGenerator.fs" />
     <Compile Include="Program.fs" />
   </ItemGroup>
+
+  <ItemGroup />
 
 </Project>

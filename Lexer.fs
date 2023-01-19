@@ -5,7 +5,9 @@ open CompilerCore
 
 type TokenType =
     | Identifier
+    | NumberLiteral
     | FnKeyword
+    | RecordKeyword
     | Whitespace
     | Equals
     | Minus
@@ -13,6 +15,8 @@ type TokenType =
     | LeftParen
     | RightParen
     | Comma
+    | Colon
+    | Period
 
 type Token = {
     Type: TokenType
@@ -95,17 +99,23 @@ let iterateTokenize (state: TokenizeState): TokenizeState =
         let nextChar = state.TextLeft[0]
         let startPosition = state.Position
         
-        if Char.IsLetter nextChar then
+        if Char.IsWhiteSpace nextChar then
+            let (tokenText, nextState) = takeCharsWhile state Char.IsWhiteSpace
+            { nextState with Tokens = nextState.Tokens @ [{ Type = TokenType.Whitespace; Text = tokenText; Position = startPosition }] }
+        else if Char.IsLetter nextChar then
             let (tokenText, nextState) = takeCharsWhile state Char.IsLetter
             let tokenType =
                 match tokenText with
                 | "fn" -> TokenType.FnKeyword
+                | "record" -> TokenType.RecordKeyword
                 | _ -> TokenType.Identifier
 
             { nextState with Tokens = nextState.Tokens @ [{ Type = tokenType; Text = tokenText; Position = startPosition }] }
-        else if Char.IsWhiteSpace nextChar then
-            let (tokenText, nextState) = takeCharsWhile state Char.IsWhiteSpace
-            { nextState with Tokens = nextState.Tokens @ [{ Type = TokenType.Whitespace; Text = tokenText; Position = startPosition }] }
+        else if Char.IsDigit nextChar then
+            let (tokenText, nextState) = takeCharsWhile state Char.IsDigit
+            let tokenType = TokenType.NumberLiteral
+
+            { nextState with Tokens = nextState.Tokens @ [{ Type = tokenType; Text = tokenText; Position = startPosition }] }
         else if nextChar = '=' then
             readSingleCharToken state TokenType.Equals
         else if nextChar = '-' then
@@ -118,6 +128,10 @@ let iterateTokenize (state: TokenizeState): TokenizeState =
             readSingleCharToken state TokenType.RightParen
         else if nextChar = ',' then
             readSingleCharToken state TokenType.Comma
+        else if nextChar = ':' then
+            readSingleCharToken state TokenType.Colon
+        else if nextChar = '.' then
+            readSingleCharToken state TokenType.Period
         else
             { state with TextLeft = state.TextLeft[1..]; Errors = state.Errors @ [{ Description = $"Encountered an unexpected character: {nextChar}"; Position = state.Position }] }
 

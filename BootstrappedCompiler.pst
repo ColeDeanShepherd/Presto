@@ -1,1 +1,38 @@
-id = fn (x) -> x
+TextPosition = record
+    LineIndex: Nat
+    ColumnIndex: Nat
+
+CompileError = record
+    Description: Text
+    Position: TextPosition
+
+TokenType = union
+    Identifier
+    FnKeyword
+    RecordKeyword
+    Whitespace
+    Equals
+    Minus
+    GreaterThan
+    LeftParen
+    RightParen
+    Comma
+    Colon
+
+Token = record
+    Type: TokenType
+    Text: Text
+    Position: TextPosition
+
+TokenizeOutput = record
+    Tokens: List(Token)
+    Errors: List(CompileError)
+
+TokenizeState = record
+    TextLeft: Text
+    Position: TextPosition
+    Tokens: List(Token)
+    Errors: List(CompileError)
+
+isDone = fn (state: TokenizeState) -> state.TextLeft.Length == 0
+isNotDone = fn (state: TokenizeState) -> not . isDone
