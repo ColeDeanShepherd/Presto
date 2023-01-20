@@ -51,6 +51,15 @@ let advanceTextPosition (position: TextPosition) (readChar: char): TextPosition 
             ColumnIndex = 0
         }
 
+let tryPeekExpectedChar (state: TokenizeState) (expectedChar: char): Option<char> =
+    if isNotDone state then
+        let nextChar = state.TextLeft[0]
+
+        if nextChar = expectedChar then
+            Some nextChar
+        else None
+    else None
+
 let peekChar (state: TokenizeState): char =
     if isNotDone state then state.TextLeft[0]
     else failwith "Unexpectedly reached the end of the source code."
@@ -89,9 +98,57 @@ let takeCharsWhile (state: TokenizeState) (predicate: char -> bool): string * To
 
 let readSingleCharToken (state: TokenizeState) (tokenType: TokenType): TokenizeState =
     let startPosition = state.Position
-    let (nextChar, nextState) = readChar state
+    let (nextChar, state) = readChar state
     
-    { nextState with Tokens = nextState.Tokens @ [{ Type = tokenType; Text = nextChar.ToString(); Position = startPosition }] }
+    { state with Tokens = state.Tokens @ [{ Type = tokenType; Text = nextChar.ToString(); Position = startPosition }] }
+
+let readLineBreak (state: TokenizeState): Option<string> * TokenizeState =
+    let optionCarriageReturn = tryPeekExpectedChar state '\r'
+
+    let (lineBreak, state) =
+        match optionCarriageReturn with
+        | Some carriageReturn ->
+            let (carriageReturn, state) = readChar state
+            (carriageReturn.ToString(), state)
+        | None -> ("", state)
+
+    let optionLineFeed = tryPeekExpectedChar state '\n'
+
+    let (lineBreak, state) =
+        match optionLineFeed with
+        | Some lineFeed ->
+            let (lineFeed, state) = readChar state
+            (lineBreak + lineFeed.ToString(), state)
+        | None -> (lineBreak, state)
+
+    if lineBreak.Length > 0 then
+        (Some lineBreak, state)
+    else
+        (None, state)
+
+let readWhitespaceToken (state: TokenizeState): Option<Token> * TokenizeState =
+    let startPosition = state.Position
+    let (tokenText, state) = takeCharsWhile state (fun c -> (c <> '\r') && (c <> '\n') && (Char.IsWhiteSpace c))
+    let (optionLineBreak, state) = readLineBreak state
+
+    let tokenText =
+        match optionLineBreak with
+        | Some lineBreak -> tokenText + lineBreak
+        | None -> tokenText
+
+    if tokenText.Length > 0 then
+        (Some { Type = TokenType.Whitespace; Text = tokenText; Position = startPosition }, state)
+    else
+        (None, state)
+    
+let rec readWhitespace (state: TokenizeState): TokenizeState =
+    let (optionToken, state) = readWhitespaceToken state
+
+    match optionToken with
+    | Some token ->
+        let state = { state with Tokens = state.Tokens @ [token] }
+        readWhitespace state
+    | None -> state
 
 let iterateTokenize (state: TokenizeState): TokenizeState =
     if state.TextLeft.Length = 0 then state
@@ -100,8 +157,7 @@ let iterateTokenize (state: TokenizeState): TokenizeState =
         let startPosition = state.Position
         
         if Char.IsWhiteSpace nextChar then
-            let (tokenText, nextState) = takeCharsWhile state Char.IsWhiteSpace
-            { nextState with Tokens = nextState.Tokens @ [{ Type = TokenType.Whitespace; Text = tokenText; Position = startPosition }] }
+            readWhitespace state
         else if Char.IsLetter nextChar then
             let (tokenText, nextState) = takeCharsWhile state Char.IsLetter
             let tokenType =

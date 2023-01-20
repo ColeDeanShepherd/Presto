@@ -8,11 +8,13 @@ Program -> Binding*
 Binding -> Identifier "=" Expression
 Expression ->
       Function
-    | Struct
+    | Record
+    | Union
     | Identifier
 TypeExpression -> Expression
 Function -> "fn" "(" SepBy(Parameter, ",") ")" "->" Expression
-Struct -> "struct" SepBy(Whitespace, Field)
+Record -> "record" SepBy(Whitespace, Field)
+Union -> "union" SepBy(Whitespace, UnionItem)
 Field -> Identifier ":" TypeExpression
 Parameter -> Identifier (":" Expression)?
 *)
