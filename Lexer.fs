@@ -8,14 +8,15 @@ type TokenType =
     | NumberLiteral
     | FnKeyword
     | RecordKeyword
+    | UnionKeyword
     | Whitespace
     | Equals
     | Minus
     | GreaterThan
     | LeftParen
     | RightParen
-    | LeftCurlyBrace
-    | RightCurlyBrace
+    | LeftCurlyBracket
+    | RightCurlyBracket
     | Comma
     | Colon
     | Period
@@ -169,9 +170,9 @@ let readWhitespaceTokens (state: TokenizeState): List<Token> * TokenizeState =
             let indentationDecreased = newIndentation < state.CurrentIndentation
 
             if indentationIncreased then
-                (tokens @ [{ Type = TokenType.LeftCurlyBrace; Text = "{"; Position = state.Position; WasInserted = true }], { state with CurrentIndentation = newIndentation })
+                (tokens @ [{ Type = TokenType.LeftCurlyBracket; Text = "{"; Position = state.Position; WasInserted = true }], { state with CurrentIndentation = newIndentation })
             else if indentationDecreased then
-                (tokens @ [{ Type = TokenType.RightCurlyBrace; Text = "}"; Position = state.Position; WasInserted = true }], { state with CurrentIndentation = newIndentation })
+                (tokens @ [{ Type = TokenType.RightCurlyBracket; Text = "}"; Position = state.Position; WasInserted = true }], { state with CurrentIndentation = newIndentation })
             else
                 (tokens, state)
         else
@@ -202,6 +203,7 @@ let iterateTokenize (state: TokenizeState): TokenizeState =
                 match tokenText with
                 | "fn" -> TokenType.FnKeyword
                 | "record" -> TokenType.RecordKeyword
+                | "union" -> TokenType.UnionKeyword
                 | _ -> TokenType.Identifier
 
             { nextState with Tokens = nextState.Tokens @ [{ Type = tokenType; Text = tokenText; Position = startPosition; WasInserted = false }] }
@@ -221,9 +223,9 @@ let iterateTokenize (state: TokenizeState): TokenizeState =
         else if nextChar = ')' then
             readSingleCharToken state TokenType.RightParen
         else if nextChar = '{' then
-            readSingleCharToken state TokenType.LeftCurlyBrace
+            readSingleCharToken state TokenType.LeftCurlyBracket
         else if nextChar = '}' then
-            readSingleCharToken state TokenType.RightCurlyBrace
+            readSingleCharToken state TokenType.RightCurlyBracket
         else if nextChar = ',' then
             readSingleCharToken state TokenType.Comma
         else if nextChar = ':' then
