@@ -26,7 +26,7 @@ type ParseNodeType =
     | Record
     | RecordField
     | Union
-    | UnionItem
+    | UnionCase
     | Function
     | FunctionCall
     | Parameter
@@ -200,7 +200,8 @@ let rec parseSeparatedByToken
 
                     match optionSeparator with
                     | Some separator ->
-                        let accumulator = List.append accumulator [separator]
+                        let (whitespace2, state) = parseWhitespace state
+                        let accumulator = accumulator @ [separator] @ whitespace2
                         
                         parseSeparatedByToken state parseFn tokenType accumulator
                     | None -> (accumulator, state)
@@ -350,7 +351,7 @@ and parseUnionCase (state: ParseState): Option<ParseNode> * ParseState =
     | Some identifier ->
         (
             Some {
-                Type = ParseNodeType.UnionItem
+                Type = ParseNodeType.UnionCase
                 Children = List.concat [ [identifier] ]
                 Token = None
             },
@@ -539,6 +540,20 @@ and parsePrefixExpression (state: ParseState): Option<ParseNode> * ParseState =
                     state
                 )
             | None -> (None, state)
+        | TokenType.NumberLiteral ->
+            let (optionValue, state) = parseToken state TokenType.NumberLiteral
+
+            match optionValue with
+            | Some value ->
+                (
+                    Some {
+                        Type = ParseNodeType.Expression
+                        Children = [value]
+                        Token = None
+                    },
+                    state
+                )
+            | None -> (None, state)
         | _ ->
             let error = {
                 Description = $"Encountered unexpected token: {nextToken.Text}"
@@ -610,17 +625,6 @@ and tryParsePostfixAndInfixExpressions (state: ParseState) (prefixExpression: Pa
                 else
                     match nextToken.Type with
                     | TokenType.Period ->
-                        //ReadExpectedToken(TokenType.Period);
-
-                        //IExpression? rightExpr = ParseExpression(rightBindingPower);
-                        //if (rightExpr == null)
-                        //{
-                        //    return null;
-                        //}
-
-                        //prefixExpression = new MemberAccessOperator(prefixExpression, rightExpr);
-                        //break;
-                        
                         let (whitespace, state) = parseWhitespace state
                         let prefixExpression = { prefixExpression with Children = prefixExpression.Children @ whitespace }
 

@@ -10,8 +10,12 @@ type Parameter = {
 }
 
 type Expression =
+    | RecordExpression of Record
+    | UnionExpression of Union
     | FunctionExpression of Function
+    | FunctionCallExpression of FunctionCall
     | SymbolReference of Symbol
+    | NumberLiteralExpression of NumberLiteral
 and Binding = {
     Name: string
     NameToken: Token
@@ -22,9 +26,33 @@ and Function = {
     Value: Expression
     ScopeId: System.Guid
 }
+and FunctionCall = {
+    FunctionExpression: Expression
+    Arguments: List<Expression>
+}
+and RecordField = {
+    NameToken: Token
+    TypeExpression: Expression
+}
+and Record = {
+    Fields: List<RecordField>
+    ScopeId: System.Guid
+}
+and UnionCase = {
+    NameToken: Token
+}
+and Union = {
+    Cases: List<UnionCase>
+    ScopeId: System.Guid
+}
+and NumberLiteral = {
+    Token: Token
+}
 and Symbol =
     | BindingSymbol of Binding
     | ParameterSymbol of Parameter
+    | RecordFieldSymbol of RecordField
+    | UnionCaseSymbol of UnionCase
 and Scope = {
     SymbolsByName: Map<string, Symbol>
     ParentId: Option<System.Guid>
@@ -169,17 +197,105 @@ let rec buildFunction (state: ASTBuilderState) (node: ParseNode): (Option<Functi
         | None -> (None, popScope state)
     | None -> (None, popScope state)
 
+and buildRecordField (state: ASTBuilderState) (node: ParseNode): (Option<RecordField> * ASTBuilderState) =
+    assert (node.Type = ParseNodeType.RecordField)
+    
+    let identifierNode = childOfTokenType node TokenType.Identifier
+    let nameToken = identifierNode.Token.Value;
+    let name = nameToken.Text
+    
+    let typeExpressionNode = childOfType node ParseNodeType.Expression
+    let (optionTypeExpression, state) = buildExpression state typeExpressionNode
+
+    match optionTypeExpression with
+    | Some typeExpression ->
+        let field = { NameToken = nameToken; TypeExpression = typeExpression }
+        let (success, state) = addSymbol state name (RecordFieldSymbol field)
+
+        if success then (Some field, state)
+        else (None, state)
+    | None -> (None, state)
+
+and buildRecord (state: ASTBuilderState) (node: ParseNode): (Option<Record> * ASTBuilderState) =
+    assert (node.Type = ParseNodeType.Record)
+
+    let (scope, state) = pushScope state
+    
+    let fieldNodes = childrenOfType node ParseNodeType.RecordField
+    let (optionFields, state) = buildAllOrNone state fieldNodes buildRecordField
+
+    match optionFields with
+    | Some fields ->
+        (
+            Some { Fields = fields; ScopeId = state.CurrentScopeId },
+            popScope state
+        )
+    | None -> (None, popScope state)
+
+and buildUnionCase (state: ASTBuilderState) (node: ParseNode): (Option<UnionCase> * ASTBuilderState) =
+    assert (node.Type = ParseNodeType.UnionCase)
+    
+    let identifierNode = childOfTokenType node TokenType.Identifier
+    let nameToken = identifierNode.Token.Value;
+    let name = nameToken.Text
+
+    let case = { NameToken = nameToken; }
+    let (success, state) = addSymbol state name (UnionCaseSymbol case)
+
+    if success then (Some case, state)
+    else (None, state)
+
+and buildUnion (state: ASTBuilderState) (node: ParseNode): (Option<Union> * ASTBuilderState) =
+    assert (node.Type = ParseNodeType.Union)
+
+    let (scope, state) = pushScope state
+    
+    let caseNodes = childrenOfType node ParseNodeType.UnionCase
+    let (optionCases, state) = buildAllOrNone state caseNodes buildUnionCase
+
+    match optionCases with
+    | Some cases ->
+        (
+            Some { Cases = cases; ScopeId = state.CurrentScopeId },
+            popScope state
+        )
+    | None -> (None, popScope state)
+
+and buildFunctionCall (state: ASTBuilderState) (node: ParseNode): (Option<FunctionCall> * ASTBuilderState) =
+    assert (node.Type = ParseNodeType.FunctionCall)
+
+    // fnexpr
+    // arg exprs
+
 and buildExpression (state: ASTBuilderState) (node: ParseNode): (Option<Expression> * ASTBuilderState) =
     assert (node.Type = ParseNodeType.Expression)
     
     let child = nonTriviaChild node
 
     match child.Type with
+    | ParseNodeType.Record ->
+        let (optionRecord, state) = buildRecord state child
+        
+        match optionRecord with
+        | Some record -> (Some (RecordExpression record), state)
+        | None -> (None, state)
+    | ParseNodeType.Union ->
+        let (optionUnion, state) = buildUnion state child
+        
+        match optionUnion with
+        | Some union -> (Some (UnionExpression union), state)
+        | None -> (None, state)
     | ParseNodeType.Function ->
         let (optionFunction, state) = buildFunction state child
 
         match optionFunction with
         | Some fn -> (Some (FunctionExpression fn), state)
+        | None -> (None, state)
+    | ParseNodeType.FunctionCall ->
+        let (optionFunctionCall, state) = buildFunctionCall state child
+
+        match optionFunctionCall with
+        | Some functionCall -> (Some (FunctionCallExpression functionCall), state)
         | None -> (None, state)
     | ParseNodeType.Token when child.Token.Value.Type = TokenType.Identifier ->
         let (optionSymbol, state) = resolveSymbol state child
@@ -187,6 +303,9 @@ and buildExpression (state: ASTBuilderState) (node: ParseNode): (Option<Expressi
         match optionSymbol with
         | Some symbol -> (Some (SymbolReference symbol), state)
         | None -> (None, state)
+    | ParseNodeType.Token when child.Token.Value.Type = TokenType.NumberLiteral ->
+        let numberLiteral = { Token = child.Token.Value }
+        (Some (NumberLiteralExpression numberLiteral), state)
     | _ -> (None, { state with Errors = List.append state.Errors [{ Description = $"Unexpected parse node type: {child.Type}"; Position = nodeTextPosition child }] })
 
 let buildBinding (state: ASTBuilderState) (node: ParseNode): (Option<Binding> * ASTBuilderState) =
