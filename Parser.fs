@@ -456,20 +456,20 @@ and parseFunctionCall (state: ParseState) (prefixExpression: ParseNode): Option<
         | None -> (None, state)
     | None -> (None, state)
 
-and parseMemberAccess (state: ParseState) (prefixExpression: ParseNode): Option<ParseNode> * ParseState =
+and parseMemberAccess (state: ParseState) (prefixExpression: ParseNode) (rightBindingPower: int): Option<ParseNode> * ParseState =
     let (optionPeriod, state) = parseToken state TokenType.Period
 
     match optionPeriod with
     | Some period ->
         let (whitespace1, state) = parseWhitespace state
-        let (optionIdentifier, state) = parseToken state TokenType.Identifier
+        let (optionRightExpression, state) = parseExpressionInternal state rightBindingPower
 
-        match optionIdentifier with
-        | Some identifier ->
+        match optionRightExpression with
+        | Some rightExpression ->
             (
                 Some {
                     Type = ParseNodeType.MemberAccess
-                    Children = List.concat [ [prefixExpression]; [period]; whitespace1; [identifier]; ]
+                    Children = List.concat [ [prefixExpression]; [period]; whitespace1; [rightExpression]; ]
                     Token = None
                 },
                 state
@@ -548,45 +548,90 @@ and parsePrefixExpression (state: ParseState): Option<ParseNode> * ParseState =
             (None, { state with Errors = List.append state.Errors [error] })
     | None -> (None, state)
 
-and parseExpression (state: ParseState): Option<ParseNode> * ParseState =
+and parseExpressionInternal (state: ParseState) (minBindingPower: int): Option<ParseNode> * ParseState =
     let (optionPrefixExpression, state) = parsePrefixExpression state
 
     match optionPrefixExpression with
     | Some prefixExpression ->
-        let (optionExpression, state) = tryParsePostfixExpression state prefixExpression
+        let (optionExpression, state) = tryParsePostfixAndInfixExpressions state prefixExpression minBindingPower
 
         match optionExpression with
         | Some expression -> (Some expression, state)
         | None -> (None, state)
     | None -> (None, state)
 
-and tryParsePostfixExpression (state: ParseState) (prefixExpression: ParseNode): Option<ParseNode> * ParseState =
+and parseExpression (state: ParseState): Option<ParseNode> * ParseState =
+    parseExpressionInternal state 0
+
+and getPostfixLeftBindingPower (tokenType: TokenType): Option<int> =
+    match tokenType with
+    | TokenType.LeftParen -> Some 12
+    | _ -> None
+
+and getInfixBindingPowers (tokenType: TokenType): Option<int * int> =
+    match tokenType with
+    | TokenType.Period -> Some (14, 13)
+    | _ -> None
+
+and tryParsePostfixAndInfixExpressions (state: ParseState) (prefixExpression: ParseNode) (minBindingPower: int): Option<ParseNode> * ParseState =
     let optionNextToken = tryPeekTokenAfterWhitespace state
 
     match optionNextToken with
     | Some nextToken ->
-        match nextToken.Type with
-        | TokenType.LeftParen ->
-            let (whitespace, state) = parseWhitespace state
-            let prefixExpression = { prefixExpression with Children = prefixExpression.Children @ whitespace }
+        let optionPostfixLeftBindingPower = getPostfixLeftBindingPower nextToken.Type
 
-            let (optionFunctionCall, state) = parseFunctionCall state prefixExpression
+        match optionPostfixLeftBindingPower with
+        | Some postfixLeftBindingPower ->
+            if postfixLeftBindingPower < minBindingPower then
+                (Some prefixExpression, state)
+            else
+                match nextToken.Type with
+                | TokenType.LeftParen ->
+                    let (whitespace, state) = parseWhitespace state
+                    let prefixExpression = { prefixExpression with Children = prefixExpression.Children @ whitespace }
 
-            match optionFunctionCall with
-            | Some functionCall ->
-                tryParsePostfixExpression state functionCall
+                    let (optionFunctionCall, state) = parseFunctionCall state prefixExpression
+
+                    match optionFunctionCall with
+                    | Some functionCall ->
+                        tryParsePostfixAndInfixExpressions state functionCall minBindingPower
+                    | None ->
+                        (None, state)
+                | _ -> failwith "Assert failed"
+        | None ->
+            let optionInfixBindingPowers = getInfixBindingPowers nextToken.Type
+
+            match optionInfixBindingPowers with
+            | Some infixBindingPowers ->
+                let (leftBindingPower, rightBindingPower) = infixBindingPowers
+
+                if leftBindingPower < minBindingPower then
+                    (Some prefixExpression, state)
+                else
+                    match nextToken.Type with
+                    | TokenType.Period ->
+                        //ReadExpectedToken(TokenType.Period);
+
+                        //IExpression? rightExpr = ParseExpression(rightBindingPower);
+                        //if (rightExpr == null)
+                        //{
+                        //    return null;
+                        //}
+
+                        //prefixExpression = new MemberAccessOperator(prefixExpression, rightExpr);
+                        //break;
+                        
+                        let (whitespace, state) = parseWhitespace state
+                        let prefixExpression = { prefixExpression with Children = prefixExpression.Children @ whitespace }
+
+                        let (optionMemberAccess, state) = parseMemberAccess state prefixExpression rightBindingPower
+
+                        match optionMemberAccess with
+                        | Some memberAccess ->
+                            tryParsePostfixAndInfixExpressions state memberAccess minBindingPower
+                        | None -> (None, state)
+                    | _ -> failwith "Assert failed"
             | None -> (Some prefixExpression, state)
-        | TokenType.Period ->
-            let (whitespace, state) = parseWhitespace state
-            let prefixExpression = { prefixExpression with Children = prefixExpression.Children @ whitespace }
-
-            let (optionMemberAccess, state) = parseMemberAccess state prefixExpression
-
-            match optionMemberAccess with
-            | Some memberAccess ->
-                tryParsePostfixExpression state memberAccess
-            | None -> (Some prefixExpression, state)
-        | _ -> (Some prefixExpression, state)
     | None -> (Some prefixExpression, state)
 
 let parseBinding (state: ParseState): Option<ParseNode> * ParseState =
