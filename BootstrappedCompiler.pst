@@ -35,4 +35,4 @@ TokenizeState = record
     Errors: List(CompileError)
 
 isDone = fn (state: TokenizeState) -> state.TextLeft.Length == 0
-isNotDone = fn (state: TokenizeState) -> not . isDone
+isNotDone = fn (state: TokenizeState) -> not(isDone(state))

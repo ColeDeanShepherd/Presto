@@ -28,7 +28,9 @@ type ParseNodeType =
     | Union
     | UnionItem
     | Function
+    | FunctionCall
     | Parameter
+    | MemberAccess
     | Token
     | Whitespace
 
@@ -74,6 +76,10 @@ let tryPeekToken (state: ParseState): Option<Token> =
         Some state.Tokens[state.NextTokenIndex]
     else
         None
+
+let tryPeekTokenAfterWhitespace (state: ParseState): Option<Token> =
+       Seq.skip state.NextTokenIndex state.Tokens
+    |> Seq.tryFind (fun t -> t.Type <> TokenType.Whitespace)
 
 let tryPeekExpectedToken (state: ParseState) (tokenType: TokenType): Option<Token> =
     if (state.NextTokenIndex < state.Tokens.Length) && (state.Tokens[state.NextTokenIndex].Type = tokenType) then
@@ -184,7 +190,8 @@ let rec parseSeparatedByToken
 
             match maybeNode with
             | Some node ->
-                let accumulator = List.append accumulator [node]
+                let (whitespace, state) = parseWhitespace state
+                let accumulator = accumulator @ [node] @ whitespace
                 let optionNextToken = tryPeekExpectedToken state tokenType
 
                 match optionNextToken with
@@ -253,27 +260,34 @@ let rec parseOptionalWhitespaceSeparatedUntilDone
             | None -> (accumulator, state)
         | None -> (accumulator, state)
 
-let parseParameter (state: ParseState): Option<ParseNode> * ParseState =
+and parseParameter (state: ParseState): Option<ParseNode> * ParseState =
     let (optionIdentifier, state) = parseToken state TokenType.Identifier
 
     match optionIdentifier with
     | Some identifier ->
-        (
-            Some {
-                Type = ParseNodeType.Parameter
-                Children = List.concat [ [identifier] ]
-                Token = None
-            },
-            state
-        )
-        //let optionNextToken = tryPeekExpectedToken state TokenType.Colon
+        let (whitespace1, state) = parseWhitespace state
+        let (optionColon, state) = parseToken state TokenType.Colon
 
-        //match optionNextToken with
-        //| Some nextToken = 
-        //| None -> (None, state)
+        match optionColon with
+        | Some colon ->
+            let (whitespace2, state) = parseWhitespace state
+            let (optionTypeExpression, state) = parseExpression state
+
+            match optionTypeExpression with
+            | Some typeExpression ->
+                (
+                    Some {
+                        Type = ParseNodeType.Parameter
+                        Children = List.concat [ [identifier]; whitespace1; [colon]; whitespace2; [typeExpression] ]
+                        Token = None
+                    },
+                    state
+                )
+            | None -> (None, state)
+        | None -> (None, state)
     | None -> (None, state)
 
-let rec parseRecordField (state: ParseState): Option<ParseNode> * ParseState =
+and parseRecordField (state: ParseState): Option<ParseNode> * ParseState =
     let (optionIdentifier, state) = parseToken state TokenType.Identifier
 
     match optionIdentifier with
@@ -419,7 +433,51 @@ and parseFunction (state: ParseState): Option<ParseNode> * ParseState =
         | None -> (None, state)
     | None -> (None, state)
 
-and parseExpression (state: ParseState): Option<ParseNode> * ParseState =
+and parseFunctionCall (state: ParseState) (prefixExpression: ParseNode): Option<ParseNode> * ParseState =
+    let (optionLeftParen, state) = parseToken state TokenType.LeftParen
+
+    match optionLeftParen with
+    | Some leftParen ->
+        let (whitespace1, state) = parseWhitespace state
+        let (arguments, state) = parseSeparatedByToken state parseExpression TokenType.Comma []
+        let (whitespace2, state) = parseWhitespace state
+        let (optionRightParen, state) = parseToken state TokenType.RightParen
+
+        match optionRightParen with
+        | Some rightParen ->
+            (
+                Some {
+                    Type = ParseNodeType.FunctionCall
+                    Children = List.concat [ [prefixExpression]; [leftParen]; whitespace1; arguments; whitespace2; [rightParen] ]
+                    Token = None
+                },
+                state
+            )
+        | None -> (None, state)
+    | None -> (None, state)
+
+and parseMemberAccess (state: ParseState) (prefixExpression: ParseNode): Option<ParseNode> * ParseState =
+    let (optionPeriod, state) = parseToken state TokenType.Period
+
+    match optionPeriod with
+    | Some period ->
+        let (whitespace1, state) = parseWhitespace state
+        let (optionIdentifier, state) = parseToken state TokenType.Identifier
+
+        match optionIdentifier with
+        | Some identifier ->
+            (
+                Some {
+                    Type = ParseNodeType.MemberAccess
+                    Children = List.concat [ [prefixExpression]; [period]; whitespace1; [identifier]; ]
+                    Token = None
+                },
+                state
+            )
+        | None -> (None, state)
+    | None -> (None, state)
+
+and parsePrefixExpression (state: ParseState): Option<ParseNode> * ParseState = 
     let (optionNextToken, state) = peekToken state
     
     match optionNextToken with
@@ -489,6 +547,47 @@ and parseExpression (state: ParseState): Option<ParseNode> * ParseState =
 
             (None, { state with Errors = List.append state.Errors [error] })
     | None -> (None, state)
+
+and parseExpression (state: ParseState): Option<ParseNode> * ParseState =
+    let (optionPrefixExpression, state) = parsePrefixExpression state
+
+    match optionPrefixExpression with
+    | Some prefixExpression ->
+        let (optionExpression, state) = tryParsePostfixExpression state prefixExpression
+
+        match optionExpression with
+        | Some expression -> (Some expression, state)
+        | None -> (None, state)
+    | None -> (None, state)
+
+and tryParsePostfixExpression (state: ParseState) (prefixExpression: ParseNode): Option<ParseNode> * ParseState =
+    let optionNextToken = tryPeekTokenAfterWhitespace state
+
+    match optionNextToken with
+    | Some nextToken ->
+        match nextToken.Type with
+        | TokenType.LeftParen ->
+            let (whitespace, state) = parseWhitespace state
+            let prefixExpression = { prefixExpression with Children = prefixExpression.Children @ whitespace }
+
+            let (optionFunctionCall, state) = parseFunctionCall state prefixExpression
+
+            match optionFunctionCall with
+            | Some functionCall ->
+                tryParsePostfixExpression state functionCall
+            | None -> (Some prefixExpression, state)
+        | TokenType.Period ->
+            let (whitespace, state) = parseWhitespace state
+            let prefixExpression = { prefixExpression with Children = prefixExpression.Children @ whitespace }
+
+            let (optionMemberAccess, state) = parseMemberAccess state prefixExpression
+
+            match optionMemberAccess with
+            | Some memberAccess ->
+                tryParsePostfixExpression state memberAccess
+            | None -> (Some prefixExpression, state)
+        | _ -> (Some prefixExpression, state)
+    | None -> (Some prefixExpression, state)
 
 let parseBinding (state: ParseState): Option<ParseNode> * ParseState =
     let (optionIdentifier, state) = parseToken state TokenType.Identifier
