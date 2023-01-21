@@ -14,6 +14,8 @@ type TokenType =
     | GreaterThan
     | LeftParen
     | RightParen
+    | LeftCurlyBrace
+    | RightCurlyBrace
     | Comma
     | Colon
     | Period
@@ -22,6 +24,7 @@ type Token = {
     Type: TokenType
     Text: string
     Position: TextPosition
+    WasInserted: bool
 }
 
 type TokenizeOutput = {
@@ -32,6 +35,7 @@ type TokenizeOutput = {
 type TokenizeState = {
     TextLeft: string
     Position: TextPosition
+    CurrentIndentation: int
     Tokens: List<Token>
     Errors: List<CompileError>
 }
@@ -100,7 +104,7 @@ let readSingleCharToken (state: TokenizeState) (tokenType: TokenType): TokenizeS
     let startPosition = state.Position
     let (nextChar, state) = readChar state
     
-    { state with Tokens = state.Tokens @ [{ Type = tokenType; Text = nextChar.ToString(); Position = startPosition }] }
+    { state with Tokens = state.Tokens @ [{ Type = tokenType; Text = nextChar.ToString(); Position = startPosition; WasInserted = false }] }
 
 let readLineBreak (state: TokenizeState): Option<string> * TokenizeState =
     let optionCarriageReturn = tryPeekExpectedChar state '\r'
@@ -126,9 +130,13 @@ let readLineBreak (state: TokenizeState): Option<string> * TokenizeState =
     else
         (None, state)
 
-let readWhitespaceToken (state: TokenizeState): Option<Token> * TokenizeState =
+let isValidWhitespace (c: char): bool = (Char.IsWhiteSpace c) && (c <> '\t')
+
+// TODO: make sure this works with blank line with & without line break at end of file
+
+let readWhitespaceTokens (state: TokenizeState): List<Token> * TokenizeState =
     let startPosition = state.Position
-    let (tokenText, state) = takeCharsWhile state (fun c -> (c <> '\r') && (c <> '\n') && (Char.IsWhiteSpace c))
+    let (tokenText, state) = takeCharsWhile state (fun c -> (c <> '\r') && (c <> '\n') && (isValidWhitespace c))
     let (optionLineBreak, state) = readLineBreak state
 
     let tokenText =
@@ -136,19 +144,49 @@ let readWhitespaceToken (state: TokenizeState): Option<Token> * TokenizeState =
         | Some lineBreak -> tokenText + lineBreak
         | None -> tokenText
 
-    if tokenText.Length > 0 then
-        (Some { Type = TokenType.Whitespace; Text = tokenText; Position = startPosition }, state)
-    else
-        (None, state)
-    
-let rec readWhitespace (state: TokenizeState): TokenizeState =
-    let (optionToken, state) = readWhitespaceToken state
+    let optionWhitespaceToken =
+        if tokenText.Length > 0 then
+            Some { Type = TokenType.Whitespace; Text = tokenText; Position = startPosition; WasInserted = false }
+        else
+            None
 
-    match optionToken with
-    | Some token ->
-        let state = { state with Tokens = state.Tokens @ [token] }
+    let tokens: List<Token> =
+        match optionWhitespaceToken with
+        | Some whitespaceToken -> [whitespaceToken]
+        | None -> []
+        
+    let isStartOfLine = startPosition.ColumnIndex = 0
+    let readEndOfLine = optionLineBreak.IsSome
+    let isIndentation = isStartOfLine && not readEndOfLine
+
+    let (tokens, state) =
+        if isIndentation then
+            let newIndentation =
+                match optionWhitespaceToken with
+                | Some whitespaceToken -> whitespaceToken.Text.Length
+                | None -> 0
+            let indentationIncreased = newIndentation > state.CurrentIndentation
+            let indentationDecreased = newIndentation < state.CurrentIndentation
+
+            if indentationIncreased then
+                (tokens @ [{ Type = TokenType.LeftCurlyBrace; Text = "{"; Position = state.Position; WasInserted = true }], { state with CurrentIndentation = newIndentation })
+            else if indentationDecreased then
+                (tokens @ [{ Type = TokenType.RightCurlyBrace; Text = "}"; Position = state.Position; WasInserted = true }], { state with CurrentIndentation = newIndentation })
+            else
+                (tokens, state)
+        else
+            (tokens, state)
+
+    (tokens, state)
+
+let rec readWhitespace (state: TokenizeState): TokenizeState =
+    let (tokens, state) = readWhitespaceTokens state
+
+    if not tokens.IsEmpty then
+        let state = { state with Tokens = state.Tokens @ tokens }
         readWhitespace state
-    | None -> state
+    else
+        state
 
 let iterateTokenize (state: TokenizeState): TokenizeState =
     if state.TextLeft.Length = 0 then state
@@ -156,7 +194,7 @@ let iterateTokenize (state: TokenizeState): TokenizeState =
         let nextChar = state.TextLeft[0]
         let startPosition = state.Position
         
-        if Char.IsWhiteSpace nextChar then
+        if isValidWhitespace nextChar then
             readWhitespace state
         else if Char.IsLetter nextChar then
             let (tokenText, nextState) = takeCharsWhile state Char.IsLetter
@@ -166,12 +204,12 @@ let iterateTokenize (state: TokenizeState): TokenizeState =
                 | "record" -> TokenType.RecordKeyword
                 | _ -> TokenType.Identifier
 
-            { nextState with Tokens = nextState.Tokens @ [{ Type = tokenType; Text = tokenText; Position = startPosition }] }
+            { nextState with Tokens = nextState.Tokens @ [{ Type = tokenType; Text = tokenText; Position = startPosition; WasInserted = false }] }
         else if Char.IsDigit nextChar then
             let (tokenText, nextState) = takeCharsWhile state Char.IsDigit
             let tokenType = TokenType.NumberLiteral
 
-            { nextState with Tokens = nextState.Tokens @ [{ Type = tokenType; Text = tokenText; Position = startPosition }] }
+            { nextState with Tokens = nextState.Tokens @ [{ Type = tokenType; Text = tokenText; Position = startPosition; WasInserted = false }] }
         else if nextChar = '=' then
             readSingleCharToken state TokenType.Equals
         else if nextChar = '-' then
@@ -182,6 +220,10 @@ let iterateTokenize (state: TokenizeState): TokenizeState =
             readSingleCharToken state TokenType.LeftParen
         else if nextChar = ')' then
             readSingleCharToken state TokenType.RightParen
+        else if nextChar = '{' then
+            readSingleCharToken state TokenType.LeftCurlyBrace
+        else if nextChar = '}' then
+            readSingleCharToken state TokenType.RightCurlyBrace
         else if nextChar = ',' then
             readSingleCharToken state TokenType.Comma
         else if nextChar = ':' then
@@ -189,12 +231,13 @@ let iterateTokenize (state: TokenizeState): TokenizeState =
         else if nextChar = '.' then
             readSingleCharToken state TokenType.Period
         else
-            { state with TextLeft = state.TextLeft[1..]; Errors = state.Errors @ [{ Description = $"Encountered an unexpected character: {nextChar}"; Position = state.Position }] }
+            { state with TextLeft = state.TextLeft[1..]; Errors = state.Errors @ [{ Description = $"Encountered an unexpected character: '{nextChar}'"; Position = state.Position }] }
 
 let tokenize (sourceCode: string): TokenizeOutput =
     let seedState: TokenizeState = {
         TextLeft = sourceCode
         Position = { ColumnIndex = 0; LineIndex = 0 }
+        CurrentIndentation = 0
         Tokens = []
         Errors = []
     }
