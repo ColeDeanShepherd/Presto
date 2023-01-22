@@ -263,9 +263,25 @@ and buildUnion (state: ASTBuilderState) (node: ParseNode): (Option<Union> * ASTB
 
 and buildFunctionCall (state: ASTBuilderState) (node: ParseNode): (Option<FunctionCall> * ASTBuilderState) =
     assert (node.Type = ParseNodeType.FunctionCall)
+    
+    let expressionNodes = childrenOfType node ParseNodeType.Expression
+    let functionExpressionNode = expressionNodes.Head
 
-    // fnexpr
-    // arg exprs
+    let (optionFunctionExpression, state) = buildExpression state functionExpressionNode
+
+    match optionFunctionExpression with
+    | Some functionExpression ->
+        let argumentExpressionNodes = expressionNodes.Tail
+        let (optionArgumentExpressions, state) = buildAllOrNone state argumentExpressionNodes buildExpression
+
+        match optionArgumentExpressions with
+        | Some argumentExpressions ->
+            (
+                Some { FunctionExpression = functionExpression; Arguments = argumentExpressions },
+                state
+            )
+        | None -> (None, state)
+    | None -> (None, state)
 
 and buildExpression (state: ASTBuilderState) (node: ParseNode): (Option<Expression> * ASTBuilderState) =
     assert (node.Type = ParseNodeType.Expression)

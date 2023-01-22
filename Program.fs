@@ -15,6 +15,8 @@ if not tokenizeOutput.Errors.IsEmpty then
     for error in tokenizeOutput.Errors do
          printfn $"{error}"
 else
+    printfn "Done lexing!"
+
     // parse
     let parseOutput = parse tokenizeOutput.Tokens
 
@@ -22,6 +24,8 @@ else
         for error in parseOutput.Errors do
              printfn $"{error}"
     else
+        printfn "Done parsing!"
+
         // build AST
         let buildAstOutput = buildAst parseOutput.Program
 
@@ -29,6 +33,8 @@ else
             for error in buildAstOutput.Errors do
                  printfn $"{error}"
         else
+            printfn "Done building the AST!"
+
             // generate code
             let codeGeneratorOutput = generateCode buildAstOutput.Program
 

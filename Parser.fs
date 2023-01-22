@@ -485,75 +485,15 @@ and parsePrefixExpression (state: ParseState): Option<ParseNode> * ParseState =
     | Some nextToken ->
         match nextToken.Type with
         | TokenType.FnKeyword ->
-            let (optionValue, state) = parseFunction state
-
-            match optionValue with
-            | Some value ->
-                (
-                    Some {
-                        Type = ParseNodeType.Expression
-                        Children = [value]
-                        Token = None
-                    },
-                    state
-                )
-            | None -> (None, state)
+            parseFunction state
         | TokenType.RecordKeyword ->
-            let (optionValue, state) = parseRecord state
-
-            match optionValue with
-            | Some value ->
-                (
-                    Some {
-                        Type = ParseNodeType.Expression
-                        Children = [value]
-                        Token = None
-                    },
-                    state
-                )
-            | None -> (None, state)
+            parseRecord state
         | TokenType.UnionKeyword ->
-            let (optionValue, state) = parseUnion state
-
-            match optionValue with
-            | Some value ->
-                (
-                    Some {
-                        Type = ParseNodeType.Expression
-                        Children = [value]
-                        Token = None
-                    },
-                    state
-                )
-            | None -> (None, state)
+            parseUnion state
         | TokenType.Identifier ->
-            let (optionValue, state) = parseToken state TokenType.Identifier
-
-            match optionValue with
-            | Some value ->
-                (
-                    Some {
-                        Type = ParseNodeType.Expression
-                        Children = [value]
-                        Token = None
-                    },
-                    state
-                )
-            | None -> (None, state)
+            parseToken state TokenType.Identifier
         | TokenType.NumberLiteral ->
-            let (optionValue, state) = parseToken state TokenType.NumberLiteral
-
-            match optionValue with
-            | Some value ->
-                (
-                    Some {
-                        Type = ParseNodeType.Expression
-                        Children = [value]
-                        Token = None
-                    },
-                    state
-                )
-            | None -> (None, state)
+            parseToken state TokenType.NumberLiteral
         | _ ->
             let error = {
                 Description = $"Encountered unexpected token: {nextToken.Text}"
@@ -571,7 +511,15 @@ and parseExpressionInternal (state: ParseState) (minBindingPower: int): Option<P
         let (optionExpression, state) = tryParsePostfixAndInfixExpressions state prefixExpression minBindingPower
 
         match optionExpression with
-        | Some expression -> (Some expression, state)
+        | Some expression ->
+            (
+                Some {
+                    Type = ParseNodeType.Expression
+                    Children = [expression]
+                    Token = None
+                },
+                state
+            )
         | None -> (None, state)
     | None -> (None, state)
 
