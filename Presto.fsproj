@@ -6,6 +6,7 @@
   </PropertyGroup>
 
   <ItemGroup>
+    <None Include="README.md" />
     <None Include="BootstrappedCompiler.pst" />
     <Compile Include="CompilerCore.fs" />
     <Compile Include="Lexer.fs" />

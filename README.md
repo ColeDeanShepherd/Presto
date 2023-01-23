@@ -178,3 +178,46 @@ fib = fn (n: Nat): Nat =>
 ```
 at = fn (t: Type [implicit], n: Nat [implicit], arr: Array(t, n), i: BoundedNat(n)): t => arr[i]
 ```
+
+### Circular References
+
+```
+# Assume record fields are stored as inline data. Then these circular references can't be represented.
+A = record
+    b: B
+
+B = record
+    a: A
+
+# If we use references, then we can represent it. However, I'm not sure how we could initialize instances of the records.
+A = record
+    b: &B
+
+B = record
+    a: &A
+
+# We could use nullable references. But this may not be ideal.
+A = record
+    b: Option(&B)
+
+B = record
+    a: Option(&A)
+
+# If we're using the option type, then we don't even have to use references.
+A = record
+    b: Option(B)
+
+B = record
+    a: Option(A)
+
+# One solution is to implicitly use references, and allow references to the parent value when constructing.
+A = record
+    b: B
+
+B = record
+    a: A
+
+a = A { b = B { a = parent } }
+
+# Another complication is compiling the types.
+```
