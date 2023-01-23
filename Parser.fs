@@ -480,20 +480,35 @@ and parseMemberAccess (state: ParseState) (prefixExpression: ParseNode) (rightBi
 
 and parsePrefixExpression (state: ParseState): Option<ParseNode> * ParseState = 
     let (optionNextToken, state) = peekToken state
+
+    let wrapInExpressionNode (parseFnOutput: Option<ParseNode> * ParseState): Option<ParseNode> * ParseState =
+        let (optionNode, state) = parseFnOutput
+
+        match optionNode with
+        | Some node ->
+            (
+                Some {
+                    Type = ParseNodeType.Expression
+                    Children = [node]
+                    Token = None
+                },
+                state
+            )
+        | None -> parseFnOutput
     
     match optionNextToken with
     | Some nextToken ->
         match nextToken.Type with
         | TokenType.FnKeyword ->
-            parseFunction state
+            wrapInExpressionNode (parseFunction state)
         | TokenType.RecordKeyword ->
-            parseRecord state
+            wrapInExpressionNode (parseRecord state)
         | TokenType.UnionKeyword ->
-            parseUnion state
+            wrapInExpressionNode (parseUnion state)
         | TokenType.Identifier ->
-            parseToken state TokenType.Identifier
+            wrapInExpressionNode (parseToken state TokenType.Identifier)
         | TokenType.NumberLiteral ->
-            parseToken state TokenType.NumberLiteral
+            wrapInExpressionNode (parseToken state TokenType.NumberLiteral)
         | _ ->
             let error = {
                 Description = $"Encountered unexpected token: {nextToken.Text}"
