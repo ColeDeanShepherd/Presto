@@ -2,6 +2,7 @@
 open Lexer
 open Parser
 open ASTBuilder
+open TypeChecker
 open CodeGenerator
 
 let fileName = "../../../BootstrappedCompiler.pst"
@@ -36,11 +37,21 @@ else
             printfn "Done building the AST!"
 
             // generate code
-            let codeGeneratorOutput = generateCode buildAstOutput.Program
+            let (program, typeCheckingErrors) = checkTypes buildAstOutput.Program
 
-            if not codeGeneratorOutput.Errors.IsEmpty then
-                for error in codeGeneratorOutput.Errors do
+            if not typeCheckingErrors.IsEmpty then
+                for error in typeCheckingErrors do
                      printfn $"{error}"
             else
-                printfn "Compile succeeded!"
-                printfn $"{codeGeneratorOutput.GeneratedCode}"
+                printfn "Done type checking!"
+
+                // generate code
+                let codeGeneratorOutput = generateCode program
+
+                if not codeGeneratorOutput.Errors.IsEmpty then
+                    for error in codeGeneratorOutput.Errors do
+                         printfn $"{error}"
+                else
+                    printfn "Compile succeeded!"
+                    printfn ""
+                    printfn $"{codeGeneratorOutput.GeneratedCode}"

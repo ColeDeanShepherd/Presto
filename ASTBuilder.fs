@@ -4,22 +4,33 @@ open Parser
 open CompilerCore
 open Lexer
 
-type Parameter = {
-    Name: string
-    NameToken: Token
+type PrestoType =
+    | Nat
+    | Text
+    | RecordType of List<PrestoType>
+    | UnionType
+    | FunctionType of List<PrestoType> * PrestoType
+and Expression = {
+    Id: System.Guid
+    Value: ExpressionValue
 }
-
-type Expression =
+and ExpressionValue =
     | RecordExpression of Record
     | UnionExpression of Union
     | FunctionExpression of Function
     | FunctionCallExpression of FunctionCall
+    | MemberAccessExpression of MemberAccess
     | SymbolReference of Symbol
     | NumberLiteralExpression of NumberLiteral
 and Binding = {
-    Name: string
+    Name: string // TODO: remove
     NameToken: Token
     Value: Expression
+}
+and Parameter = {
+    Name: string // TODO: remove
+    NameToken: Token
+    TypeExpression: Expression
 }
 and Function = {
     Parameters: List<Parameter>
@@ -29,6 +40,10 @@ and Function = {
 and FunctionCall = {
     FunctionExpression: Expression
     Arguments: List<Expression>
+}
+and MemberAccess = {
+    LeftExpression: Expression;
+    RightExpression: Expression;
 }
 and RecordField = {
     NameToken: Token
@@ -53,6 +68,8 @@ and Symbol =
     | ParameterSymbol of Parameter
     | RecordFieldSymbol of RecordField
     | UnionCaseSymbol of UnionCase
+    | BuiltInSymbol of string
+    | UnresolvedSymbol of Token
 and Scope = {
     SymbolsByName: Map<string, Symbol>
     ParentId: Option<System.Guid>
@@ -63,6 +80,7 @@ type Program = {
     Bindings: List<Binding>
     ScopesById: Map<System.Guid, Scope>
     ScopeId: System.Guid
+    TypesByExpressionId: Map<System.Guid, PrestoType>
 }
 
 type ASTBuilderState = {
@@ -76,10 +94,17 @@ type ASTBuilderOutput = {
     Errors: List<CompileError>
 }
 
+let newExpression (value: ExpressionValue) =
+    { Id = System.Guid.NewGuid(); Value = value }
+
 let getSymbolTextPosition (symbol: Symbol): TextPosition =
     match symbol with
     | BindingSymbol binding -> binding.NameToken.Position
     | ParameterSymbol parameter -> parameter.NameToken.Position
+    | RecordFieldSymbol recordField -> recordField.NameToken.Position
+    | UnionCaseSymbol unionCase -> unionCase.NameToken.Position
+    | BuiltInSymbol builtInSymbol -> { LineIndex = 0; ColumnIndex = 0; }
+    | UnresolvedSymbol token -> token.Position
     
 let pushScope (state: ASTBuilderState): (Scope * ASTBuilderState) =
     let parentScopeId = state.CurrentScopeId
@@ -126,60 +151,36 @@ let buildAllOrNone
     (buildFn: (ASTBuilderState -> ParseNode -> (Option<'a> * ASTBuilderState)))
     : (Option<List<'a>> * ASTBuilderState) =
         let (optionAstNodes, state) = buildMany state nodes buildFn []
-        let succeededBuildingAll = List.exists<Option<'a>> (fun x -> x.IsSome) optionAstNodes
+        let succeededBuildingAll = not (List.exists<Option<'a>> (fun x -> x.IsNone) optionAstNodes)
 
         if succeededBuildingAll then
             (Some (List.map<Option<'a>, 'a> (fun x -> x.Value) optionAstNodes), state)
         else
             (None, state)
 
-//let rec buildBindingsByName
-//    (state: ASTBuilderState)
-//    (bindings: List<Binding>)
-//    (accumulator: Map<string, Binding>)
-//    : (Map<string, Binding> * ASTBuilderState) =
-//        if bindings.IsEmpty then
-//            (accumulator, state)
-//        else
-//            let binding = bindings.Head
-
-//            if (accumulator.ContainsKey binding.Name) then
-//                let state = { state with Errors = List.append state.Errors [{ Description = $"Name {binding.Name} is already in use."; Position = binding.NameToken.Position }] }
-
-//                buildBindingsByName state bindings.Tail accumulator
-//            else
-//                let accumulator = Map.add binding.Name binding accumulator
-
-//                buildBindingsByName state bindings.Tail accumulator
-
-let resolveSymbol (state: ASTBuilderState) (node: ParseNode): (Option<Symbol> * ASTBuilderState) =
-    assert ((node.Type = ParseNodeType.Token) && (node.Token.Value.Type = TokenType.Identifier))
-
-    let name = node.Token.Value.Text
-
-    let currentScope = state.ScopesById[state.CurrentScopeId]
-
-    if currentScope.SymbolsByName.ContainsKey name then
-        (Some currentScope.SymbolsByName.[name], state)
-    else
-        (None, { state with Errors = List.append state.Errors [{ Description = $"Unknown name: {name}"; Position = node.Token.Value.Position }] })
-
-let buildParameter (state: ASTBuilderState) (node: ParseNode): (Option<Parameter> * ASTBuilderState) =
+let rec buildParameter (state: ASTBuilderState) (node: ParseNode): (Option<Parameter> * ASTBuilderState) =
     assert (node.Type = ParseNodeType.Parameter)
 
     let identifier = childOfTokenType node TokenType.Identifier
     let nameToken = identifier.Token.Value
     let name = nameToken.Text
-    let parameter = { Name = name; NameToken = nameToken }
 
-    let (success, state) = addSymbol state name (ParameterSymbol parameter)
+    let typeExpressionNode = childOfType node ParseNodeType.Expression
+    let (optionTypeExpression, state) = buildExpression state typeExpressionNode
 
-    if success then
-        (Some parameter, state)
-    else
-        (None, state)
+    match optionTypeExpression with
+    | Some typeExpression ->
+        let parameter = { Name = name; NameToken = nameToken; TypeExpression = typeExpression }
 
-let rec buildFunction (state: ASTBuilderState) (node: ParseNode): (Option<Function> * ASTBuilderState) =
+        let (success, state) = addSymbol state name (ParameterSymbol parameter)
+
+        if success then
+            (Some parameter, state)
+        else
+            (None, state)
+    | None -> (None, state)
+
+and buildFunction (state: ASTBuilderState) (node: ParseNode): (Option<Function> * ASTBuilderState) =
     assert (node.Type = ParseNodeType.Function)
 
     let (scope, state) = pushScope state
@@ -283,6 +284,25 @@ and buildFunctionCall (state: ASTBuilderState) (node: ParseNode): (Option<Functi
         | None -> (None, state)
     | None -> (None, state)
 
+and buildMemberAccess (state: ASTBuilderState) (node: ParseNode): (Option<MemberAccess> * ASTBuilderState) =
+    assert (node.Type = ParseNodeType.MemberAccess)
+
+    let expressionNodes = childrenOfType node ParseNodeType.Expression
+    let leftExpressionNode = expressionNodes[0]
+    let (optionLeftExpression, state) = buildExpression state leftExpressionNode
+
+    match optionLeftExpression with
+    | Some leftExpression ->
+        
+        let rightExpressionNode = expressionNodes[1]
+        let (optionRightExpression, state) = buildExpression state rightExpressionNode
+
+        match optionRightExpression with
+        | Some rightExpression ->
+            (Some { LeftExpression = leftExpression; RightExpression = rightExpression; }, state)
+        | None -> (None, state)
+    | None -> (None, state)
+
 and buildExpression (state: ASTBuilderState) (node: ParseNode): (Option<Expression> * ASTBuilderState) =
     assert (node.Type = ParseNodeType.Expression)
     
@@ -293,35 +313,39 @@ and buildExpression (state: ASTBuilderState) (node: ParseNode): (Option<Expressi
         let (optionRecord, state) = buildRecord state child
         
         match optionRecord with
-        | Some record -> (Some (RecordExpression record), state)
+        | Some record -> (Some (newExpression (RecordExpression record)), state)
         | None -> (None, state)
     | ParseNodeType.Union ->
         let (optionUnion, state) = buildUnion state child
         
         match optionUnion with
-        | Some union -> (Some (UnionExpression union), state)
+        | Some union -> (Some (newExpression (UnionExpression union)), state)
         | None -> (None, state)
     | ParseNodeType.Function ->
         let (optionFunction, state) = buildFunction state child
 
         match optionFunction with
-        | Some fn -> (Some (FunctionExpression fn), state)
+        | Some fn -> (Some (newExpression (FunctionExpression fn)), state)
         | None -> (None, state)
     | ParseNodeType.FunctionCall ->
         let (optionFunctionCall, state) = buildFunctionCall state child
 
         match optionFunctionCall with
-        | Some functionCall -> (Some (FunctionCallExpression functionCall), state)
+        | Some functionCall -> (Some (newExpression (FunctionCallExpression functionCall)), state)
         | None -> (None, state)
+    | ParseNodeType.MemberAccess ->
+        let (optionMemberAccess, state) = buildMemberAccess state child
+
+        match optionMemberAccess with
+        | Some memberAccess -> (Some (newExpression (MemberAccessExpression memberAccess)), state)
+        | None -> (None, state)
+    | ParseNodeType.Expression ->
+        buildExpression state child
     | ParseNodeType.Token when child.Token.Value.Type = TokenType.Identifier ->
-        let (optionSymbol, state) = resolveSymbol state child
-        
-        match optionSymbol with
-        | Some symbol -> (Some (SymbolReference symbol), state)
-        | None -> (None, state)
+        (Some (newExpression (SymbolReference (UnresolvedSymbol child.Token.Value))), state)
     | ParseNodeType.Token when child.Token.Value.Type = TokenType.NumberLiteral ->
         let numberLiteral = { Token = child.Token.Value }
-        (Some (NumberLiteralExpression numberLiteral), state)
+        (Some (newExpression (NumberLiteralExpression numberLiteral)), state)
     | _ -> (None, { state with Errors = List.append state.Errors [{ Description = $"Unexpected parse node type: {child.Type}"; Position = nodeTextPosition child }] })
 
 let buildBinding (state: ASTBuilderState) (node: ParseNode): (Option<Binding> * ASTBuilderState) =
@@ -343,11 +367,26 @@ let buildBinding (state: ASTBuilderState) (node: ParseNode): (Option<Binding> * 
         else (None, state)
     | None -> (None, state)
 
+let getInitialScope =
+    let scope = {
+        SymbolsByName =
+            Map.empty
+                .Add("Nat", BuiltInSymbol "Nat")
+                .Add("Text", BuiltInSymbol "Text")
+                .Add("List", BuiltInSymbol "List")
+                .Add("eq", BuiltInSymbol "eq")
+                .Add("not", BuiltInSymbol "not");
+        ParentId = None;
+        ChildIds = []
+    }
+
+    scope
+
 let buildProgram (node: ParseNode): (Option<Program> * ASTBuilderState) =
     assert (node.Type = ParseNodeType.Program)
     
     let scopeId = System.Guid.NewGuid()
-    let scope = { SymbolsByName = Map.empty; ParentId = None; ChildIds = [] }
+    let scope = getInitialScope
     let state = { Errors = []; ScopesById = Map.empty.Add (scopeId, scope); CurrentScopeId = scopeId }
 
     let bindingParseNodes = childrenOfType node ParseNodeType.Binding
@@ -356,7 +395,15 @@ let buildProgram (node: ParseNode): (Option<Program> * ASTBuilderState) =
         List.filter<Option<Binding>> (fun x -> x.IsSome) optionBindings
         |> List.map (fun x -> x.Value)
 
-    (Some { Bindings = bindings; ScopeId = state.CurrentScopeId; ScopesById = state.ScopesById }, state)
+    (
+        Some {
+            Bindings = bindings
+            ScopeId = state.CurrentScopeId
+            ScopesById = state.ScopesById
+            TypesByExpressionId = Map.empty
+        },
+        state
+    )
 
 let buildAst (programNode: ParseNode): ASTBuilderOutput =
     let (optionProgram, state) = buildProgram programNode
