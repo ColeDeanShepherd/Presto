@@ -7,9 +7,18 @@ open Lexer
 type PrestoType =
     | Nat
     | Text
+    | Boolean
+    | Type
     | RecordType of List<PrestoType>
     | UnionType
     | FunctionType of List<PrestoType> * PrestoType
+and Symbol =
+    | BindingSymbol of Binding
+    | ParameterSymbol of Parameter
+    | RecordFieldSymbol of RecordField
+    | UnionCaseSymbol of UnionCase
+    | BuiltInSymbol of string * PrestoType
+    | UnresolvedSymbol of Token
 and Expression = {
     Id: System.Guid
     Value: ExpressionValue
@@ -63,13 +72,6 @@ and Union = {
 and NumberLiteral = {
     Token: Token
 }
-and Symbol =
-    | BindingSymbol of Binding
-    | ParameterSymbol of Parameter
-    | RecordFieldSymbol of RecordField
-    | UnionCaseSymbol of UnionCase
-    | BuiltInSymbol of string
-    | UnresolvedSymbol of Token
 and Scope = {
     SymbolsByName: Map<string, Symbol>
     ParentId: Option<System.Guid>
@@ -103,7 +105,7 @@ let getSymbolTextPosition (symbol: Symbol): TextPosition =
     | ParameterSymbol parameter -> parameter.NameToken.Position
     | RecordFieldSymbol recordField -> recordField.NameToken.Position
     | UnionCaseSymbol unionCase -> unionCase.NameToken.Position
-    | BuiltInSymbol builtInSymbol -> { LineIndex = 0; ColumnIndex = 0; }
+    | BuiltInSymbol (builtInSymbol, prestoType) -> { LineIndex = 0; ColumnIndex = 0; }
     | UnresolvedSymbol token -> token.Position
     
 let pushScope (state: ASTBuilderState): (Scope * ASTBuilderState) =
@@ -371,11 +373,11 @@ let getInitialScope =
     let scope = {
         SymbolsByName =
             Map.empty
-                .Add("Nat", BuiltInSymbol "Nat")
-                .Add("Text", BuiltInSymbol "Text")
-                .Add("List", BuiltInSymbol "List")
-                .Add("eq", BuiltInSymbol "eq")
-                .Add("not", BuiltInSymbol "not");
+                .Add("Nat", BuiltInSymbol ("Nat", PrestoType.Nat))
+                .Add("Text", BuiltInSymbol ("Text", PrestoType.Text))
+                .Add("List", BuiltInSymbol ("List", FunctionType ([PrestoType.Type], PrestoType.Type)))
+                .Add("eq", BuiltInSymbol ("eq", FunctionType ([PrestoType.Nat; PrestoType.Nat], PrestoType.Boolean)))
+                .Add("not", BuiltInSymbol ("not", FunctionType ([PrestoType.Boolean], PrestoType.Boolean)));
         ParentId = None;
         ChildIds = []
     }

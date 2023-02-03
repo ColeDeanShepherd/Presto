@@ -19,7 +19,6 @@ let rec resolveSymbolInternal (state: TypeCheckerState) (scope: Scope) (nameToke
 
         resolveSymbolInternal state parentScope nameToken
     else
-        // TODO: init position
         let errors = List.append state.Errors [{ Description = $"Unknown name: {nameToken.Text}"; Position = nameToken.Position }]
         (None, { state with Errors = errors })
 
@@ -56,22 +55,34 @@ let rec checkMany
             checkMany state checkFn nodes.Tail accumulator
 
 and checkUnion (state: TypeCheckerState) (union: Union): TypeCheckerState * Option<PrestoType> =
-    (state, Some UnionType)
+    let state = pushScope state union.ScopeId
+    (popScope state, Some UnionType)
 
 and checkRecordField (state: TypeCheckerState) (recordField: RecordField): TypeCheckerState * Option<PrestoType> =
     checkExpression state recordField.TypeExpression
 
 and checkRecord (state: TypeCheckerState) (record: Record): TypeCheckerState * Option<PrestoType> =
-    let (state, optionFieldTypes) = checkMany state checkRecordField record.Fields []
-    let fieldTypes = List.map (fun x -> state.TypesByExpressionId[x.TypeExpression.Id]) record.Fields
-    let prestoType = RecordType fieldTypes
+    let state = pushScope state record.ScopeId
 
-    (state, Some prestoType)
+    let (state, optionFieldTypes) = checkMany state checkRecordField record.Fields []
+    let fieldTypes =
+        List.filter<Option<PrestoType>> (fun x -> x.IsSome) optionFieldTypes
+        |> List.map (fun x -> x.Value)
+
+    let succeededCheckingFields = fieldTypes.Length = optionFieldTypes.Length
+
+    if succeededCheckingFields then
+        let prestoType = RecordType fieldTypes
+
+        (popScope state, Some prestoType)
+    else
+        (popScope state, None)
     
 and checkParameter (state: TypeCheckerState) (parameter: Parameter): TypeCheckerState * Option<PrestoType> =
     checkExpression state parameter.TypeExpression
 
 and checkFunction (state: TypeCheckerState) (fn: Function): TypeCheckerState * Option<PrestoType> =
+    let state = pushScope state fn.ScopeId
     let (state, optionParameterTypes) = checkMany state checkParameter fn.Parameters []
     let parameterTypes = List.map<Parameter, PrestoType> (fun x -> state.TypesByExpressionId[x.TypeExpression.Id]) fn.Parameters
     let (state, optionReturnType) = checkExpression state fn.Value
@@ -80,8 +91,8 @@ and checkFunction (state: TypeCheckerState) (fn: Function): TypeCheckerState * O
     | Some returnType ->
         let prestoType = FunctionType (parameterTypes, returnType)
 
-        (state, Some prestoType)
-    | None -> (state, None)
+        (popScope state, Some prestoType)
+    | None -> (popScope state, None)
 
 and checkFunctionCall (state: TypeCheckerState) (functionCall: FunctionCall): TypeCheckerState * Option<PrestoType> =
     let (state, optionArgumentTypes) = checkMany state checkExpression functionCall.Arguments []
@@ -100,12 +111,12 @@ and checkFunctionCall (state: TypeCheckerState) (functionCall: FunctionCall): Ty
         
 and checkMemberAccess (state: TypeCheckerState) (memberAccess: MemberAccess): TypeCheckerState * Option<PrestoType> =
     let (state, optionLeftType) = checkExpression state memberAccess.LeftExpression
+    // TODO: get scope from left type
 
     match optionLeftType with
     | Some leftType ->
         let (state, optionRightType) = checkExpression state memberAccess.RightExpression
-
-        // TODO: improve
+        // TODO: now assume identifier in right expression
 
         match optionRightType with
         | Some rightType -> (state, Some rightType)
@@ -113,13 +124,12 @@ and checkMemberAccess (state: TypeCheckerState) (memberAccess: MemberAccess): Ty
     | None -> (state, None)
 
 and checkSymbol (state: TypeCheckerState) (symbol: Symbol): TypeCheckerState * Option<PrestoType> =
-
     match symbol with
     | BindingSymbol binding -> checkExpression state binding.Value
     | ParameterSymbol parameter -> checkExpression state parameter.TypeExpression
     | RecordFieldSymbol recordField -> checkExpression state recordField.TypeExpression
     | UnionCaseSymbol unionCase -> (state, None)
-    | BuiltInSymbol builtInSymbol -> (state, None)
+    | BuiltInSymbol (builtInSymbol, prestoType) -> (state, Some prestoType)
     | UnresolvedSymbol token ->
         let (optionSymbol, state) = resolveSymbol state token
 
@@ -159,9 +169,38 @@ and checkExpression (state: TypeCheckerState) (expression: Expression): TypeChec
 let checkBinding (state: TypeCheckerState) (binding: Binding): TypeCheckerState * Option<PrestoType> =
     checkExpression state binding.Value
 
+let tryResolveSymbol (state: TypeCheckerState) (symbol: Symbol): TypeCheckerState * Symbol =
+    match symbol with
+        | UnresolvedSymbol token ->
+            let (optionResolvedSymbol, state) = resolveSymbol state token
+
+            match optionResolvedSymbol with
+            | Some resolvedSymbol -> (state, resolvedSymbol)
+            | None -> (state, symbol)
+        | _ -> (state, symbol)
+
+let resolveSymbolFolder
+    (acc: TypeCheckerState * Map<string, Symbol>)
+    (symbolName: string)
+    (origSymbol: Symbol):
+    TypeCheckerState * Map<string, Symbol> =
+        let (state, accSymbolsByName) = acc
+        let (state, resolvedSymbol) = tryResolveSymbol state origSymbol
+
+        (state, accSymbolsByName.Add(symbolName, resolvedSymbol))
+
+let resolveSymbols (state: TypeCheckerState) (scopeId: System.Guid): TypeCheckerState =
+    let scope = state.ScopesById[scopeId]
+    let (state, symbolsByName) = Map.fold resolveSymbolFolder (state, Map.empty) scope.SymbolsByName
+    let newScope = { scope with SymbolsByName = symbolsByName }
+
+    { state with ScopesById = state.ScopesById.Change(scopeId, fun _ -> Some newScope) }
+
 let checkTypes (program: Program): Program * List<CompileError> =
     let state = { CurrentScopeId = program.ScopeId; ScopesById = program.ScopesById; TypesByExpressionId = program.TypesByExpressionId; Errors = [] }
-    let (state, optionBindingTypes) = checkMany state checkBinding program.Bindings []
+    let state = Map.fold (fun acc k v -> resolveSymbols acc k) state state.ScopesById
+    
+    let (state, _) = checkMany state checkBinding program.Bindings []
 
     (
         { program with ScopesById = state.ScopesById; TypesByExpressionId = state.TypesByExpressionId },

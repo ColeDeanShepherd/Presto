@@ -463,14 +463,27 @@ and parseMemberAccess (state: ParseState) (prefixExpression: ParseNode) (rightBi
     match optionPeriod with
     | Some period ->
         let (whitespace1, state) = parseWhitespace state
-        let (optionRightExpression, state) = parseExpressionInternal state rightBindingPower
+        let (optionIdentifier, state) = parseToken state TokenType.Identifier
 
-        match optionRightExpression with
-        | Some rightExpression ->
-            (
-                Some {
+        match optionIdentifier with
+        | Some identifier ->
+            let rightExpression = {
+                Type = ParseNodeType.Expression
+                Children = [identifier]
+                Token = None
+            }
+
+            let accessNode =
+                {
                     Type = ParseNodeType.MemberAccess
                     Children = List.concat [ [prefixExpression]; [period]; whitespace1; [rightExpression]; ]
+                    Token = None
+                }
+
+            (
+                Some {
+                    Type = ParseNodeType.Expression
+                    Children = [accessNode]
                     Token = None
                 },
                 state
@@ -548,7 +561,7 @@ and getPostfixLeftBindingPower (tokenType: TokenType): Option<int> =
 
 and getInfixBindingPowers (tokenType: TokenType): Option<int * int> =
     match tokenType with
-    | TokenType.Period -> Some (14, 13)
+    | TokenType.Period -> Some (13, 14)
     | _ -> None
 
 and tryParsePostfixAndInfixExpressions (state: ParseState) (prefixExpression: ParseNode) (minBindingPower: int): Option<ParseNode> * ParseState =

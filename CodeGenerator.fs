@@ -37,7 +37,7 @@ let generateSymbol (state: CodeGeneratorOutput) (symbol: Symbol): CodeGeneratorO
     | ParameterSymbol parameter ->  generateString state parameter.Name
     | RecordFieldSymbol recordField -> generateString state recordField.NameToken.Text
     | UnionCaseSymbol unionCase -> generateString state unionCase.NameToken.Text
-    | BuiltInSymbol builtInSymbol -> generateString state builtInSymbol
+    | BuiltInSymbol (builtInSymbol, prestoType) -> generateString state builtInSymbol
     | UnresolvedSymbol token -> { state with Errors = state.Errors @ [{ Description = $"Tried to generate unresolved symbol \"{token.Text}\"."; Position = getSymbolTextPosition symbol }] }
 
 let rec generateFunctionCall (state: CodeGeneratorOutput) (functionCall: FunctionCall): CodeGeneratorOutput =

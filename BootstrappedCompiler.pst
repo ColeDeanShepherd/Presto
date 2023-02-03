@@ -21,7 +21,7 @@ TokenType = union
 
 Token = record
     Type: TokenType
-    Text: Text
+    Txt: Text
     Position: TextPosition
 
 TokenizeOutput = record
