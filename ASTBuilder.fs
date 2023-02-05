@@ -18,7 +18,6 @@ and Symbol =
     | RecordFieldSymbol of RecordField
     | UnionCaseSymbol of UnionCase
     | BuiltInSymbol of string * PrestoType
-    | UnresolvedSymbol of Token
 and Expression = {
     Id: System.Guid
     Value: ExpressionValue
@@ -29,7 +28,7 @@ and ExpressionValue =
     | FunctionExpression of Function
     | FunctionCallExpression of FunctionCall
     | MemberAccessExpression of MemberAccess
-    | SymbolReference of Symbol
+    | SymbolReference of Token
     | NumberLiteralExpression of NumberLiteral
 and Binding = {
     NameToken: Token
@@ -78,9 +77,11 @@ and Scope = {
 
 type Program = {
     Bindings: List<Binding>
+    TypesByExpressionId: Map<System.Guid, PrestoType>
+    ResolvedSymbolsByExpressionId: Map<System.Guid, Symbol>
+    
     ScopesById: Map<System.Guid, Scope>
     ScopeId: System.Guid
-    TypesByExpressionId: Map<System.Guid, PrestoType>
 }
 
 type ASTBuilderState = {
@@ -104,7 +105,6 @@ let getSymbolTextPosition (symbol: Symbol): TextPosition =
     | RecordFieldSymbol recordField -> recordField.NameToken.Position
     | UnionCaseSymbol unionCase -> unionCase.NameToken.Position
     | BuiltInSymbol (builtInSymbol, prestoType) -> { LineIndex = 0; ColumnIndex = 0; }
-    | UnresolvedSymbol token -> token.Position
     
 let pushScope (state: ASTBuilderState): (Scope * ASTBuilderState) =
     let parentScopeId = state.CurrentScopeId
@@ -342,7 +342,7 @@ and buildExpression (state: ASTBuilderState) (node: ParseNode): (Option<Expressi
     | ParseNodeType.Expression ->
         buildExpression state child
     | ParseNodeType.Token when child.Token.Value.Type = TokenType.Identifier ->
-        (Some (newExpression (SymbolReference (UnresolvedSymbol child.Token.Value))), state)
+        (Some (newExpression (SymbolReference child.Token.Value)), state)
     | ParseNodeType.Token when child.Token.Value.Type = TokenType.NumberLiteral ->
         let numberLiteral = { Token = child.Token.Value }
         (Some (newExpression (NumberLiteralExpression numberLiteral)), state)
@@ -401,6 +401,7 @@ let buildProgram (node: ParseNode): (Option<Program> * ASTBuilderState) =
             ScopeId = state.CurrentScopeId
             ScopesById = state.ScopesById
             TypesByExpressionId = Map.empty
+            ResolvedSymbolsByExpressionId = Map.empty
         },
         state
     )

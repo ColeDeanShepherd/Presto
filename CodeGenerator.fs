@@ -2,8 +2,10 @@
 
 open ASTBuilder
 open CompilerCore
+open Lexer
 
 type CodeGeneratorOutput = {
+    Program: Program
     GeneratedCode: string
     Errors: List<CompileError>
 }
@@ -31,14 +33,16 @@ let rec generateMany
 
             generateMany state nodes.Tail generateFn separator false
 
-let generateSymbol (state: CodeGeneratorOutput) (symbol: Symbol): CodeGeneratorOutput =
+let generateSymbol (state: CodeGeneratorOutput) (token: Token) (expressionId: System.Guid): CodeGeneratorOutput =
+    let symbol = state.Program.ResolvedSymbolsByExpressionId[expressionId]
+    // TODO: handle expression not resolved
+
     match symbol with
     | BindingSymbol binding -> generateString state binding.NameToken.Text
     | ParameterSymbol parameter ->  generateString state parameter.NameToken.Text
     | RecordFieldSymbol recordField -> generateString state recordField.NameToken.Text
     | UnionCaseSymbol unionCase -> generateString state unionCase.NameToken.Text
     | BuiltInSymbol (builtInSymbol, prestoType) -> generateString state builtInSymbol
-    | UnresolvedSymbol token -> { state with Errors = state.Errors @ [{ Description = $"Tried to generate unresolved symbol \"{token.Text}\"."; Position = getSymbolTextPosition symbol }] }
 
 let rec generateFunctionCall (state: CodeGeneratorOutput) (functionCall: FunctionCall): CodeGeneratorOutput =
     let state = generateExpression state functionCall.FunctionExpression
@@ -67,7 +71,7 @@ and generateExpression (state: CodeGeneratorOutput) (expression: Expression): Co
     | FunctionExpression fn -> failwith "Not implemented"
     | FunctionCallExpression call -> generateFunctionCall state call
     | MemberAccessExpression memberAccess -> generateMemberAccess state memberAccess
-    | SymbolReference symbol -> generateSymbol state symbol
+    | SymbolReference symbol -> generateSymbol state symbol expression.Id
     | NumberLiteralExpression number -> generateNumberLiteral state number
 
 let generateParameter (state: CodeGeneratorOutput) (parameter: Parameter): CodeGeneratorOutput =
@@ -148,7 +152,7 @@ let generatedCodeHeader =
     bool not(bool x) => !x;"
 
 let generateCode (program: Program): CodeGeneratorOutput =
-    let state = { GeneratedCode = ""; Errors = [] }
+    let state = { Program = program; GeneratedCode = ""; Errors = [] }
 
     let state = generateString state generatedCodeHeader
     let state = generateMany state program.Bindings generateBinding "\n" true

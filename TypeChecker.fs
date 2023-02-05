@@ -8,6 +8,7 @@ type TypeCheckerState = {
     CurrentScopeId: System.Guid
     ScopesById: Map<System.Guid, Scope>
     TypesByExpressionId: Map<System.Guid, PrestoType>
+    ResolvedSymbolsByExpressionId: Map<System.Guid, Symbol>
     Errors: List<CompileError>
 }
 
@@ -130,14 +131,15 @@ and checkSymbol (state: TypeCheckerState) (symbol: Symbol): TypeCheckerState * O
     | RecordFieldSymbol recordField -> checkExpression state recordField.TypeExpression
     | UnionCaseSymbol unionCase -> (state, None)
     | BuiltInSymbol (builtInSymbol, prestoType) -> (state, Some prestoType)
-    | UnresolvedSymbol token ->
-        let (optionSymbol, state) = resolveSymbol state token
 
-        match optionSymbol with
-        | Some symbol ->
-            // TODO: replace unresolved symbol with resolved symbol
-            checkSymbol state symbol
-        | None -> (state, None)
+and checkSymbolReference (state: TypeCheckerState) (token: Token) (expressionId: System.Guid): TypeCheckerState * Option<PrestoType> =
+    let (optionSymbol, state) = resolveSymbol state token
+
+    match optionSymbol with
+    | Some symbol ->
+        let state = { state with ResolvedSymbolsByExpressionId = state.ResolvedSymbolsByExpressionId.Add(expressionId, symbol) }
+        checkSymbol state symbol
+    | None -> (state, None)
 
 and checkNumberLiteral (state: TypeCheckerState) (numberLiteral: NumberLiteral): TypeCheckerState * Option<PrestoType> =
     (state, Some PrestoType.Nat)
@@ -155,7 +157,7 @@ and checkExpression (state: TypeCheckerState) (expression: Expression): TypeChec
             | FunctionExpression fn -> checkFunction state fn
             | FunctionCallExpression call -> checkFunctionCall state call
             | MemberAccessExpression memberAccess -> checkMemberAccess state memberAccess
-            | SymbolReference symbol -> checkSymbol state symbol
+            | SymbolReference token -> checkSymbolReference state token expression.Id
             | NumberLiteralExpression number -> checkNumberLiteral state number
 
         match optionPrestoType with
@@ -169,41 +171,19 @@ and checkExpression (state: TypeCheckerState) (expression: Expression): TypeChec
 let checkBinding (state: TypeCheckerState) (binding: Binding): TypeCheckerState * Option<PrestoType> =
     checkExpression state binding.Value
 
-let tryResolveSymbol (state: TypeCheckerState) (symbol: Symbol): TypeCheckerState * Symbol =
-    match symbol with
-        | UnresolvedSymbol token ->
-            let (optionResolvedSymbol, state) = resolveSymbol state token
-
-            match optionResolvedSymbol with
-            | Some resolvedSymbol -> (state, resolvedSymbol)
-            | None -> (state, symbol)
-        | _ -> (state, symbol)
-
-let resolveSymbolFolder
-    (acc: TypeCheckerState * Map<string, Symbol>)
-    (symbolName: string)
-    (origSymbol: Symbol):
-    TypeCheckerState * Map<string, Symbol> =
-        let (state, accSymbolsByName) = acc
-        let (state, resolvedSymbol) = tryResolveSymbol state origSymbol
-
-        (state, accSymbolsByName.Add(symbolName, resolvedSymbol))
-
-let resolveSymbols (state: TypeCheckerState) (scopeId: System.Guid): TypeCheckerState =
-    let scope = state.ScopesById[scopeId]
-    let (state, symbolsByName) = Map.fold resolveSymbolFolder (state, Map.empty) scope.SymbolsByName
-    let newScope = { scope with SymbolsByName = symbolsByName }
-
-    { state with ScopesById = state.ScopesById.Change(scopeId, fun _ -> Some newScope) }
-
 let checkTypes (program: Program): Program * List<CompileError> =
-    let state = { CurrentScopeId = program.ScopeId; ScopesById = program.ScopesById; TypesByExpressionId = program.TypesByExpressionId; Errors = [] }
-    let state = Map.fold (fun acc k v -> resolveSymbols acc k) state state.ScopesById
+    let state = {
+        CurrentScopeId = program.ScopeId
+        ScopesById = program.ScopesById
+        TypesByExpressionId = program.TypesByExpressionId
+        ResolvedSymbolsByExpressionId = program.ResolvedSymbolsByExpressionId
+        Errors = []
+    }
     
     let (state, _) = checkMany state checkBinding program.Bindings []
 
     (
-        { program with ScopesById = state.ScopesById; TypesByExpressionId = state.TypesByExpressionId },
+        { program with ScopesById = state.ScopesById; TypesByExpressionId = state.TypesByExpressionId; ResolvedSymbolsByExpressionId = state.ResolvedSymbolsByExpressionId },
         state.Errors
     )
 
