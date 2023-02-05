@@ -6,11 +6,11 @@ open Lexer
 
 type PrestoType =
     | Nat
-    | Text
+    | Text of System.Guid
     | Boolean
     | Type
-    | RecordType of List<PrestoType>
-    | UnionType
+    | RecordType of System.Guid * List<PrestoType>
+    | UnionType of System.Guid
     | FunctionType of List<PrestoType> * PrestoType
 and Symbol =
     | BindingSymbol of Binding
@@ -49,7 +49,7 @@ and FunctionCall = {
 }
 and MemberAccess = {
     LeftExpression: Expression;
-    RightExpression: Expression;
+    RightIdentifier: Token;
 }
 and RecordField = {
     NameToken: Token
@@ -295,12 +295,9 @@ and buildMemberAccess (state: ASTBuilderState) (node: ParseNode): (Option<Member
     | Some leftExpression ->
         
         let rightExpressionNode = expressionNodes[1]
-        let (optionRightExpression, state) = buildExpression state rightExpressionNode
+        let rightIdentifier = childOfTokenType rightExpressionNode TokenType.Identifier
 
-        match optionRightExpression with
-        | Some rightExpression ->
-            (Some { LeftExpression = leftExpression; RightExpression = rightExpression; }, state)
-        | None -> (None, state)
+        (Some { LeftExpression = leftExpression; RightIdentifier = rightIdentifier.Token.Value; }, state)
     | None -> (None, state)
 
 and buildExpression (state: ASTBuilderState) (node: ParseNode): (Option<Expression> * ASTBuilderState) =
@@ -367,27 +364,41 @@ let buildBinding (state: ASTBuilderState) (node: ParseNode): (Option<Binding> * 
         else (None, state)
     | None -> (None, state)
 
-let getInitialScope =
+let getInitialScopesById =
+    let scopesById: Map<System.Guid, Scope> = Map.empty
+
+    let scopeId = System.Guid.NewGuid()
+
+    let textScopeId = System.Guid.NewGuid()
+    let textScope = {
+        SymbolsByName =
+            Map.empty
+                .Add("Length", BuiltInSymbol ("Length", PrestoType.Text textScopeId));
+        ParentId = Some scopeId;
+        ChildIds = []
+    }
+    let scopesById = scopesById.Add(textScopeId, textScope)
+
     let scope = {
         SymbolsByName =
             Map.empty
                 .Add("Nat", BuiltInSymbol ("Nat", PrestoType.Nat))
-                .Add("Text", BuiltInSymbol ("Text", PrestoType.Text))
+                .Add("Text", BuiltInSymbol ("Text", PrestoType.Text textScopeId))
                 .Add("List", BuiltInSymbol ("List", FunctionType ([PrestoType.Type], PrestoType.Type)))
                 .Add("eq", BuiltInSymbol ("eq", FunctionType ([PrestoType.Nat; PrestoType.Nat], PrestoType.Boolean)))
                 .Add("not", BuiltInSymbol ("not", FunctionType ([PrestoType.Boolean], PrestoType.Boolean)));
         ParentId = None;
-        ChildIds = []
+        ChildIds = [textScopeId]
     }
+    let scopesById = scopesById.Add(scopeId, scope)
 
-    scope
+    (scopeId, scopesById)
 
 let buildProgram (node: ParseNode): (Option<Program> * ASTBuilderState) =
     assert (node.Type = ParseNodeType.Program)
     
-    let scopeId = System.Guid.NewGuid()
-    let scope = getInitialScope
-    let state = { Errors = []; ScopesById = Map.empty.Add (scopeId, scope); CurrentScopeId = scopeId }
+    let (scopeId, scopesById) = getInitialScopesById
+    let state = { Errors = []; ScopesById = scopesById; CurrentScopeId = scopeId }
 
     let bindingParseNodes = childrenOfType node ParseNodeType.Binding
     let (optionBindings, state) = buildMany state bindingParseNodes buildBinding []

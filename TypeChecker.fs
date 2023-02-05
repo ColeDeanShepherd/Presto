@@ -12,6 +12,13 @@ type TypeCheckerState = {
     Errors: List<CompileError>
 }
 
+let getTypeScopeId (state: TypeCheckerState) (prestoType: PrestoType): (Option<System.Guid> * TypeCheckerState) =
+    match prestoType with
+    | Text scopeId -> (Some scopeId, state)
+    | RecordType (scopeId, _) -> (Some scopeId, state)
+    | UnionType scopeId -> (Some scopeId, state)
+    | _ -> (None, { state with Errors = state.Errors @ [{ Description = $"Couldn't access members of type: {prestoType}"; Position = { ColumnIndex = 0; LineIndex = 0 } }] })
+
 let rec resolveSymbolInternal (state: TypeCheckerState) (scope: Scope) (nameToken: Token): (Option<Symbol> * TypeCheckerState) =
     if scope.SymbolsByName.ContainsKey nameToken.Text then
         (Some scope.SymbolsByName.[nameToken.Text], state)
@@ -57,7 +64,7 @@ let rec checkMany
 
 and checkUnion (state: TypeCheckerState) (union: Union): TypeCheckerState * Option<PrestoType> =
     let state = pushScope state union.ScopeId
-    (popScope state, Some UnionType)
+    (popScope state, Some (UnionType union.ScopeId))
 
 and checkRecordField (state: TypeCheckerState) (recordField: RecordField): TypeCheckerState * Option<PrestoType> =
     checkExpression state recordField.TypeExpression
@@ -73,7 +80,7 @@ and checkRecord (state: TypeCheckerState) (record: Record): TypeCheckerState * O
     let succeededCheckingFields = fieldTypes.Length = optionFieldTypes.Length
 
     if succeededCheckingFields then
-        let prestoType = RecordType fieldTypes
+        let prestoType = RecordType (record.ScopeId, fieldTypes)
 
         (popScope state, Some prestoType)
     else
@@ -112,15 +119,29 @@ and checkFunctionCall (state: TypeCheckerState) (functionCall: FunctionCall): Ty
         
 and checkMemberAccess (state: TypeCheckerState) (memberAccess: MemberAccess): TypeCheckerState * Option<PrestoType> =
     let (state, optionLeftType) = checkExpression state memberAccess.LeftExpression
-    // TODO: get scope from left type
 
     match optionLeftType with
     | Some leftType ->
-        let (state, optionRightType) = checkExpression state memberAccess.RightExpression
-        // TODO: now assume identifier in right expression
+        let (optionScopeId, state) = getTypeScopeId state leftType
 
-        match optionRightType with
-        | Some rightType -> (state, Some rightType)
+        match optionScopeId with
+        | Some scopeId ->
+            let scope = state.ScopesById[scopeId]
+            let memberName = memberAccess.RightIdentifier.Text
+
+            if scope.SymbolsByName.ContainsKey memberName then
+                let rightSymbol = scope.SymbolsByName[memberName]
+
+                let (state, optionRightType) = checkSymbol state rightSymbol
+
+                match optionRightType with
+                | Some rightType -> (state, Some rightType)
+                | None -> (state, None)
+            else
+                (
+                    { state with Errors = state.Errors @ [{ Description = $"Invalid member: {memberName}"; Position = memberAccess.RightIdentifier.Position }]},
+                    None
+                )
         | None -> (state, None)
     | None -> (state, None)
 

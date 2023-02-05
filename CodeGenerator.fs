@@ -55,7 +55,7 @@ let rec generateFunctionCall (state: CodeGeneratorOutput) (functionCall: Functio
 and generateMemberAccess (state: CodeGeneratorOutput) (memberAccess: MemberAccess): CodeGeneratorOutput =
     let state = generateExpression state memberAccess.LeftExpression
     let state = generateString state "."
-    let state = generateExpression state memberAccess.RightExpression
+    let state = generateString state memberAccess.RightIdentifier.Text
 
     state
 
