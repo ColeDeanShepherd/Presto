@@ -15,8 +15,8 @@ type TypeCheckerState = {
 let getTypeScopeId (state: TypeCheckerState) (prestoType: PrestoType): (Option<System.Guid> * TypeCheckerState) =
     match prestoType with
     | Text scopeId -> (Some scopeId, state)
-    | RecordType (scopeId, _) -> (Some scopeId, state)
-    | UnionType scopeId -> (Some scopeId, state)
+    | RecordType (_, scopeId, _) -> (Some scopeId, state)
+    | UnionType (_, scopeId) -> (Some scopeId, state)
     | _ -> (None, { state with Errors = state.Errors @ [{ Description = $"Couldn't access members of type: {prestoType}"; Position = { ColumnIndex = 0; LineIndex = 0 } }] })
 
 let rec resolveSymbolInternal (state: TypeCheckerState) (scope: Scope) (nameToken: Token): (Option<Symbol> * TypeCheckerState) =
@@ -64,7 +64,7 @@ let rec checkMany
 
 and checkUnion (state: TypeCheckerState) (union: Union): TypeCheckerState * Option<PrestoType> =
     let state = pushScope state union.ScopeId
-    (popScope state, Some (UnionType union.ScopeId))
+    (popScope state, Some (UnionType (union.N, union.ScopeId)))
 
 and checkRecordField (state: TypeCheckerState) (recordField: RecordField): TypeCheckerState * Option<PrestoType> =
     checkExpression state recordField.TypeExpression

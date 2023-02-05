@@ -4,22 +4,27 @@ open ASTBuilder
 open CompilerCore
 open Lexer
 
-type CodeGeneratorOutput = {
+type CodeGeneratorState = {
     Program: Program
     GeneratedCode: string
     Errors: List<CompileError>
 }
 
-let generateString (state: CodeGeneratorOutput) (str: string): CodeGeneratorOutput =
+type CodeGeneratorOutput = {
+    GeneratedCode: string
+    Errors: List<CompileError>
+}
+
+let generateString (state: CodeGeneratorState) (str: string): CodeGeneratorState =
     { state with GeneratedCode = state.GeneratedCode + str }
 
 let rec generateMany
-    (state: CodeGeneratorOutput)
+    (state: CodeGeneratorState)
     (nodes: List<'a>)
-    (generateFn: (CodeGeneratorOutput -> 'a -> CodeGeneratorOutput))
+    (generateFn: (CodeGeneratorState -> 'a -> CodeGeneratorState))
     (separator: string)
     (isFirstItem: bool)
-    : CodeGeneratorOutput =
+    : CodeGeneratorState =
         if nodes.IsEmpty then
             state
         else
@@ -33,7 +38,7 @@ let rec generateMany
 
             generateMany state nodes.Tail generateFn separator false
 
-let generateSymbol (state: CodeGeneratorOutput) (token: Token) (expressionId: System.Guid): CodeGeneratorOutput =
+let generateSymbol (state: CodeGeneratorState) (token: Token) (expressionId: System.Guid): CodeGeneratorState =
     let symbol = state.Program.ResolvedSymbolsByExpressionId[expressionId]
     // TODO: handle expression not resolved
 
@@ -44,7 +49,7 @@ let generateSymbol (state: CodeGeneratorOutput) (token: Token) (expressionId: Sy
     | UnionCaseSymbol unionCase -> generateString state unionCase.NameToken.Text
     | BuiltInSymbol (builtInSymbol, prestoType) -> generateString state builtInSymbol
 
-let rec generateFunctionCall (state: CodeGeneratorOutput) (functionCall: FunctionCall): CodeGeneratorOutput =
+let rec generateFunctionCall (state: CodeGeneratorState) (functionCall: FunctionCall): CodeGeneratorState =
     let state = generateExpression state functionCall.FunctionExpression
     let state = generateString state "("
     let state = generateMany state functionCall.Arguments generateExpression ", " true
@@ -52,19 +57,19 @@ let rec generateFunctionCall (state: CodeGeneratorOutput) (functionCall: Functio
 
     state
 
-and generateMemberAccess (state: CodeGeneratorOutput) (memberAccess: MemberAccess): CodeGeneratorOutput =
+and generateMemberAccess (state: CodeGeneratorState) (memberAccess: MemberAccess): CodeGeneratorState =
     let state = generateExpression state memberAccess.LeftExpression
     let state = generateString state "."
     let state = generateString state memberAccess.RightIdentifier.Text
 
     state
 
-and generateNumberLiteral (state: CodeGeneratorOutput) (numberLiteral: NumberLiteral): CodeGeneratorOutput =
+and generateNumberLiteral (state: CodeGeneratorState) (numberLiteral: NumberLiteral): CodeGeneratorState =
     let state = generateString state numberLiteral.Token.Text
 
     state
 
-and generateExpression (state: CodeGeneratorOutput) (expression: Expression): CodeGeneratorOutput =
+and generateExpression (state: CodeGeneratorState) (expression: Expression): CodeGeneratorState =
     match expression.Value with
     | RecordExpression record -> failwith "Not implemented"
     | UnionExpression union -> failwith "Not implemented"
@@ -74,18 +79,18 @@ and generateExpression (state: CodeGeneratorOutput) (expression: Expression): Co
     | SymbolReference symbol -> generateSymbol state symbol expression.Id
     | NumberLiteralExpression number -> generateNumberLiteral state number
     
-and generateTypeExpression (state: CodeGeneratorOutput) (expression: Expression): CodeGeneratorOutput =
+and generateTypeExpression (state: CodeGeneratorState) (expression: Expression): CodeGeneratorState =
     generateExpression state expression
     // TODO: fix
 
-let generateParameter (state: CodeGeneratorOutput) (parameter: Parameter): CodeGeneratorOutput =
+let generateParameter (state: CodeGeneratorState) (parameter: Parameter): CodeGeneratorState =
     let state = generateTypeExpression state parameter.TypeExpression
     let state = generateString state " "
     let state = generateString state parameter.NameToken.Text
 
     state
 
-let generateFunction (state: CodeGeneratorOutput) (name: string) (fn: Function): CodeGeneratorOutput =
+let generateFunction (state: CodeGeneratorState) (name: string) (fn: Function): CodeGeneratorState =
     let state = generateString state "static"
     let state = generateString state " "
     let state = generateString state "int" // TODO: fix
@@ -104,14 +109,14 @@ let generateFunction (state: CodeGeneratorOutput) (name: string) (fn: Function):
 
     state
     
-let generateRecordField (state: CodeGeneratorOutput) (recordField: RecordField): CodeGeneratorOutput =
+let generateRecordField (state: CodeGeneratorState) (recordField: RecordField): CodeGeneratorState =
     let state = generateTypeExpression state recordField.TypeExpression
     let state = generateString state " "
     let state = generateString state recordField.NameToken.Text
 
     state
 
-let generateRecord (state: CodeGeneratorOutput) (name: string) (record: Record): CodeGeneratorOutput =
+let generateRecord (state: CodeGeneratorState) (name: string) (record: Record): CodeGeneratorState =
     let state = generateString state "public record "
     let state = generateString state name
     let state = generateString state "("
@@ -120,12 +125,12 @@ let generateRecord (state: CodeGeneratorOutput) (name: string) (record: Record):
 
     state
 
-let generateUnionCase (state: CodeGeneratorOutput) (unionCase: UnionCase): CodeGeneratorOutput =
+let generateUnionCase (state: CodeGeneratorState) (unionCase: UnionCase): CodeGeneratorState =
     let state = generateString state unionCase.NameToken.Text
 
     state
 
-let generateUnion (state: CodeGeneratorOutput) (name: string) (union: Union): CodeGeneratorOutput =
+let generateUnion (state: CodeGeneratorState) (name: string) (union: Union): CodeGeneratorState =
     let state = generateString state "public enum "
     let state = generateString state name
     let state = generateString state "{"
@@ -134,7 +139,7 @@ let generateUnion (state: CodeGeneratorOutput) (name: string) (union: Union): Co
 
     state
 
-let generateBinding (state: CodeGeneratorOutput) (binding: Binding): CodeGeneratorOutput =
+let generateBinding (state: CodeGeneratorState) (binding: Binding): CodeGeneratorState =
     let state =
         match binding.Value.Value with
         | RecordExpression record -> generateRecord state binding.NameToken.Text record
@@ -170,4 +175,4 @@ let generateCode (program: Program): CodeGeneratorOutput =
     let state = generateString state "\n\n"
     let state = generateString state generatedCodeFooter
 
-    state
+    { GeneratedCode = state.GeneratedCode; Errors = state.Errors }
