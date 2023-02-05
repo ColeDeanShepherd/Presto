@@ -73,16 +73,22 @@ and generateExpression (state: CodeGeneratorOutput) (expression: Expression): Co
     | MemberAccessExpression memberAccess -> generateMemberAccess state memberAccess
     | SymbolReference symbol -> generateSymbol state symbol expression.Id
     | NumberLiteralExpression number -> generateNumberLiteral state number
+    
+and generateTypeExpression (state: CodeGeneratorOutput) (expression: Expression): CodeGeneratorOutput =
+    generateExpression state expression
+    // TODO: fix
 
 let generateParameter (state: CodeGeneratorOutput) (parameter: Parameter): CodeGeneratorOutput =
-    let state = generateString state "int"
+    let state = generateTypeExpression state parameter.TypeExpression
     let state = generateString state " "
     let state = generateString state parameter.NameToken.Text
 
     state
 
 let generateFunction (state: CodeGeneratorOutput) (name: string) (fn: Function): CodeGeneratorOutput =
-    let state = generateString state "int"
+    let state = generateString state "static"
+    let state = generateString state " "
+    let state = generateString state "int" // TODO: fix
     let state = generateString state " "
     let state = generateString state name
     let state = generateString state "("
@@ -99,7 +105,7 @@ let generateFunction (state: CodeGeneratorOutput) (name: string) (fn: Function):
     state
     
 let generateRecordField (state: CodeGeneratorOutput) (recordField: RecordField): CodeGeneratorOutput =
-    let state = generateExpression state recordField.TypeExpression
+    let state = generateTypeExpression state recordField.TypeExpression
     let state = generateString state " "
     let state = generateString state recordField.NameToken.Text
 
@@ -145,16 +151,23 @@ let generateBinding (state: CodeGeneratorOutput) (binding: Binding): CodeGenerat
     state
 
 let generatedCodeHeader =
-    "using Nat = uint;
-    using Text = string;
+    "using Nat = System.UInt32;
+    using Text = System.String;
+    
+    public static class PrestoProgram {
+        static bool eq<T>(T a, T b) => (a != null) ? a.Equals(b) : (b == null);
+        static bool not(bool x) => !x;"
 
-    bool eq<T>(T a, T b) => a == b;
-    bool not(bool x) => !x;"
+let generatedCodeFooter =
+    "}"
 
 let generateCode (program: Program): CodeGeneratorOutput =
     let state = { Program = program; GeneratedCode = ""; Errors = [] }
 
     let state = generateString state generatedCodeHeader
+    let state = generateString state "\n\n"
     let state = generateMany state program.Bindings generateBinding "\n" true
+    let state = generateString state "\n\n"
+    let state = generateString state generatedCodeFooter
 
     state
