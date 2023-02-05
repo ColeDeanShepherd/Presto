@@ -32,12 +32,10 @@ and ExpressionValue =
     | SymbolReference of Symbol
     | NumberLiteralExpression of NumberLiteral
 and Binding = {
-    Name: string // TODO: remove
     NameToken: Token
     Value: Expression
 }
 and Parameter = {
-    Name: string // TODO: remove
     NameToken: Token
     TypeExpression: Expression
 }
@@ -172,7 +170,7 @@ let rec buildParameter (state: ASTBuilderState) (node: ParseNode): (Option<Param
 
     match optionTypeExpression with
     | Some typeExpression ->
-        let parameter = { Name = name; NameToken = nameToken; TypeExpression = typeExpression }
+        let parameter: Parameter = { NameToken = nameToken; TypeExpression = typeExpression }
 
         let (success, state) = addSymbol state name (ParameterSymbol parameter)
 
@@ -362,7 +360,7 @@ let buildBinding (state: ASTBuilderState) (node: ParseNode): (Option<Binding> * 
     
     match optionExpression with
     | Some expression ->
-        let binding = { Name = name; NameToken = nameToken; Value = expression }
+        let binding = { NameToken = nameToken; Value = expression }
         let (success, state) = addSymbol state name (BindingSymbol binding)
 
         if success then (Some binding, state)

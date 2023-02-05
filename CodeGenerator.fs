@@ -33,8 +33,8 @@ let rec generateMany
 
 let generateSymbol (state: CodeGeneratorOutput) (symbol: Symbol): CodeGeneratorOutput =
     match symbol with
-    | BindingSymbol binding -> generateString state binding.Name
-    | ParameterSymbol parameter ->  generateString state parameter.Name
+    | BindingSymbol binding -> generateString state binding.NameToken.Text
+    | ParameterSymbol parameter ->  generateString state parameter.NameToken.Text
     | RecordFieldSymbol recordField -> generateString state recordField.NameToken.Text
     | UnionCaseSymbol unionCase -> generateString state unionCase.NameToken.Text
     | BuiltInSymbol (builtInSymbol, prestoType) -> generateString state builtInSymbol
@@ -73,7 +73,7 @@ and generateExpression (state: CodeGeneratorOutput) (expression: Expression): Co
 let generateParameter (state: CodeGeneratorOutput) (parameter: Parameter): CodeGeneratorOutput =
     let state = generateString state "int"
     let state = generateString state " "
-    let state = generateString state parameter.Name
+    let state = generateString state parameter.NameToken.Text
 
     state
 
@@ -127,11 +127,11 @@ let generateUnion (state: CodeGeneratorOutput) (name: string) (union: Union): Co
 let generateBinding (state: CodeGeneratorOutput) (binding: Binding): CodeGeneratorOutput =
     let state =
         match binding.Value.Value with
-        | RecordExpression record -> generateRecord state binding.Name record
-        | UnionExpression union -> generateUnion state binding.Name union
-        | FunctionExpression fn -> generateFunction state binding.Name fn
+        | RecordExpression record -> generateRecord state binding.NameToken.Text record
+        | UnionExpression union -> generateUnion state binding.NameToken.Text union
+        | FunctionExpression fn -> generateFunction state binding.NameToken.Text fn
         | _ ->
-            let state = generateString state binding.Name
+            let state = generateString state binding.NameToken.Text
             let state = generateString state " = "
             let state = generateExpression state binding.Value
 
