@@ -9,14 +9,15 @@ type TypeCheckerState = {
     ScopesById: Map<System.Guid, Scope>
     TypesByExpressionId: Map<System.Guid, PrestoType>
     ResolvedSymbolsByExpressionId: Map<System.Guid, Symbol>
+    TypeCanonicalNamesByScopeId: Map<System.Guid, string>
     Errors: List<CompileError>
 }
 
 let getTypeScopeId (state: TypeCheckerState) (prestoType: PrestoType): (Option<System.Guid> * TypeCheckerState) =
     match prestoType with
     | Text scopeId -> (Some scopeId, state)
-    | RecordType (_, scopeId, _) -> (Some scopeId, state)
-    | UnionType (_, scopeId) -> (Some scopeId, state)
+    | RecordType (scopeId, _) -> (Some scopeId, state)
+    | UnionType scopeId -> (Some scopeId, state)
     | _ -> (None, { state with Errors = state.Errors @ [{ Description = $"Couldn't access members of type: {prestoType}"; Position = { ColumnIndex = 0; LineIndex = 0 } }] })
 
 let rec resolveSymbolInternal (state: TypeCheckerState) (scope: Scope) (nameToken: Token): (Option<Symbol> * TypeCheckerState) =
@@ -64,7 +65,7 @@ let rec checkMany
 
 and checkUnion (state: TypeCheckerState) (union: Union): TypeCheckerState * Option<PrestoType> =
     let state = pushScope state union.ScopeId
-    (popScope state, Some (UnionType (union.N, union.ScopeId)))
+    (popScope state, Some (UnionType union.ScopeId))
 
 and checkRecordField (state: TypeCheckerState) (recordField: RecordField): TypeCheckerState * Option<PrestoType> =
     checkExpression state recordField.TypeExpression
@@ -97,7 +98,7 @@ and checkFunction (state: TypeCheckerState) (fn: Function): TypeCheckerState * O
 
     match optionReturnType with
     | Some returnType ->
-        let prestoType = FunctionType (parameterTypes, returnType)
+        let prestoType = FunctionType (fn.ScopeId, parameterTypes, returnType)
 
         (popScope state, Some prestoType)
     | None -> (popScope state, None)
@@ -109,10 +110,16 @@ and checkFunctionCall (state: TypeCheckerState) (functionCall: FunctionCall): Ty
     let succeededCheckingArguments = argumentTypes.Length = optionArgumentTypes.Length
 
     if succeededCheckingArguments then
-        let (state, optionReturnType) = checkExpression state functionCall.FunctionExpression
+        let (state, optionFunctionType) = checkExpression state functionCall.FunctionExpression
 
-        match optionReturnType with
-        | Some returnType -> (state, Some returnType)
+        match optionFunctionType with
+        | Some functionType ->
+            match functionType with
+            | FunctionType (scopeId, paramTypes, returnType) -> (state, Some returnType)
+            | _ ->
+                let state = { state with Errors = state.Errors @ [{ Description = $"Expected function type, got {functionType}"; Position = { LineIndex = 0; ColumnIndex = 0 } }]}
+
+                (state, Some functionType)
         | None -> (state, None)
     else
         (state, None)
@@ -189,7 +196,22 @@ and checkExpression (state: TypeCheckerState) (expression: Expression): TypeChec
             )
         | None -> (state, None)
 
+let trySetTypeCanonicalName (state: TypeCheckerState) (scopeId: System.Guid) (name: string): TypeCheckerState =
+    if not (state.TypeCanonicalNamesByScopeId.ContainsKey scopeId) then
+        { state with TypeCanonicalNamesByScopeId = state.TypeCanonicalNamesByScopeId.Add(scopeId, name) }
+    else
+        state
+
 let checkBinding (state: TypeCheckerState) (binding: Binding): TypeCheckerState * Option<PrestoType> =
+    let name = binding.NameToken.Text
+
+    let state =
+        match binding.Value.Value with
+        | RecordExpression record -> trySetTypeCanonicalName state record.ScopeId name
+        | UnionExpression union -> trySetTypeCanonicalName state union.ScopeId name
+        | FunctionExpression fn -> trySetTypeCanonicalName state fn.ScopeId name
+        | _ -> state
+
     checkExpression state binding.Value
 
 let checkTypes (program: Program): Program * List<CompileError> =
@@ -198,13 +220,20 @@ let checkTypes (program: Program): Program * List<CompileError> =
         ScopesById = program.ScopesById
         TypesByExpressionId = program.TypesByExpressionId
         ResolvedSymbolsByExpressionId = program.ResolvedSymbolsByExpressionId
+        TypeCanonicalNamesByScopeId = program.TypeCanonicalNamesByScopeId
         Errors = []
     }
     
     let (state, _) = checkMany state checkBinding program.Bindings []
 
     (
-        { program with ScopesById = state.ScopesById; TypesByExpressionId = state.TypesByExpressionId; ResolvedSymbolsByExpressionId = state.ResolvedSymbolsByExpressionId },
+        {
+            program with
+                ScopesById = state.ScopesById
+                TypesByExpressionId = state.TypesByExpressionId
+                ResolvedSymbolsByExpressionId = state.ResolvedSymbolsByExpressionId
+                TypeCanonicalNamesByScopeId = state.TypeCanonicalNamesByScopeId
+        },
         state.Errors
     )
 

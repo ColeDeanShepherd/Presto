@@ -11,7 +11,7 @@ type PrestoType =
     | Type
     | RecordType of System.Guid * List<PrestoType>
     | UnionType of System.Guid
-    | FunctionType of List<PrestoType> * PrestoType
+    | FunctionType of System.Guid * List<PrestoType> * PrestoType
 and Symbol =
     | BindingSymbol of Binding
     | ParameterSymbol of Parameter
@@ -82,6 +82,8 @@ type Program = {
     
     ScopesById: Map<System.Guid, Scope>
     ScopeId: System.Guid
+
+    TypeCanonicalNamesByScopeId: Map<System.Guid, string>
 }
 
 type ASTBuilderState = {
@@ -384,9 +386,9 @@ let getInitialScopesById =
             Map.empty
                 .Add("Nat", BuiltInSymbol ("Nat", PrestoType.Nat))
                 .Add("Text", BuiltInSymbol ("Text", PrestoType.Text textScopeId))
-                .Add("List", BuiltInSymbol ("List", FunctionType ([PrestoType.Type], PrestoType.Type)))
-                .Add("eq", BuiltInSymbol ("eq", FunctionType ([PrestoType.Nat; PrestoType.Nat], PrestoType.Boolean)))
-                .Add("not", BuiltInSymbol ("not", FunctionType ([PrestoType.Boolean], PrestoType.Boolean)));
+                .Add("List", BuiltInSymbol ("List", FunctionType (System.Guid.NewGuid(), [PrestoType.Type], PrestoType.Type)))
+                .Add("eq", BuiltInSymbol ("eq", FunctionType (System.Guid.NewGuid(), [PrestoType.Nat; PrestoType.Nat], PrestoType.Boolean)))
+                .Add("not", BuiltInSymbol ("not", FunctionType (System.Guid.NewGuid(), [PrestoType.Boolean], PrestoType.Boolean)));
         ParentId = None;
         ChildIds = [textScopeId]
     }
@@ -413,6 +415,7 @@ let buildProgram (node: ParseNode): (Option<Program> * ASTBuilderState) =
             ScopesById = state.ScopesById
             TypesByExpressionId = Map.empty
             ResolvedSymbolsByExpressionId = Map.empty
+            TypeCanonicalNamesByScopeId = Map.empty
         },
         state
     )

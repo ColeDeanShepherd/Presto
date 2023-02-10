@@ -49,11 +49,11 @@ let generateSymbol (state: CodeGeneratorState) (token: Token) (expressionId: Sys
     | UnionCaseSymbol unionCase -> generateString state unionCase.NameToken.Text
     | BuiltInSymbol (builtInSymbol, prestoType) -> generateString state builtInSymbol
 
-let rec generateFunctionCall (state: CodeGeneratorState) (functionCall: FunctionCall): CodeGeneratorState =
+let rec generateFunctionCallInternal (state: CodeGeneratorState) (functionCall: FunctionCall) (isTypeExpression: bool): CodeGeneratorState =
     let state = generateExpression state functionCall.FunctionExpression
-    let state = generateString state "("
+    let state = generateString state (if isTypeExpression then "<" else "(")
     let state = generateMany state functionCall.Arguments generateExpression ", " true
-    let state = generateString state ")"
+    let state = generateString state (if isTypeExpression then ">" else ")")
 
     state
 
@@ -69,19 +69,34 @@ and generateNumberLiteral (state: CodeGeneratorState) (numberLiteral: NumberLite
 
     state
 
-and generateExpression (state: CodeGeneratorState) (expression: Expression): CodeGeneratorState =
+and generateExpressionInternal (state: CodeGeneratorState) (expression: Expression) (isTypeExpression: bool): CodeGeneratorState =
     match expression.Value with
     | RecordExpression record -> failwith "Not implemented"
     | UnionExpression union -> failwith "Not implemented"
     | FunctionExpression fn -> failwith "Not implemented"
-    | FunctionCallExpression call -> generateFunctionCall state call
+    | FunctionCallExpression call -> generateFunctionCallInternal state call isTypeExpression
     | MemberAccessExpression memberAccess -> generateMemberAccess state memberAccess
     | SymbolReference symbol -> generateSymbol state symbol expression.Id
     | NumberLiteralExpression number -> generateNumberLiteral state number
     
+and generateExpression (state: CodeGeneratorState) (expression: Expression): CodeGeneratorState =
+    generateExpressionInternal state expression false
+
+and generateTypeReference (state: CodeGeneratorState) (prestoType: PrestoType): CodeGeneratorState =
+    let typeReferenceString =
+        match prestoType with
+        | Nat -> "Nat"
+        | Text _ -> "Text"
+        | Boolean -> "bool"
+        | Type -> "Type"
+        | RecordType (scopeId, _) -> state.Program.TypeCanonicalNamesByScopeId[scopeId]
+        | UnionType scopeId -> state.Program.TypeCanonicalNamesByScopeId[scopeId]
+        | FunctionType (scopeId, _, _) -> state.Program.TypeCanonicalNamesByScopeId[scopeId]
+
+    generateString state typeReferenceString
+
 and generateTypeExpression (state: CodeGeneratorState) (expression: Expression): CodeGeneratorState =
-    generateExpression state expression
-    // TODO: fix
+    generateExpressionInternal state expression true
 
 let generateParameter (state: CodeGeneratorState) (parameter: Parameter): CodeGeneratorState =
     let state = generateTypeExpression state parameter.TypeExpression
@@ -93,7 +108,10 @@ let generateParameter (state: CodeGeneratorState) (parameter: Parameter): CodeGe
 let generateFunction (state: CodeGeneratorState) (name: string) (fn: Function): CodeGeneratorState =
     let state = generateString state "static"
     let state = generateString state " "
-    let state = generateString state "int" // TODO: fix
+
+    let returnType = state.Program.TypesByExpressionId[fn.Value.Id]
+    let state = generateTypeReference state returnType
+
     let state = generateString state " "
     let state = generateString state name
     let state = generateString state "("
@@ -139,6 +157,11 @@ let generateUnion (state: CodeGeneratorState) (name: string) (union: Union): Cod
 
     state
 
+let shouldTerminateWithSemicolon (binding: Binding): bool =
+    match binding.Value.Value with
+    | FunctionExpression fn -> false
+    | _ -> true
+
 let generateBinding (state: CodeGeneratorState) (binding: Binding): CodeGeneratorState =
     let state =
         match binding.Value.Value with
@@ -151,12 +174,18 @@ let generateBinding (state: CodeGeneratorState) (binding: Binding): CodeGenerato
             let state = generateExpression state binding.Value
 
             state
-    let state = generateString state ";"
+    let state =
+        if shouldTerminateWithSemicolon binding then
+            generateString state ";"
+        else state
 
     state
 
 let generatedCodeHeader =
-    "using Nat = System.UInt32;
+    "using System;
+    using System.Collections.Generic;
+    
+    using Nat = System.UInt32;
     using Text = System.String;
     
     public static class PrestoProgram {
