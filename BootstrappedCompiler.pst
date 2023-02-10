@@ -8,21 +8,27 @@ CompileError = record
 
 TokenType = union
     Identifier
+    NumberLiteral
     FnKeyword
     RecordKeyword
+    UnionKeyword
     Whitespace
     Equals
     Minus
     GreaterThan
     LeftParen
     RightParen
+    LeftCurlyBracket
+    RightCurlyBracket
     Comma
     Colon
+    Period
 
 Token = record
     Type: TokenType
     Txt: Text
     Position: TextPosition
+    WasInserted: Bool
 
 TokenizeOutput = record
     Tokens: List(Token)
@@ -31,6 +37,7 @@ TokenizeOutput = record
 TokenizeState = record
     TextLeft: Text
     Position: TextPosition
+    CurrentIndentation: Nat
     Tokens: List(Token)
     Errors: List(CompileError)
 

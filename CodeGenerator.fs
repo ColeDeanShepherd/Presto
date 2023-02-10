@@ -185,6 +185,7 @@ let generatedCodeHeader =
     "using System;
     using System.Collections.Generic;
     
+    using Bool = System.Boolean;
     using Nat = System.UInt32;
     using Text = System.String;
     

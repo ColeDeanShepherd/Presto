@@ -385,6 +385,7 @@ let getInitialScopesById =
         SymbolsByName =
             Map.empty
                 .Add("Nat", BuiltInSymbol ("Nat", PrestoType.Nat))
+                .Add("Bool", BuiltInSymbol ("Bool", PrestoType.Boolean))
                 .Add("Text", BuiltInSymbol ("Text", PrestoType.Text textScopeId))
                 .Add("List", BuiltInSymbol ("List", FunctionType (System.Guid.NewGuid(), [PrestoType.Type], PrestoType.Type)))
                 .Add("eq", BuiltInSymbol ("eq", FunctionType (System.Guid.NewGuid(), [PrestoType.Nat; PrestoType.Nat], PrestoType.Boolean)))

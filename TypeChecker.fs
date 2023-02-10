@@ -236,6 +236,3 @@ let checkTypes (program: Program): Program * List<CompileError> =
         },
         state.Errors
     )
-
-// resolve symbols
-// find types of expressions
