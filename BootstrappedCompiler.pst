@@ -1,45 +1,56 @@
-TextPosition = record
-    LineIndex: Nat
-    ColumnIndex: Nat
+text_position = record
+    line_index: nat
+    column_index: nat
 
-CompileError = record
-    Description: Text
-    Position: TextPosition
+compile_error = record
+    description: text
+    position: text_position
 
-TokenType = union
-    Identifier
-    NumberLiteral
-    FnKeyword
-    RecordKeyword
-    UnionKeyword
-    Whitespace
-    Equals
-    Minus
-    GreaterThan
-    LeftParen
-    RightParen
-    LeftCurlyBracket
-    RightCurlyBracket
-    Comma
-    Colon
-    Period
+token_type = union
+    identifier
+    number_literal
+    fn_keyword
+    record_keyword
+    union_keyword
+    whitespace
+    equals
+    minus
+    greater_than
+    left_paren
+    right_paren
+    left_curly_bracket
+    right_curly_bracket
+    comma
+    colon
+    period
 
-Token = record
-    Type: TokenType
-    Txt: Text
-    Position: TextPosition
-    WasInserted: Bool
+token = record
+    type: token_type
+    txt: text
+    position: text_position
+    was_inserted: bool
 
-TokenizeOutput = record
-    Tokens: List(Token)
-    Errors: List(CompileError)
+tokenize_output = record
+    tokens: list(token)
+    errors: list(compile_error)
 
-TokenizeState = record
-    TextLeft: Text
-    Position: TextPosition
-    CurrentIndentation: Nat
-    Tokens: List(Token)
-    Errors: List(CompileError)
+tokenize_state = record
+    text_left: text
+    position: text_position
+    current_indentation: nat
+    tokens: list(token)
+    errors: list(compile_error)
 
-isDone = fn (state: TokenizeState) -> eq(state.TextLeft.Length, 0)
-isNotDone = fn (state: TokenizeState) -> not(isDone(state))
+is_done = fn (state: tokenize_state) -> eq(state.text_left.length, 0)
+is_not_done = fn (state: tokenize_state) -> not(is_done(state))
+
+advance_text_position = fn (position: text_position, read_char: char): text_position ->
+    if not(eq(read_char, '\n')) then
+        text_position {
+            line_index = position.line_index
+            column_index = add(position.column_index, 1)
+        }
+    else
+        text_position {
+            line_index = add(position.line_index, 1)
+            column_index = 0

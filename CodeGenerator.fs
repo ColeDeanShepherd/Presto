@@ -85,9 +85,10 @@ and generateExpression (state: CodeGeneratorState) (expression: Expression): Cod
 and generateTypeReference (state: CodeGeneratorState) (prestoType: PrestoType): CodeGeneratorState =
     let typeReferenceString =
         match prestoType with
-        | Nat -> "Nat"
-        | Text _ -> "Text"
+        | Nat -> "nat"
+        | Text _ -> "string"
         | Boolean -> "bool"
+        | Character -> "char"
         | Type -> "Type"
         | RecordType (scopeId, _) -> state.Program.TypeCanonicalNamesByScopeId[scopeId]
         | UnionType scopeId -> state.Program.TypeCanonicalNamesByScopeId[scopeId]
@@ -185,9 +186,7 @@ let generatedCodeHeader =
     "using System;
     using System.Collections.Generic;
     
-    using Bool = System.Boolean;
-    using Nat = System.UInt32;
-    using Text = System.String;
+    using nat = System.UInt32;
     
     public static class PrestoProgram {
         static bool eq<T>(T a, T b) => (a != null) ? a.Equals(b) : (b == null);

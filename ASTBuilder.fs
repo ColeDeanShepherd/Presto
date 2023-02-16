@@ -8,6 +8,7 @@ type PrestoType =
     | Nat
     | Text of System.Guid
     | Boolean
+    | Character
     | Type
     | RecordType of System.Guid * List<PrestoType>
     | UnionType of System.Guid
@@ -375,7 +376,7 @@ let getInitialScopesById =
     let textScope = {
         SymbolsByName =
             Map.empty
-                .Add("Length", BuiltInSymbol ("Length", PrestoType.Text textScopeId));
+                .Add("length", BuiltInSymbol ("length", PrestoType.Text textScopeId));
         ParentId = Some scopeId;
         ChildIds = []
     }
@@ -384,10 +385,11 @@ let getInitialScopesById =
     let scope = {
         SymbolsByName =
             Map.empty
-                .Add("Nat", BuiltInSymbol ("Nat", PrestoType.Nat))
-                .Add("Bool", BuiltInSymbol ("Bool", PrestoType.Boolean))
-                .Add("Text", BuiltInSymbol ("Text", PrestoType.Text textScopeId))
-                .Add("List", BuiltInSymbol ("List", FunctionType (System.Guid.NewGuid(), [PrestoType.Type], PrestoType.Type)))
+                .Add("nat", BuiltInSymbol ("nat", PrestoType.Nat))
+                .Add("bool", BuiltInSymbol ("bool", PrestoType.Boolean))
+                .Add("char", BuiltInSymbol ("char", PrestoType.Character))
+                .Add("text", BuiltInSymbol ("text", PrestoType.Text textScopeId))
+                .Add("list", BuiltInSymbol ("list", FunctionType (System.Guid.NewGuid(), [PrestoType.Type], PrestoType.Type)))
                 .Add("eq", BuiltInSymbol ("eq", FunctionType (System.Guid.NewGuid(), [PrestoType.Nat; PrestoType.Nat], PrestoType.Boolean)))
                 .Add("not", BuiltInSymbol ("not", FunctionType (System.Guid.NewGuid(), [PrestoType.Boolean], PrestoType.Boolean)));
         ParentId = None;

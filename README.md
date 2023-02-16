@@ -22,6 +22,13 @@ A programming language.
   * Adding attribute to existing data type
   * Adding additional data to object identity (ECS type program)
 
+## To-Do
+* Implement comments
+* Handle presence or absence of newline at end of source code
+* Multi-file support
+* Name shadowing?
+* Better error handling than "incorrectly pushed scope"
+
 ## Example Programs
 
 ### Empty Program

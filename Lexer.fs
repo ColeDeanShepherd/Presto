@@ -189,6 +189,8 @@ let rec readWhitespace (state: TokenizeState): TokenizeState =
     else
         state
 
+let isIdentifierChar (c: char) = (Char.IsLetter c) || (c = '_')
+
 let iterateTokenize (state: TokenizeState): TokenizeState =
     if state.TextLeft.Length = 0 then state
     else
@@ -197,8 +199,8 @@ let iterateTokenize (state: TokenizeState): TokenizeState =
         
         if isValidWhitespace nextChar then
             readWhitespace state
-        else if Char.IsLetter nextChar then
-            let (tokenText, nextState) = takeCharsWhile state Char.IsLetter
+        else if isIdentifierChar nextChar then
+            let (tokenText, nextState) = takeCharsWhile state isIdentifierChar
             let tokenType =
                 match tokenText with
                 | "fn" -> TokenType.FnKeyword
