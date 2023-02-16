@@ -11,12 +11,14 @@ Expression ->
     | Record
     | Union
     | Identifier
+    | IfThenElse
 TypeExpression -> Expression
 Function -> "fn" "(" SepBy(Parameter, ",") ")" "->" Expression
 Record -> "record" SepBy(Whitespace, Field)
 Union -> "union" SepBy(Whitespace, UnionCase)
 Field -> Identifier ":" TypeExpression
 Parameter -> Identifier (":" Expression)?
+IfThenElse -> "if" Expression "then" Expression "else" Expression
 *)
 
 type ParseNodeType =
@@ -31,6 +33,7 @@ type ParseNodeType =
     | FunctionCall
     | Parameter
     | MemberAccess
+    | IfThenElse
     | Token
     | Whitespace
 
@@ -388,6 +391,51 @@ and parseUnion (state: ParseState): Option<ParseNode> * ParseState =
         | None -> (None, state)
     | None -> (None, state)
 
+and parseIfThenElse (state: ParseState): Option<ParseNode> * ParseState =
+    let (optionIfToken, state) = parseToken state TokenType.IfKeyword
+
+    match optionIfToken with
+    | Some ifToken ->
+        let (whitespace1, state) = parseWhitespace state
+        let (optionIfExpression, state) = parseExpression state
+
+        match optionIfExpression with
+        | Some ifExpression ->
+            let (whitespace2, state) = parseWhitespace state
+            let (optionThenToken, state) = parseToken state TokenType.ThenKeyword
+
+            match optionThenToken with
+            | Some thenToken ->
+                let (whitespace3, state) = parseWhitespace state
+                let (optionThenExpression, state) = parseExpression state
+
+                match optionThenExpression with
+                | Some thenExpression ->
+                    let (whitespace4, state) = parseWhitespace state
+                    let (optionElseToken, state) = parseToken state TokenType.ElseKeyword
+
+                    match optionElseToken with
+                    | Some elseToken ->
+                        let (whitespace5, state) = parseWhitespace state
+                        let (optionElseExpression, state) = parseExpression state
+
+                        match optionElseExpression with
+                        | Some elseExpression ->
+                            (
+                                Some {
+                                    Type = ParseNodeType.IfThenElse
+                                    Children = List.concat [ [ifToken]; whitespace1; [ifExpression]; whitespace2; [thenToken]; whitespace3; [thenExpression]; whitespace4; [elseToken]; whitespace5; [elseExpression] ]
+                                    Token = None
+                                },
+                                state
+                            )
+                        | None -> (None, state)
+                    | None -> (None, state)
+                | None -> (None, state)
+            | None -> (None, state)
+        | None -> (None, state)
+    | None -> (None, state)
+
 and parseFunction (state: ParseState): Option<ParseNode> * ParseState =
     let (optionFnToken, state) = parseToken state TokenType.FnKeyword
 
@@ -518,6 +566,8 @@ and parsePrefixExpression (state: ParseState): Option<ParseNode> * ParseState =
             wrapInExpressionNode (parseRecord state)
         | TokenType.UnionKeyword ->
             wrapInExpressionNode (parseUnion state)
+        | TokenType.IfKeyword ->
+            wrapInExpressionNode (parseIfThenElse state)
         | TokenType.Identifier ->
             wrapInExpressionNode (parseToken state TokenType.Identifier)
         | TokenType.NumberLiteral ->

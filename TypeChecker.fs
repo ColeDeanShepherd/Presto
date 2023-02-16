@@ -103,6 +103,45 @@ and checkFunction (state: TypeCheckerState) (fn: Function): TypeCheckerState * O
         (popScope state, Some prestoType)
     | None -> (popScope state, None)
 
+and areTypesEqual (a: PrestoType) (b: PrestoType): bool =
+    a = b
+
+and checkIfThenElse (state: TypeCheckerState) (ifThenElse: IfThenElse): TypeCheckerState * Option<PrestoType> =
+    let (state, optionIfExpressionType) = checkExpression state ifThenElse.IfExpression
+
+    match optionIfExpressionType with
+    | Some ifExpressionType ->
+        if ifExpressionType = PrestoType.Boolean then
+            let (state, optionThenExpressionType) = checkExpression state ifThenElse.ThenExpression
+
+            match optionThenExpressionType with
+            | Some thenExpressionType ->
+                let (state, optionElseExpressionType) = checkExpression state ifThenElse.ElseExpression
+
+                match optionElseExpressionType with
+                | Some elseExpressionType ->
+                    if areTypesEqual thenExpressionType elseExpressionType then
+                        (state, Some thenExpressionType)
+                    else
+                        let error = {
+                            Description = $"\"then\" type ({thenExpressionType}) doesn't match \"else\" type ({elseExpressionType})";
+                            Position = { LineIndex = 0; ColumnIndex = 0 } // TODO: init
+                        }
+                        let state = { state with Errors = state.Errors @ [error] }
+
+                        (state, None) // TODO: error
+                | None -> (state, None)
+            | None -> (state, None)
+        else
+            let error = {
+                Description = $"\"if\" type ({ifExpressionType}) isn't a bool";
+                Position = { LineIndex = 0; ColumnIndex = 0 } // TODO: init
+            }
+            let state = { state with Errors = state.Errors @ [error] }
+
+            (state, None) // TODO: error
+    | None -> (state, None)
+
 and checkFunctionCall (state: TypeCheckerState) (functionCall: FunctionCall): TypeCheckerState * Option<PrestoType> =
     let (state, optionArgumentTypes) = checkMany state checkExpression functionCall.Arguments []
 
@@ -183,6 +222,7 @@ and checkExpression (state: TypeCheckerState) (expression: Expression): TypeChec
             | RecordExpression record -> checkRecord state record
             | UnionExpression union -> checkUnion state union
             | FunctionExpression fn -> checkFunction state fn
+            | IfThenElseExpression ifThenElse -> checkIfThenElse state ifThenElse
             | FunctionCallExpression call -> checkFunctionCall state call
             | MemberAccessExpression memberAccess -> checkMemberAccess state memberAccess
             | SymbolReference token -> checkSymbolReference state token expression.Id

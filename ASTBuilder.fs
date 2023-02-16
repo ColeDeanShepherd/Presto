@@ -27,6 +27,7 @@ and ExpressionValue =
     | RecordExpression of Record
     | UnionExpression of Union
     | FunctionExpression of Function
+    | IfThenElseExpression of IfThenElse
     | FunctionCallExpression of FunctionCall
     | MemberAccessExpression of MemberAccess
     | SymbolReference of Token
@@ -74,6 +75,11 @@ and Scope = {
     SymbolsByName: Map<string, Symbol>
     ParentId: Option<System.Guid>
     ChildIds: List<System.Guid>
+}
+and IfThenElse = {
+    IfExpression: Expression
+    ThenExpression: Expression
+    ElseExpression: Expression
 }
 
 type Program = {
@@ -201,6 +207,24 @@ and buildFunction (state: ASTBuilderState) (node: ParseNode): (Option<Function> 
         | None -> (None, popScope state)
     | None -> (None, popScope state)
 
+and buildIfThenElse (state: ASTBuilderState) (node: ParseNode): (Option<IfThenElse> * ASTBuilderState) =
+    assert (node.Type = ParseNodeType.IfThenElse)
+
+    let expressionNodes = childrenOfType node ParseNodeType.Expression
+    let (optionExpressions, state) = buildAllOrNone state expressionNodes buildExpression
+
+    match optionExpressions with
+    | Some expressions ->
+        (
+            Some {
+                IfExpression = expressions[0]
+                ThenExpression = expressions[1]
+                ElseExpression = expressions[2]
+            },
+            state
+        )
+    | None -> (None, state)
+
 and buildRecordField (state: ASTBuilderState) (node: ParseNode): (Option<RecordField> * ASTBuilderState) =
     assert (node.Type = ParseNodeType.RecordField)
     
@@ -327,6 +351,12 @@ and buildExpression (state: ASTBuilderState) (node: ParseNode): (Option<Expressi
         match optionFunction with
         | Some fn -> (Some (newExpression (FunctionExpression fn)), state)
         | None -> (None, state)
+    | ParseNodeType.IfThenElse ->
+        let (optionIfThenElse, state) = buildIfThenElse state child
+
+        match optionIfThenElse with
+        | Some ifThenElse -> (Some (newExpression (IfThenElseExpression ifThenElse)), state)
+        | None -> (None, state)
     | ParseNodeType.FunctionCall ->
         let (optionFunctionCall, state) = buildFunctionCall state child
 
@@ -387,6 +417,8 @@ let getInitialScopesById =
             Map.empty
                 .Add("nat", BuiltInSymbol ("nat", PrestoType.Nat))
                 .Add("bool", BuiltInSymbol ("bool", PrestoType.Boolean))
+                .Add("true", BuiltInSymbol ("true", PrestoType.Boolean))
+                .Add("false", BuiltInSymbol ("false", PrestoType.Boolean))
                 .Add("char", BuiltInSymbol ("char", PrestoType.Character))
                 .Add("text", BuiltInSymbol ("text", PrestoType.Text textScopeId))
                 .Add("list", BuiltInSymbol ("list", FunctionType (System.Guid.NewGuid(), [PrestoType.Type], PrestoType.Type)))

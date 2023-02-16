@@ -5,7 +5,7 @@ open ASTBuilder
 open TypeChecker
 open CodeGenerator
 
-let fileName = "../../../BootstrappedCompiler.pst"
+let fileName = "../../../Test.pst"
 
 let sourceCode = File.ReadAllText fileName
 

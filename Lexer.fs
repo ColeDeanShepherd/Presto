@@ -9,6 +9,9 @@ type TokenType =
     | FnKeyword
     | RecordKeyword
     | UnionKeyword
+    | IfKeyword
+    | ThenKeyword
+    | ElseKeyword
     | Whitespace
     | Equals
     | Minus
@@ -206,6 +209,9 @@ let iterateTokenize (state: TokenizeState): TokenizeState =
                 | "fn" -> TokenType.FnKeyword
                 | "record" -> TokenType.RecordKeyword
                 | "union" -> TokenType.UnionKeyword
+                | "if" -> TokenType.IfKeyword
+                | "then" -> TokenType.ThenKeyword
+                | "else" -> TokenType.ElseKeyword
                 | _ -> TokenType.Identifier
 
             { nextState with Tokens = nextState.Tokens @ [{ Type = tokenType; Text = tokenText; Position = startPosition; WasInserted = false }] }

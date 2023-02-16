@@ -49,7 +49,28 @@ let generateSymbol (state: CodeGeneratorState) (token: Token) (expressionId: Sys
     | UnionCaseSymbol unionCase -> generateString state unionCase.NameToken.Text
     | BuiltInSymbol (builtInSymbol, prestoType) -> generateString state builtInSymbol
 
-let rec generateFunctionCallInternal (state: CodeGeneratorState) (functionCall: FunctionCall) (isTypeExpression: bool): CodeGeneratorState =
+let rec generateIfThenElse (state: CodeGeneratorState) (ifThenElse: IfThenElse): CodeGeneratorState =
+    let state = generateString state "("
+    let state = generateString state "("
+    let state = generateExpression state ifThenElse.IfExpression
+    let state = generateString state ")"
+    let state = generateString state " "
+    let state = generateString state "?"
+    let state = generateString state " "
+    let state = generateString state "("
+    let state = generateExpression state ifThenElse.ThenExpression
+    let state = generateString state ")"
+    let state = generateString state " "
+    let state = generateString state ":"
+    let state = generateString state " "
+    let state = generateString state "("
+    let state = generateExpression state ifThenElse.ElseExpression
+    let state = generateString state ")"
+    let state = generateString state ")"
+
+    state
+
+and generateFunctionCallInternal (state: CodeGeneratorState) (functionCall: FunctionCall) (isTypeExpression: bool): CodeGeneratorState =
     let state = generateExpression state functionCall.FunctionExpression
     let state = generateString state (if isTypeExpression then "<" else "(")
     let state = generateMany state functionCall.Arguments generateExpression ", " true
@@ -74,6 +95,7 @@ and generateExpressionInternal (state: CodeGeneratorState) (expression: Expressi
     | RecordExpression record -> failwith "Not implemented"
     | UnionExpression union -> failwith "Not implemented"
     | FunctionExpression fn -> failwith "Not implemented"
+    | IfThenElseExpression ifThenElse -> generateIfThenElse state ifThenElse
     | FunctionCallExpression call -> generateFunctionCallInternal state call isTypeExpression
     | MemberAccessExpression memberAccess -> generateMemberAccess state memberAccess
     | SymbolReference symbol -> generateSymbol state symbol expression.Id

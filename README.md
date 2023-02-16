@@ -98,6 +98,7 @@ binarySearch = fn (t: Type, c: SortedCollection(t)) {
 
 
 
+
 ### Print a Random Number
 
 ```
@@ -228,3 +229,21 @@ a = A { b = B { a = parent } }
 
 # Another complication is compiling the types.
 ```
+
+
+
+### Other
+identity = fn (x: 'a) -> x
+
+OR
+
+identity = fn (t: type, x: t) -> x
+
+
+
+in_range = fn (x: nat, min: nat, max: nat {max >= min}) -> ...
+
+OR
+
+in_range = fn (x: nat, min: nat, max: nat, min_max_proof: proof(max >= min)) -> ...
+
