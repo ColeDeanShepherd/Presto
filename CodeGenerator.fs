@@ -192,6 +192,10 @@ let generateBinding (state: CodeGeneratorState) (binding: Binding): CodeGenerato
         | UnionExpression union -> generateUnion state binding.NameToken.Text union
         | FunctionExpression fn -> generateFunction state binding.NameToken.Text fn
         | _ ->
+            let valueType = state.Program.TypesByExpressionId[binding.Value.Id]
+
+            let state = generateTypeReference state valueType
+            let state = generateString state " "
             let state = generateString state binding.NameToken.Text
             let state = generateString state " = "
             let state = generateExpression state binding.Value
