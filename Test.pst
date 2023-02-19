@@ -1,1 +1,1 @@
-﻿x = if true then 1 else 0
+﻿fact = fn (n: nat): nat -> if eq(n, 0) then 1 else product(n, fact(difference(n, 1)))

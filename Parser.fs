@@ -83,18 +83,60 @@ let tryPeekToken (state: ParseState): Option<Token> =
 let tryPeekTokenAfterWhitespace (state: ParseState): Option<Token> =
        Seq.skip state.NextTokenIndex state.Tokens
     |> Seq.tryFind (fun t -> t.Type <> TokenType.Whitespace)
+    
+let currentTextPosition (state: ParseState): TextPosition =
+    if state.NextTokenIndex < state.Tokens.Length then
+        state.Tokens[state.NextTokenIndex].Position
+    else
+        { LineIndex = 0; ColumnIndex = 0; }
+
+let peekTokenAfterWhitespace (state: ParseState): Option<Token> * ParseState =
+    let optionNextToken = tryPeekTokenAfterWhitespace state
+
+    match optionNextToken with
+    | Some _ ->
+        (optionNextToken, state)
+    | None ->
+        let error = {
+            Description = "Unexpectedly reached the end of the tokens."
+            Position = currentTextPosition state
+        }
+
+        (
+            optionNextToken,
+            { state with Errors = state.Errors @ [error] }
+        )
+
+let getUnexpectedTokenError (state: ParseState) (expectedTokenType: TokenType) (nextToken: Token): CompileError =
+    let virtualErrorDescriptionPart =
+        if nextToken.WasInserted then
+            "lexer-inserted "
+        else
+            ""
+
+    {
+        Description = $"Encountered unexpected {virtualErrorDescriptionPart}token: {nextToken.Text}"
+        Position = currentTextPosition state
+    }
+
+let peekExpectedTokenAfterWhitespace (state: ParseState) (expectedTokenType: TokenType): Option<Token> * ParseState =
+    let (optionNextToken, state) = peekTokenAfterWhitespace state
+
+    match optionNextToken with
+    | Some nextToken ->
+        if nextToken.Type = expectedTokenType then
+            (Some nextToken, state)
+        else
+            let error = getUnexpectedTokenError state expectedTokenType nextToken
+
+            (None, { state with Errors = state.Errors @ [error] })
+    | None -> (None, state)
 
 let tryPeekExpectedToken (state: ParseState) (tokenType: TokenType): Option<Token> =
     if (state.NextTokenIndex < state.Tokens.Length) && (state.Tokens[state.NextTokenIndex].Type = tokenType) then
         Some state.Tokens[state.NextTokenIndex]
     else
         None
-
-let currentTextPosition (state: ParseState): TextPosition =
-    if state.NextTokenIndex < state.Tokens.Length then
-        state.Tokens[state.NextTokenIndex].Position
-    else
-        { LineIndex = 0; ColumnIndex = 0; }
 
 let peekToken (state: ParseState): Option<Token> * ParseState =
     let optionNextToken = tryPeekToken state
@@ -128,16 +170,7 @@ let readExpectedToken (state: ParseState) (expectedTokenType: TokenType): Option
         if nextToken.Type = expectedTokenType then
             (optionNextToken, { state with NextTokenIndex = state.NextTokenIndex + 1 })
         else
-            let virtualErrorDescriptionPart =
-                if nextToken.WasInserted then
-                    "lexer-inserted "
-                else
-                    ""
-
-            let error = {
-                Description = $"Encountered unexpected {virtualErrorDescriptionPart}token: {nextToken.Text}"
-                Position = currentTextPosition state
-            }
+            let error = getUnexpectedTokenError state expectedTokenType nextToken
 
             (None, { state with Errors = state.Errors @ [error] })
     | None -> (optionNextToken, state)
@@ -436,6 +469,23 @@ and parseIfThenElse (state: ParseState): Option<ParseNode> * ParseState =
         | None -> (None, state)
     | None -> (None, state)
 
+and parseFunctionReturnType (state: ParseState): List<ParseNode> * ParseState =
+    // read whitespace, then the colon, then more whitespace, then parse an expression
+    let (whitespace1, state) = parseWhitespace state
+    let (optionColon, state) = parseToken state TokenType.Colon
+
+    match optionColon with
+    | Some colon ->
+        let (whitespace2, state) = parseWhitespace state
+        let (optionReturnTypeExpression, state) = parseExpression state
+
+        match optionReturnTypeExpression with
+        | Some returnTypeExpression ->
+            (List.concat [whitespace1; [colon]; whitespace2; [returnTypeExpression]], state)
+        | None -> ([], state)
+    | None ->
+        ([], state)
+
 and parseFunction (state: ParseState): Option<ParseNode> * ParseState =
     let (optionFnToken, state) = parseToken state TokenType.FnKeyword
 
@@ -450,6 +500,13 @@ and parseFunction (state: ParseState): Option<ParseNode> * ParseState =
             let (parameters, state) = parseSeparatedByToken state parseParameter TokenType.Comma []
             let (whitespace3, state) = parseWhitespace state
             let (optionRightParen, state) = parseToken state TokenType.RightParen
+
+            // If next token is ':', then parse it & a return type expression.
+            let (optionColonToken, state) = peekExpectedTokenAfterWhitespace state TokenType.Colon
+            let (returnTypeNodes, state) =
+                match optionColonToken with
+                | Some _ -> parseFunctionReturnType state
+                | None -> ([], state)
 
             match optionRightParen with
             | Some rightParen ->
@@ -470,7 +527,7 @@ and parseFunction (state: ParseState): Option<ParseNode> * ParseState =
                             (
                                 Some {
                                     Type = ParseNodeType.Function
-                                    Children = List.concat [ [fnToken]; whitespace1; [leftParen]; whitespace2; parameters; whitespace3; [rightParen]; whitespace4; [minus]; [greaterThan]; whitespace5; [result] ]
+                                    Children = List.concat [ [fnToken]; whitespace1; [leftParen]; whitespace2; parameters; whitespace3; [rightParen]; returnTypeNodes; whitespace4; [minus]; [greaterThan]; whitespace5; [result] ]
                                     Token = None
                                 },
                                 state

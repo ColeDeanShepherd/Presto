@@ -42,6 +42,7 @@ and Parameter = {
 }
 and Function = {
     Parameters: List<Parameter>
+    OptionReturnTypeExpression: Option<Expression>
     Value: Expression
     ScopeId: System.Guid
 }
@@ -199,11 +200,37 @@ and buildFunction (state: ASTBuilderState) (node: ParseNode): (Option<Function> 
 
     match optionParameters with
     | Some parameters ->
-        let expressionNode = childOfType node ParseNodeType.Expression
-        let (optionExpression, state) = buildExpression state expressionNode
+        let expressionNodes = childrenOfType node ParseNodeType.Expression
+
+        // if only one expression, then that is the value, if 2 exprs, then 1st is return type, 2nd is value
+        let (optionReturnTypeExpression, optionExpression, state) =
+            if expressionNodes.Length = 1 then
+                let (optionExpression, state) = buildExpression state expressionNodes[0]
+
+                (None, optionExpression, state)
+            else if expressionNodes.Length = 2 then
+                let (optionReturnTypeExpression, state) = buildExpression state expressionNodes[0]
+
+                match optionReturnTypeExpression with
+                | Some returnTypeExpression ->
+                    let (optionExpression, state) = buildExpression state expressionNodes[1]
+
+                    (Some returnTypeExpression, optionExpression, state)
+                | None -> (None, None, state)
+            else
+                failwith "Function parse node contains more than 2 expression nodes."
 
         match optionExpression with
-        | Some expression -> (Some { Parameters = parameters; Value = expression; ScopeId = state.CurrentScopeId }, popScope state)
+        | Some expression ->
+            (
+                Some {
+                    Parameters = parameters
+                    OptionReturnTypeExpression = optionReturnTypeExpression
+                    Value = expression
+                    ScopeId = state.CurrentScopeId
+                },
+                popScope state
+            )
         | None -> (None, popScope state)
     | None -> (None, popScope state)
 
@@ -423,7 +450,11 @@ let getInitialScopesById =
                 .Add("text", BuiltInSymbol ("text", PrestoType.Text textScopeId))
                 .Add("list", BuiltInSymbol ("list", FunctionType (System.Guid.NewGuid(), [PrestoType.Type], PrestoType.Type)))
                 .Add("eq", BuiltInSymbol ("eq", FunctionType (System.Guid.NewGuid(), [PrestoType.Nat; PrestoType.Nat], PrestoType.Boolean)))
-                .Add("not", BuiltInSymbol ("not", FunctionType (System.Guid.NewGuid(), [PrestoType.Boolean], PrestoType.Boolean)));
+                .Add("not", BuiltInSymbol ("not", FunctionType (System.Guid.NewGuid(), [PrestoType.Boolean], PrestoType.Boolean)))
+                .Add("sum", BuiltInSymbol ("sum", FunctionType (System.Guid.NewGuid(), [PrestoType.Nat; PrestoType.Nat], PrestoType.Nat)))
+                .Add("difference", BuiltInSymbol ("difference", FunctionType (System.Guid.NewGuid(), [PrestoType.Nat; PrestoType.Nat], PrestoType.Nat)))
+                .Add("product", BuiltInSymbol ("product", FunctionType (System.Guid.NewGuid(), [PrestoType.Nat; PrestoType.Nat], PrestoType.Nat)))
+                .Add("quotient", BuiltInSymbol ("quotient", FunctionType (System.Guid.NewGuid(), [PrestoType.Nat; PrestoType.Nat], PrestoType.Nat)));
         ParentId = None;
         ChildIds = [textScopeId]
     }

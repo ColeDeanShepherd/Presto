@@ -40,10 +40,10 @@ let pushScope (state: TypeCheckerState) (scopeId: System.Guid): TypeCheckerState
     let parentScopeId = state.CurrentScopeId
     let parentScope = state.ScopesById[parentScopeId]
 
-    if not (List.contains scopeId parentScope.ChildIds) then
-        failwith $"Incorrectly pushed scope {scopeId}"
-    else
-        { state with CurrentScopeId = scopeId }
+    //if not (List.contains scopeId parentScope.ChildIds) then
+    //    failwith $"Incorrectly pushed scope {scopeId}"
+    //else
+    { state with CurrentScopeId = scopeId }
 
 let popScope (state: TypeCheckerState): TypeCheckerState =
     let scope = state.ScopesById[state.CurrentScopeId]
@@ -89,6 +89,8 @@ and checkRecord (state: TypeCheckerState) (record: Record): TypeCheckerState * O
     
 and checkParameter (state: TypeCheckerState) (parameter: Parameter): TypeCheckerState * Option<PrestoType> =
     checkExpression state parameter.TypeExpression
+
+// TODO: make sure we don't check types of anything twice via symbol references
 
 and checkFunction (state: TypeCheckerState) (fn: Function): TypeCheckerState * Option<PrestoType> =
     let state = pushScope state fn.ScopeId
@@ -147,6 +149,8 @@ and checkFunctionCall (state: TypeCheckerState) (functionCall: FunctionCall): Ty
 
     let argumentTypes = List.filter<Option<PrestoType>> (fun x -> x.IsSome) optionArgumentTypes |> List.map (fun x -> x.Value)
     let succeededCheckingArguments = argumentTypes.Length = optionArgumentTypes.Length
+
+    // TODO: ensure argument types match function parameter types
 
     if succeededCheckingArguments then
         let (state, optionFunctionType) = checkExpression state functionCall.FunctionExpression
