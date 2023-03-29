@@ -166,6 +166,28 @@ and checkFunctionCall (state: TypeCheckerState) (functionCall: FunctionCall): Ty
         | None -> (state, None)
     else
         (state, None)
+
+and checkBlockChild (state: TypeCheckerState) (blockChild: BlockChild): TypeCheckerState * Option<PrestoType> =
+    match blockChild with
+    | BlockChildBinding binding ->
+        checkBinding state binding
+    | BlockChildExpression expression ->
+        checkExpression state expression
+
+and checkBlock (state: TypeCheckerState) (block: Block): TypeCheckerState * Option<PrestoType> =
+    // check the types of all non-last bindings & exprs, then check the type of the last expression
+    let (state, optionBlockChildTypes) = checkMany state checkBlockChild block.Children []
+    
+    let blockChildTypes =
+        List.filter<Option<PrestoType>> (fun x -> x.IsSome) optionBlockChildTypes
+        |> List.map (fun x -> x.Value)
+
+    let succeededCheckingChildren = blockChildTypes.Length = optionBlockChildTypes.Length
+
+    if succeededCheckingChildren then
+        (state, Some (List.last blockChildTypes))
+    else
+        (state, None)
         
 and checkMemberAccess (state: TypeCheckerState) (memberAccess: MemberAccess): TypeCheckerState * Option<PrestoType> =
     let (state, optionLeftType) = checkExpression state memberAccess.LeftExpression
@@ -228,6 +250,7 @@ and checkExpression (state: TypeCheckerState) (expression: Expression): TypeChec
             | FunctionExpression fn -> checkFunction state fn
             | IfThenElseExpression ifThenElse -> checkIfThenElse state ifThenElse
             | FunctionCallExpression call -> checkFunctionCall state call
+            | BlockExpression block -> checkBlock state block
             | MemberAccessExpression memberAccess -> checkMemberAccess state memberAccess
             | SymbolReference token -> checkSymbolReference state token expression.Id
             | NumberLiteralExpression number -> checkNumberLiteral state number
@@ -240,13 +263,13 @@ and checkExpression (state: TypeCheckerState) (expression: Expression): TypeChec
             )
         | None -> (state, None)
 
-let trySetTypeCanonicalName (state: TypeCheckerState) (scopeId: System.Guid) (name: string): TypeCheckerState =
+and trySetTypeCanonicalName (state: TypeCheckerState) (scopeId: System.Guid) (name: string): TypeCheckerState =
     if not (state.TypeCanonicalNamesByScopeId.ContainsKey scopeId) then
         { state with TypeCanonicalNamesByScopeId = state.TypeCanonicalNamesByScopeId.Add(scopeId, name) }
     else
         state
 
-let checkBinding (state: TypeCheckerState) (binding: Binding): TypeCheckerState * Option<PrestoType> =
+and checkBinding (state: TypeCheckerState) (binding: Binding): TypeCheckerState * Option<PrestoType> =
     let name = binding.NameToken.Text
 
     let state =

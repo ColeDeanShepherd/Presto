@@ -39,10 +39,15 @@ type TokenizeOutput = {
 type TokenizeState = {
     TextLeft: string
     Position: TextPosition
-    CurrentIndentation: int
+    IndentationStack: List<int>
     Tokens: List<Token>
     Errors: List<CompileError>
 }
+
+let getCurrentIndentation (state: TokenizeState) = 
+    if state.IndentationStack.IsEmpty then
+        0
+    else state.IndentationStack[state.IndentationStack.Length - 1]
 
 let isDone (state: TokenizeState) = state.TextLeft.Length = 0
 let isNotDone (state: TokenizeState) = not (isDone state)
@@ -169,13 +174,27 @@ let readWhitespaceTokens (state: TokenizeState): List<Token> * TokenizeState =
                 match optionWhitespaceToken with
                 | Some whitespaceToken -> whitespaceToken.Text.Length
                 | None -> 0
-            let indentationIncreased = newIndentation > state.CurrentIndentation
-            let indentationDecreased = newIndentation < state.CurrentIndentation
+            let indentationIncreased = newIndentation > (getCurrentIndentation state)
+            let indentationDecreased = newIndentation < (getCurrentIndentation state)
 
             if indentationIncreased then
-                (tokens @ [{ Type = TokenType.LeftCurlyBracket; Text = "{"; Position = state.Position; WasInserted = true }], { state with CurrentIndentation = newIndentation })
+                (
+                    tokens @ [{ Type = TokenType.LeftCurlyBracket; Text = "{"; Position = state.Position; WasInserted = true }],
+                    { state with IndentationStack = state.IndentationStack @ [newIndentation] }
+                )
             else if indentationDecreased then
-                (tokens @ [{ Type = TokenType.RightCurlyBracket; Text = "}"; Position = state.Position; WasInserted = true }], { state with CurrentIndentation = newIndentation })
+                let (tokens, state) = (
+                    tokens @ [{ Type = TokenType.RightCurlyBracket; Text = "}"; Position = state.Position; WasInserted = true }],
+                    { state with IndentationStack = List.take (state.IndentationStack.Length - 1) state.IndentationStack }
+                )
+
+                if newIndentation > (getCurrentIndentation state) then
+                    (
+                        tokens @ [{ Type = TokenType.LeftCurlyBracket; Text = "{"; Position = state.Position; WasInserted = true }],
+                        { state with IndentationStack = state.IndentationStack @ [newIndentation] }
+                    )
+                else
+                    (tokens, state)
             else
                 (tokens, state)
         else
@@ -247,10 +266,23 @@ let tokenize (sourceCode: string): TokenizeOutput =
     let seedState: TokenizeState = {
         TextLeft = sourceCode
         Position = { ColumnIndex = 0; LineIndex = 0 }
-        CurrentIndentation = 0
+        IndentationStack = []
         Tokens = []
         Errors = []
     }
     let finalState = applyWhile iterateTokenize isNotDone seedState
+
+    let finalState =
+        if finalState.IndentationStack.Length > 0
+        then
+            let token = { Type = TokenType.RightCurlyBracket; Text = "}"; Position = finalState.Position; WasInserted = true }
+
+            {
+                finalState with
+                    IndentationStack = []
+                    Tokens = finalState.Tokens @ (List.replicate finalState.IndentationStack.Length token)
+            }
+        else
+            finalState
 
     { Tokens = finalState.Tokens; Errors = finalState.Errors }

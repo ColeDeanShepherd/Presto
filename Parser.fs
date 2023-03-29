@@ -34,6 +34,7 @@ type ParseNodeType =
     | Parameter
     | MemberAccess
     | IfThenElse
+    | Block
     | Token
     | Whitespace
 
@@ -71,6 +72,9 @@ let childOfType (node: ParseNode) (nodeType: ParseNodeType): ParseNode =
 let childrenOfType (node: ParseNode) (nodeType: ParseNodeType): List<ParseNode> =
     List.filter (fun c -> c.Type = nodeType) node.Children
 
+let childrenOfTypes (node: ParseNode) (nodeTypes: List<ParseNodeType>): List<ParseNode> =
+    List.filter (fun c -> List.contains c.Type nodeTypes) node.Children
+
 let isDone (state: ParseState): bool =
     state.NextTokenIndex >= state.Tokens.Length
 
@@ -79,6 +83,12 @@ let tryPeekToken (state: ParseState): Option<Token> =
         Some state.Tokens[state.NextTokenIndex]
     else
         None
+
+let tryPeekTokenIndexAfterWhitespace (state: ParseState): Option<int> =
+       Seq.indexed state.Tokens
+    |> Seq.skip state.NextTokenIndex
+    |> Seq.tryFind (fun (i, t) -> t.Type <> TokenType.Whitespace)
+    |> Option.bind (fun (i, t) -> Some i)
 
 let tryPeekTokenAfterWhitespace (state: ParseState): Option<Token> =
        Seq.skip state.NextTokenIndex state.Tokens
@@ -106,6 +116,24 @@ let peekTokenAfterWhitespace (state: ParseState): Option<Token> * ParseState =
             optionNextToken,
             { state with Errors = state.Errors @ [error] }
         )
+
+let rec tryPeekTokenSequenceIgnoreWhitespace (state: ParseState) (tokenSequence: List<TokenType>): bool =
+    if tokenSequence.IsEmpty then
+        true
+    else
+        let optionTokenIndex = tryPeekTokenIndexAfterWhitespace state
+
+        match optionTokenIndex with
+        | Some tokenIndex ->
+            let token = state.Tokens[tokenIndex]
+
+            if token.Type = tokenSequence.Head then
+                let state = { state with NextTokenIndex = tokenIndex + 1 }
+
+                tryPeekTokenSequenceIgnoreWhitespace state tokenSequence.Tail
+            else
+                false
+        | None -> false
 
 let getUnexpectedTokenError (state: ParseState) (expectedTokenType: TokenType) (nextToken: Token): CompileError =
     let virtualErrorDescriptionPart =
@@ -469,6 +497,34 @@ and parseIfThenElse (state: ParseState): Option<ParseNode> * ParseState =
         | None -> (None, state)
     | None -> (None, state)
 
+and parseBindingOrExpression (state: ParseState): Option<ParseNode> * ParseState =
+    if (tryPeekTokenSequenceIgnoreWhitespace state [TokenType.Identifier; TokenType.Equals]) then
+        parseBinding state
+    else
+        parseExpression state
+
+and parseBlock (state: ParseState): Option<ParseNode> * ParseState =
+    let (optionLeftCurlyBracket, state) = parseToken state TokenType.LeftCurlyBracket
+
+    match optionLeftCurlyBracket with
+    | Some leftCurlyBracket ->
+        let (whitespace1, state) = parseWhitespace state
+        let (children, state) = parseSeparatedByWhitespace state parseBindingOrExpression (Some TokenType.RightCurlyBracket) []
+        let (optionRightCurlyBracket, state) = parseToken state TokenType.RightCurlyBracket
+
+        match optionRightCurlyBracket with
+        | Some rightCurlyBracket ->
+            (
+                Some {
+                    Type = ParseNodeType.Block
+                    Children = List.concat [ [leftCurlyBracket]; whitespace1; children; [rightCurlyBracket] ]
+                    Token = None
+                },
+                state
+            )
+        | None -> (None, state)
+    | None -> (None, state)
+
 and parseFunctionReturnType (state: ParseState): List<ParseNode> * ParseState =
     // read whitespace, then the colon, then more whitespace, then parse an expression
     let (whitespace1, state) = parseWhitespace state
@@ -625,6 +681,8 @@ and parsePrefixExpression (state: ParseState): Option<ParseNode> * ParseState =
             wrapInExpressionNode (parseUnion state)
         | TokenType.IfKeyword ->
             wrapInExpressionNode (parseIfThenElse state)
+        | TokenType.LeftCurlyBracket ->
+            wrapInExpressionNode (parseBlock state)
         | TokenType.Identifier ->
             wrapInExpressionNode (parseToken state TokenType.Identifier)
         | TokenType.NumberLiteral ->
@@ -721,7 +779,7 @@ and tryParsePostfixAndInfixExpressions (state: ParseState) (prefixExpression: Pa
             | None -> (Some prefixExpression, state)
     | None -> (Some prefixExpression, state)
 
-let parseBinding (state: ParseState): Option<ParseNode> * ParseState =
+and parseBinding (state: ParseState): Option<ParseNode> * ParseState =
     let (optionIdentifier, state) = parseToken state TokenType.Identifier
 
     match optionIdentifier with

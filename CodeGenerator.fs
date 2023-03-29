@@ -78,6 +78,27 @@ and generateFunctionCallInternal (state: CodeGeneratorState) (functionCall: Func
 
     state
 
+and generateBlockChild (state: CodeGeneratorState) (blockChild: BlockChild): CodeGeneratorState =
+    match blockChild with
+    | BlockChildBinding binding ->
+        generateBinding state binding
+    | BlockChildExpression expression ->
+        generateExpression state expression
+
+and generateBlock (state: CodeGeneratorState) (block: Block): CodeGeneratorState =
+    if block.Children.Length <> 1 then
+        let state = generateString state "{"
+        let state = generateString state "\n"
+        let state = generateMany state block.Children generateBlockChild ";\n" true
+        let state = generateString state "\n"
+        let state = generateString state "}"
+
+        state
+    else
+        let state = generateBlockChild state block.Children.Head
+
+        state
+
 and generateMemberAccess (state: CodeGeneratorState) (memberAccess: MemberAccess): CodeGeneratorState =
     let state = generateExpression state memberAccess.LeftExpression
     let state = generateString state "."
@@ -97,6 +118,7 @@ and generateExpressionInternal (state: CodeGeneratorState) (expression: Expressi
     | FunctionExpression fn -> failwith "Not implemented"
     | IfThenElseExpression ifThenElse -> generateIfThenElse state ifThenElse
     | FunctionCallExpression call -> generateFunctionCallInternal state call isTypeExpression
+    | BlockExpression block -> generateBlock state block
     | MemberAccessExpression memberAccess -> generateMemberAccess state memberAccess
     | SymbolReference symbol -> generateSymbol state symbol expression.Id
     | NumberLiteralExpression number -> generateNumberLiteral state number
@@ -121,14 +143,14 @@ and generateTypeReference (state: CodeGeneratorState) (prestoType: PrestoType): 
 and generateTypeExpression (state: CodeGeneratorState) (expression: Expression): CodeGeneratorState =
     generateExpressionInternal state expression true
 
-let generateParameter (state: CodeGeneratorState) (parameter: Parameter): CodeGeneratorState =
+and generateParameter (state: CodeGeneratorState) (parameter: Parameter): CodeGeneratorState =
     let state = generateTypeExpression state parameter.TypeExpression
     let state = generateString state " "
     let state = generateString state parameter.NameToken.Text
 
     state
 
-let generateFunction (state: CodeGeneratorState) (name: string) (fn: Function): CodeGeneratorState =
+and generateFunction (state: CodeGeneratorState) (name: string) (fn: Function): CodeGeneratorState =
     let state = generateString state "static"
     let state = generateString state " "
 
@@ -150,14 +172,14 @@ let generateFunction (state: CodeGeneratorState) (name: string) (fn: Function): 
 
     state
     
-let generateRecordField (state: CodeGeneratorState) (recordField: RecordField): CodeGeneratorState =
+and generateRecordField (state: CodeGeneratorState) (recordField: RecordField): CodeGeneratorState =
     let state = generateTypeExpression state recordField.TypeExpression
     let state = generateString state " "
     let state = generateString state recordField.NameToken.Text
 
     state
 
-let generateRecord (state: CodeGeneratorState) (name: string) (record: Record): CodeGeneratorState =
+and generateRecord (state: CodeGeneratorState) (name: string) (record: Record): CodeGeneratorState =
     let state = generateString state "public record "
     let state = generateString state name
     let state = generateString state "("
@@ -166,12 +188,12 @@ let generateRecord (state: CodeGeneratorState) (name: string) (record: Record): 
 
     state
 
-let generateUnionCase (state: CodeGeneratorState) (unionCase: UnionCase): CodeGeneratorState =
+and generateUnionCase (state: CodeGeneratorState) (unionCase: UnionCase): CodeGeneratorState =
     let state = generateString state unionCase.NameToken.Text
 
     state
 
-let generateUnion (state: CodeGeneratorState) (name: string) (union: Union): CodeGeneratorState =
+and generateUnion (state: CodeGeneratorState) (name: string) (union: Union): CodeGeneratorState =
     let state = generateString state "public enum "
     let state = generateString state name
     let state = generateString state "{"
@@ -180,12 +202,12 @@ let generateUnion (state: CodeGeneratorState) (name: string) (union: Union): Cod
 
     state
 
-let shouldTerminateWithSemicolon (binding: Binding): bool =
+and shouldTerminateWithSemicolon (binding: Binding): bool =
     match binding.Value.Value with
     | FunctionExpression fn -> false
     | _ -> true
 
-let generateBinding (state: CodeGeneratorState) (binding: Binding): CodeGeneratorState =
+and generateBinding (state: CodeGeneratorState) (binding: Binding): CodeGeneratorState =
     let state =
         match binding.Value.Value with
         | RecordExpression record -> generateRecord state binding.NameToken.Text record

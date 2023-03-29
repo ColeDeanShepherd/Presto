@@ -28,6 +28,7 @@ and ExpressionValue =
     | UnionExpression of Union
     | FunctionExpression of Function
     | IfThenElseExpression of IfThenElse
+    | BlockExpression of Block
     | FunctionCallExpression of FunctionCall
     | MemberAccessExpression of MemberAccess
     | SymbolReference of Token
@@ -81,6 +82,14 @@ and IfThenElse = {
     IfExpression: Expression
     ThenExpression: Expression
     ElseExpression: Expression
+}
+
+and BlockChild =
+    | BlockChildBinding of Binding
+    | BlockChildExpression of Expression
+
+and Block = {
+    Children: List<BlockChild>
 }
 
 type Program = {
@@ -338,6 +347,49 @@ and buildFunctionCall (state: ASTBuilderState) (node: ParseNode): (Option<Functi
         | None -> (None, state)
     | None -> (None, state)
 
+and buildBlockChild (state: ASTBuilderState) (node: ParseNode): (Option<BlockChild> * ASTBuilderState) =
+    assert ((node.Type = ParseNodeType.Binding) || (node.Type = ParseNodeType.Expression))
+
+    match node.Type with
+    | ParseNodeType.Binding ->
+        let (optionBinding, state) = buildBinding state node
+
+        match optionBinding with
+        | Some binding -> (Some (BlockChildBinding binding), state)
+        | None -> (None, state)
+    | ParseNodeType.Expression ->
+        let (optionExpression, state) = buildExpression state node
+
+        match optionExpression with
+        | Some expression -> (Some (BlockChildExpression expression), state)
+        | None -> (None, state)
+    | _ -> failwith ""
+
+and buildBlock (state: ASTBuilderState) (node: ParseNode): (Option<Block> * ASTBuilderState) =
+    assert (node.Type = ParseNodeType.Block)
+    
+    let childNodes = childrenOfTypes node [ParseNodeType.Binding; ParseNodeType.Expression]
+    let (optionChildren, state) = buildAllOrNone state childNodes buildBlockChild
+
+    match optionChildren with
+    | Some children ->
+        let successResult =
+            (
+                Some { Children = children },
+                state
+            )
+
+        if children.IsEmpty then
+            successResult
+        else
+            match (List.last children) with
+            | BlockChildExpression expression ->
+                successResult
+            | BlockChildBinding binding ->
+                // TODO: error
+                (None, state)
+    | None -> (None, state)
+
 and buildMemberAccess (state: ASTBuilderState) (node: ParseNode): (Option<MemberAccess> * ASTBuilderState) =
     assert (node.Type = ParseNodeType.MemberAccess)
 
@@ -390,6 +442,12 @@ and buildExpression (state: ASTBuilderState) (node: ParseNode): (Option<Expressi
         match optionFunctionCall with
         | Some functionCall -> (Some (newExpression (FunctionCallExpression functionCall)), state)
         | None -> (None, state)
+    | ParseNodeType.Block ->
+        let (optionBlock, state) = buildBlock state child
+
+        match optionBlock with
+        | Some block -> (Some (newExpression (BlockExpression block)), state)
+        | None -> (None, state)
     | ParseNodeType.MemberAccess ->
         let (optionMemberAccess, state) = buildMemberAccess state child
 
@@ -405,7 +463,7 @@ and buildExpression (state: ASTBuilderState) (node: ParseNode): (Option<Expressi
         (Some (newExpression (NumberLiteralExpression numberLiteral)), state)
     | _ -> (None, { state with Errors = List.append state.Errors [{ Description = $"Unexpected parse node type: {child.Type}"; Position = nodeTextPosition child }] })
 
-let buildBinding (state: ASTBuilderState) (node: ParseNode): (Option<Binding> * ASTBuilderState) =
+and buildBinding (state: ASTBuilderState) (node: ParseNode): (Option<Binding> * ASTBuilderState) =
     assert (node.Type = ParseNodeType.Binding)
 
     let identifierNode = childOfTokenType node TokenType.Identifier
