@@ -92,17 +92,46 @@ and checkParameter (state: TypeCheckerState) (parameter: Parameter): TypeChecker
 
 // TODO: make sure we don't check types of anything twice via symbol references
 
-and checkFunction (state: TypeCheckerState) (fn: Function): TypeCheckerState * Option<PrestoType> =
+and checkFunction (state: TypeCheckerState) (expression: Expression) (fn: Function): TypeCheckerState * Option<PrestoType> =
     let state = pushScope state fn.ScopeId
+
     let (state, optionParameterTypes) = checkMany state checkParameter fn.Parameters []
     let parameterTypes = List.map<Parameter, PrestoType> (fun x -> state.TypesByExpressionId[x.TypeExpression.Id]) fn.Parameters
-    let (state, optionReturnType) = checkExpression state fn.Value
 
-    match optionReturnType with
-    | Some returnType ->
-        let prestoType = FunctionType (fn.ScopeId, parameterTypes, returnType)
+    let (state, optionSpecifiedReturnType) =
+        match fn.OptionReturnTypeExpression with
+        | Some returnTypeExpression -> checkExpression state returnTypeExpression
+        | None -> (state, None)
 
-        (popScope state, Some prestoType)
+    let state =
+        match optionSpecifiedReturnType with
+        | Some specifiedReturnType ->
+            let prestoType = FunctionType (fn.ScopeId, parameterTypes, specifiedReturnType)
+            { state with TypesByExpressionId = state.TypesByExpressionId.Add(expression.Id, prestoType) }
+        | None -> state
+
+    // TODO: fix recursion when return type isn't specified
+    let (state, optionInferredReturnType) = checkExpression state fn.Value
+
+    match optionInferredReturnType with
+    | Some inferredReturnType ->
+
+        if optionSpecifiedReturnType.IsSome then
+            let state = popScope state
+
+            if inferredReturnType = optionSpecifiedReturnType.Value then
+                (state, Some state.TypesByExpressionId[expression.Id])
+            else
+                let error = {
+                    Description = $"Function's specified return type ({optionSpecifiedReturnType.Value}) doesn't match its inferred return type ({inferredReturnType})";
+                    Position = { LineIndex = 0; ColumnIndex = 0 } // TODO: init
+                }
+                let state = { state with Errors = state.Errors @ [error] }
+
+                (state, None)
+        else
+            let inferredPrestoType = FunctionType (fn.ScopeId, parameterTypes, inferredReturnType)
+            (popScope state, Some inferredPrestoType)
     | None -> (popScope state, None)
 
 and areTypesEqual (a: PrestoType) (b: PrestoType): bool =
@@ -247,7 +276,7 @@ and checkExpression (state: TypeCheckerState) (expression: Expression): TypeChec
             match expression.Value with
             | RecordExpression record -> checkRecord state record
             | UnionExpression union -> checkUnion state union
-            | FunctionExpression fn -> checkFunction state fn
+            | FunctionExpression fn -> checkFunction state expression fn
             | IfThenElseExpression ifThenElse -> checkIfThenElse state ifThenElse
             | FunctionCallExpression call -> checkFunctionCall state call
             | BlockExpression block -> checkBlock state block
@@ -263,7 +292,7 @@ and checkExpression (state: TypeCheckerState) (expression: Expression): TypeChec
             )
         | None -> (state, None)
 
-and trySetTypeCanonicalName (state: TypeCheckerState) (scopeId: System.Guid) (name: string): TypeCheckerState =
+and trySetTypesCanonicalName (state: TypeCheckerState) (scopeId: System.Guid) (name: string): TypeCheckerState =
     if not (state.TypeCanonicalNamesByScopeId.ContainsKey scopeId) then
         { state with TypeCanonicalNamesByScopeId = state.TypeCanonicalNamesByScopeId.Add(scopeId, name) }
     else
@@ -274,9 +303,9 @@ and checkBinding (state: TypeCheckerState) (binding: Binding): TypeCheckerState 
 
     let state =
         match binding.Value.Value with
-        | RecordExpression record -> trySetTypeCanonicalName state record.ScopeId name
-        | UnionExpression union -> trySetTypeCanonicalName state union.ScopeId name
-        | FunctionExpression fn -> trySetTypeCanonicalName state fn.ScopeId name
+        | RecordExpression record -> trySetTypesCanonicalName state record.ScopeId name
+        | UnionExpression union -> trySetTypesCanonicalName state union.ScopeId name
+        | FunctionExpression fn -> trySetTypesCanonicalName state fn.ScopeId name
         | _ -> state
 
     checkExpression state binding.Value
