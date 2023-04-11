@@ -5,9 +5,17 @@ open ASTBuilder
 open TypeChecker
 open CodeGenerator
 
-let fileName = "../../../Test.pst"
+let commandLineArgs = System.Environment.GetCommandLineArgs()
 
-let sourceCode = File.ReadAllText fileName
+if commandLineArgs.Length < 2 then
+    failwith "Invalid file."
+
+let filePath = commandLineArgs[1]
+let dirPath = Path.GetDirectoryName(filePath)
+let fileName = Path.GetFileName(filePath)
+let fileNameWithoutExtension = Path.GetFileNameWithoutExtension(filePath)
+
+let sourceCode = File.ReadAllText filePath
 
 // tokenize
 let tokenizeOutput = tokenize sourceCode
@@ -55,3 +63,5 @@ else
                     printfn "Compile succeeded!"
                     printfn ""
                     printfn $"{codeGeneratorOutput.GeneratedCode}"
+
+                    File.WriteAllText(Path.Combine(dirPath, fileNameWithoutExtension + ".g.cs"), codeGeneratorOutput.GeneratedCode)

@@ -1,17 +1,12 @@
-text_position = record
-    line_index: nat
-    column_index: nat
-
-compile_error = record
-    description: text
-    position: text_position
-
 token_type = union
     identifier
     number_literal
     fn_keyword
     record_keyword
     union_keyword
+    if_keyword
+    then_keyword
+    else_keyword
     whitespace
     equals
     minus
@@ -23,6 +18,14 @@ token_type = union
     comma
     colon
     period
+
+text_position = record
+    line_index: nat
+    column_index: nat
+
+compile_error = record
+    description: text
+    position: text_position
 
 token = record
     type: token_type

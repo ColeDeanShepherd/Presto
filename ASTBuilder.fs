@@ -180,7 +180,7 @@ let buildAllOrNone
 let rec buildParameter (state: ASTBuilderState) (node: ParseNode): (Option<Parameter> * ASTBuilderState) =
     assert (node.Type = ParseNodeType.Parameter)
 
-    let identifier = childOfTokenType node TokenType.Identifier
+    let identifier = childOfTokenType node token_type.identifier
     let nameToken = identifier.Token.Value
     let name = nameToken.Text
 
@@ -264,7 +264,7 @@ and buildIfThenElse (state: ASTBuilderState) (node: ParseNode): (Option<IfThenEl
 and buildRecordField (state: ASTBuilderState) (node: ParseNode): (Option<RecordField> * ASTBuilderState) =
     assert (node.Type = ParseNodeType.RecordField)
     
-    let identifierNode = childOfTokenType node TokenType.Identifier
+    let identifierNode = childOfTokenType node token_type.identifier
     let nameToken = identifierNode.Token.Value;
     let name = nameToken.Text
     
@@ -299,7 +299,7 @@ and buildRecord (state: ASTBuilderState) (node: ParseNode): (Option<Record> * AS
 and buildUnionCase (state: ASTBuilderState) (node: ParseNode): (Option<UnionCase> * ASTBuilderState) =
     assert (node.Type = ParseNodeType.UnionCase)
     
-    let identifierNode = childOfTokenType node TokenType.Identifier
+    let identifierNode = childOfTokenType node token_type.identifier
     let nameToken = identifierNode.Token.Value;
     let name = nameToken.Text
 
@@ -401,7 +401,7 @@ and buildMemberAccess (state: ASTBuilderState) (node: ParseNode): (Option<Member
     | Some leftExpression ->
         
         let rightExpressionNode = expressionNodes[1]
-        let rightIdentifier = childOfTokenType rightExpressionNode TokenType.Identifier
+        let rightIdentifier = childOfTokenType rightExpressionNode token_type.identifier
 
         (Some { LeftExpression = leftExpression; RightIdentifier = rightIdentifier.Token.Value; }, state)
     | None -> (None, state)
@@ -456,9 +456,9 @@ and buildExpression (state: ASTBuilderState) (node: ParseNode): (Option<Expressi
         | None -> (None, state)
     | ParseNodeType.Expression ->
         buildExpression state child
-    | ParseNodeType.Token when child.Token.Value.Type = TokenType.Identifier ->
+    | ParseNodeType.Token when child.Token.Value.Type = token_type.identifier ->
         (Some (newExpression (SymbolReference child.Token.Value)), state)
-    | ParseNodeType.Token when child.Token.Value.Type = TokenType.NumberLiteral ->
+    | ParseNodeType.Token when child.Token.Value.Type = token_type.number_literal ->
         let numberLiteral = { Token = child.Token.Value }
         (Some (newExpression (NumberLiteralExpression numberLiteral)), state)
     | _ -> (None, { state with Errors = List.append state.Errors [{ Description = $"Unexpected parse node type: {child.Type}"; Position = nodeTextPosition child }] })
@@ -466,7 +466,7 @@ and buildExpression (state: ASTBuilderState) (node: ParseNode): (Option<Expressi
 and buildBinding (state: ASTBuilderState) (node: ParseNode): (Option<Binding> * ASTBuilderState) =
     assert (node.Type = ParseNodeType.Binding)
 
-    let identifierNode = childOfTokenType node TokenType.Identifier
+    let identifierNode = childOfTokenType node token_type.identifier
     let expressionNode = childOfType node ParseNodeType.Expression
     let nameToken = identifierNode.Token.Value;
     let name = nameToken.Text

@@ -3,29 +3,10 @@
 open System
 open CompilerCore
 
-type TokenType =
-    | Identifier
-    | NumberLiteral
-    | FnKeyword
-    | RecordKeyword
-    | UnionKeyword
-    | IfKeyword
-    | ThenKeyword
-    | ElseKeyword
-    | Whitespace
-    | Equals
-    | Minus
-    | GreaterThan
-    | LeftParen
-    | RightParen
-    | LeftCurlyBracket
-    | RightCurlyBracket
-    | Comma
-    | Colon
-    | Period
+type token_type = PrestoProgram.token_type
 
 type Token = {
-    Type: TokenType
+    Type: token_type
     Text: string
     Position: TextPosition
     WasInserted: bool
@@ -109,7 +90,7 @@ let rec appendCharsWhile (state: TokenizeState) (predicate: char -> bool) (str: 
 let takeCharsWhile (state: TokenizeState) (predicate: char -> bool): string * TokenizeState =
     appendCharsWhile state predicate ""
 
-let readSingleCharToken (state: TokenizeState) (tokenType: TokenType): TokenizeState =
+let readSingleCharToken (state: TokenizeState) (tokenType: token_type): TokenizeState =
     let startPosition = state.Position
     let (nextChar, state) = readChar state
     
@@ -155,7 +136,7 @@ let readWhitespaceTokens (state: TokenizeState): List<Token> * TokenizeState =
 
     let optionWhitespaceToken =
         if tokenText.Length > 0 then
-            Some { Type = TokenType.Whitespace; Text = tokenText; Position = startPosition; WasInserted = false }
+            Some { Type = token_type.whitespace; Text = tokenText; Position = startPosition; WasInserted = false }
         else
             None
 
@@ -179,18 +160,18 @@ let readWhitespaceTokens (state: TokenizeState): List<Token> * TokenizeState =
 
             if indentationIncreased then
                 (
-                    tokens @ [{ Type = TokenType.LeftCurlyBracket; Text = "{"; Position = state.Position; WasInserted = true }],
+                    tokens @ [{ Type = token_type.left_curly_bracket; Text = "{"; Position = state.Position; WasInserted = true }],
                     { state with IndentationStack = state.IndentationStack @ [newIndentation] }
                 )
             else if indentationDecreased then
                 let (tokens, state) = (
-                    tokens @ [{ Type = TokenType.RightCurlyBracket; Text = "}"; Position = state.Position; WasInserted = true }],
+                    tokens @ [{ Type = token_type.right_curly_bracket; Text = "}"; Position = state.Position; WasInserted = true }],
                     { state with IndentationStack = List.take (state.IndentationStack.Length - 1) state.IndentationStack }
                 )
 
                 if newIndentation > (getCurrentIndentation state) then
                     (
-                        tokens @ [{ Type = TokenType.LeftCurlyBracket; Text = "{"; Position = state.Position; WasInserted = true }],
+                        tokens @ [{ Type = token_type.left_curly_bracket; Text = "{"; Position = state.Position; WasInserted = true }],
                         { state with IndentationStack = state.IndentationStack @ [newIndentation] }
                     )
                 else
@@ -225,40 +206,40 @@ let iterateTokenize (state: TokenizeState): TokenizeState =
             let (tokenText, nextState) = takeCharsWhile state isIdentifierChar
             let tokenType =
                 match tokenText with
-                | "fn" -> TokenType.FnKeyword
-                | "record" -> TokenType.RecordKeyword
-                | "union" -> TokenType.UnionKeyword
-                | "if" -> TokenType.IfKeyword
-                | "then" -> TokenType.ThenKeyword
-                | "else" -> TokenType.ElseKeyword
-                | _ -> TokenType.Identifier
+                | "fn" -> token_type.fn_keyword
+                | "record" -> token_type.record_keyword
+                | "union" -> token_type.union_keyword
+                | "if" -> token_type.if_keyword
+                | "then" -> token_type.then_keyword
+                | "else" -> token_type.else_keyword
+                | _ -> token_type.identifier
 
             { nextState with Tokens = nextState.Tokens @ [{ Type = tokenType; Text = tokenText; Position = startPosition; WasInserted = false }] }
         else if Char.IsDigit nextChar then
             let (tokenText, nextState) = takeCharsWhile state Char.IsDigit
-            let tokenType = TokenType.NumberLiteral
+            let tokenType = token_type.number_literal
 
             { nextState with Tokens = nextState.Tokens @ [{ Type = tokenType; Text = tokenText; Position = startPosition; WasInserted = false }] }
         else if nextChar = '=' then
-            readSingleCharToken state TokenType.Equals
+            readSingleCharToken state token_type.equals
         else if nextChar = '-' then
-            readSingleCharToken state TokenType.Minus
+            readSingleCharToken state token_type.minus
         else if nextChar = '>' then
-            readSingleCharToken state TokenType.GreaterThan
+            readSingleCharToken state token_type.greater_than
         else if nextChar = '(' then
-            readSingleCharToken state TokenType.LeftParen
+            readSingleCharToken state token_type.left_paren
         else if nextChar = ')' then
-            readSingleCharToken state TokenType.RightParen
+            readSingleCharToken state token_type.right_paren
         else if nextChar = '{' then
-            readSingleCharToken state TokenType.LeftCurlyBracket
+            readSingleCharToken state token_type.left_curly_bracket
         else if nextChar = '}' then
-            readSingleCharToken state TokenType.RightCurlyBracket
+            readSingleCharToken state token_type.right_curly_bracket
         else if nextChar = ',' then
-            readSingleCharToken state TokenType.Comma
+            readSingleCharToken state token_type.comma
         else if nextChar = ':' then
-            readSingleCharToken state TokenType.Colon
+            readSingleCharToken state token_type.colon
         else if nextChar = '.' then
-            readSingleCharToken state TokenType.Period
+            readSingleCharToken state token_type.period
         else
             { state with TextLeft = state.TextLeft[1..]; Errors = state.Errors @ [{ Description = $"Encountered an unexpected character: '{nextChar}'"; Position = state.Position }] }
 
@@ -275,7 +256,7 @@ let tokenize (sourceCode: string): TokenizeOutput =
     let finalState =
         if finalState.IndentationStack.Length > 0
         then
-            let token = { Type = TokenType.RightCurlyBracket; Text = "}"; Position = finalState.Position; WasInserted = true }
+            let token = { Type = token_type.right_curly_bracket; Text = "}"; Position = finalState.Position; WasInserted = true }
 
             {
                 finalState with
