@@ -40,7 +40,6 @@ namespace OpenAI
         [property: JsonPropertyName("choices")]
         ChatCompletionChoice[] Choices);
 
-
     public static class API
     {
         public static async Task<ChatCompletionResponse> CreateChatCompletion(string apiKey, ChatCompletionRequest request)
