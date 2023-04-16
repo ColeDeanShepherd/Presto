@@ -42,23 +42,47 @@ namespace OpenAI
 
     public static class API
     {
+        private static SemaphoreSlim semaphore = new SemaphoreSlim(8);
+
         public static async Task<ChatCompletionResponse> CreateChatCompletion(string apiKey, ChatCompletionRequest request)
         {
-            using var httpClient = new HttpClient();
+            await semaphore.WaitAsync();
 
-            var dataJson = JsonSerializer.Serialize(request);
-            var content = new StringContent(dataJson, Encoding.UTF8, "application/json");
-            httpClient.DefaultRequestHeaders.Add("Authorization", $"Bearer {apiKey}");
-            var responseMessage = await httpClient.PostAsync("https://api.openai.com/v1/chat/completions", content);
-
-            var response = await responseMessage.Content.ReadFromJsonAsync<ChatCompletionResponse>();
-
-            if (response == null)
+            try
             {
-                throw new Exception();
-            }
+                using var httpClient = new HttpClient();
 
-            return response;
+                var dataJson = JsonSerializer.Serialize(request);
+                var content = new StringContent(dataJson, Encoding.UTF8, "application/json");
+                httpClient.DefaultRequestHeaders.Add("Authorization", $"Bearer {apiKey}");
+                var responseMessage = await httpClient.PostAsync("https://api.openai.com/v1/chat/completions", content);
+
+                var response = await responseMessage.Content.ReadFromJsonAsync<ChatCompletionResponse>();
+
+                if (response == null)
+                {
+                    throw new Exception();
+                }
+
+                return response;
+            }
+            finally
+            {
+                semaphore.Release();
+            }
+        }
+
+        public static async Task<ChatMessage> CreateSingleChoiceChatCompletion(string apiKey, ChatCompletionRequest request)
+        {
+            Console.WriteLine(request.Messages[request.Messages.Length - 1].Content);
+
+            var response = await CreateChatCompletion(apiKey, request);
+
+            var responseMessage = response.Choices[0].Message;
+
+            Console.WriteLine(responseMessage);
+
+            return responseMessage;
         }
     }
 }
