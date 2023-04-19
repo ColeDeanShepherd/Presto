@@ -18,7 +18,7 @@ internal class Program
             apiKey,
             bookTitle,
             "An informational book about music theory and its applications.",
-            onlyOutline: true);
+            onlyOutline: false);
 
         File.WriteAllText($"{bookTitle}.md", book);
     }

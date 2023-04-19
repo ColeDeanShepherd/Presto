@@ -145,7 +145,7 @@ public static class BookGenerator
                 {
                     subsection.Content = await DoUntilNoExceptions(async () =>
                     {
-                        var response = await agent.SendMessageAndGetResponse($"Write \"BEGIN\", then write the contents of subsection \"{subsection.Title}\" in section \"{section.Title}\" in chapter \"{chapter.Title}\", then write \"END\".");
+                        var response = await agent.SendMessageAndGetResponse($"Write \"BEGIN\", then write the contents of subsection (in full sentences, not as a bulleted list) \"{subsection.Title}\" in section \"{section.Title}\" in chapter \"{chapter.Title}\", then write \"END\".");
                         return ExtractBeginEndDelimitedText(response);
                     });
                 }
