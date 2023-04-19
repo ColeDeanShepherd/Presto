@@ -3,26 +3,24 @@
 open System
 open CompilerCore
 
-type token_type = PrestoProgram.token_type
-
 type Token = {
     Type: token_type
     Text: string
-    Position: TextPosition
+    Position: text_position
     WasInserted: bool
 }
 
 type TokenizeOutput = {
     Tokens: List<Token>
-    Errors: List<CompileError>
+    Errors: List<compile_error>
 }
 
 type TokenizeState = {
     TextLeft: string
-    Position: TextPosition
+    Position: text_position
     IndentationStack: List<int>
     Tokens: List<Token>
-    Errors: List<CompileError>
+    Errors: List<compile_error>
 }
 
 let getCurrentIndentation (state: TokenizeState) = 
@@ -33,17 +31,11 @@ let getCurrentIndentation (state: TokenizeState) =
 let isDone (state: TokenizeState) = state.TextLeft.Length = 0
 let isNotDone (state: TokenizeState) = not (isDone state)
 
-let advanceTextPosition (position: TextPosition) (readChar: char): TextPosition =
+let advanceTextPosition (position: text_position) (readChar: char): text_position =
     if readChar <> '\n' then
-        {
-            LineIndex = position.LineIndex
-            ColumnIndex = position.ColumnIndex + 1
-        }
+        text_position(line_index = position.line_index, column_index = position.column_index + 1u)
     else
-        {
-            LineIndex = position.LineIndex + 1
-            ColumnIndex = 0
-        }
+        text_position(line_index = position.line_index + 1u, column_index = 0u)
 
 let tryPeekExpectedChar (state: TokenizeState) (expectedChar: char): Option<char> =
     if isNotDone state then
@@ -145,7 +137,7 @@ let readWhitespaceTokens (state: TokenizeState): List<Token> * TokenizeState =
         | Some whitespaceToken -> [whitespaceToken]
         | None -> []
         
-    let isStartOfLine = startPosition.ColumnIndex = 0
+    let isStartOfLine = startPosition.column_index = 0u
     let readEndOfLine = optionLineBreak.IsSome
     let isIndentation = isStartOfLine && not readEndOfLine
 
@@ -241,12 +233,12 @@ let iterateTokenize (state: TokenizeState): TokenizeState =
         else if nextChar = '.' then
             readSingleCharToken state token_type.period
         else
-            { state with TextLeft = state.TextLeft[1..]; Errors = state.Errors @ [{ Description = $"Encountered an unexpected character: '{nextChar}'"; Position = state.Position }] }
+            { state with TextLeft = state.TextLeft[1..]; Errors = state.Errors @ [compile_error(description = $"Encountered an unexpected character: '{nextChar}'", position = state.Position)] }
 
 let tokenize (sourceCode: string): TokenizeOutput =
     let seedState: TokenizeState = {
         TextLeft = sourceCode
-        Position = { ColumnIndex = 0; LineIndex = 0 }
+        Position = text_position(line_index = 0u, column_index = 0u)
         IndentationStack = []
         Tokens = []
         Errors = []

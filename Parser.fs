@@ -46,16 +46,16 @@ type ParseNode = {
 
 type ParseOutput = {
     Program: ParseNode
-    Errors: List<CompileError>
+    Errors: List<compile_error>
 }
 
 type ParseState = {
     Tokens: List<Token>
     NextTokenIndex: int
-    Errors: List<CompileError>
+    Errors: List<compile_error>
 }
 
-let rec nodeTextPosition (node: ParseNode): TextPosition =
+let rec nodeTextPosition (node: ParseNode): text_position =
     match node.Token with
     | Some token -> token.Position
     | None -> nodeTextPosition node.Children.Head
@@ -94,11 +94,11 @@ let tryPeekTokenAfterWhitespace (state: ParseState): Option<Token> =
        Seq.skip state.NextTokenIndex state.Tokens
     |> Seq.tryFind (fun t -> t.Type <> token_type.whitespace)
     
-let currentTextPosition (state: ParseState): TextPosition =
+let currentTextPosition (state: ParseState): text_position =
     if state.NextTokenIndex < state.Tokens.Length then
         state.Tokens[state.NextTokenIndex].Position
     else
-        { LineIndex = 0; ColumnIndex = 0; }
+        text_position(line_index = 0u, column_index = 0u)
 
 let peekTokenAfterWhitespace (state: ParseState): Option<Token> * ParseState =
     let optionNextToken = tryPeekTokenAfterWhitespace state
@@ -107,10 +107,9 @@ let peekTokenAfterWhitespace (state: ParseState): Option<Token> * ParseState =
     | Some _ ->
         (optionNextToken, state)
     | None ->
-        let error = {
-            Description = "Unexpectedly reached the end of the tokens."
-            Position = currentTextPosition state
-        }
+        let error = compile_error(
+            description = "Unexpectedly reached the end of the tokens.", position = currentTextPosition state
+        )
 
         (
             optionNextToken,
@@ -135,17 +134,17 @@ let rec tryPeekTokenSequenceIgnoreWhitespace (state: ParseState) (tokenSequence:
                 false
         | None -> false
 
-let getUnexpectedTokenError (state: ParseState) (expectedTokenType: token_type) (nextToken: Token): CompileError =
+let getUnexpectedTokenError (state: ParseState) (expectedTokenType: token_type) (nextToken: Token): compile_error =
     let virtualErrorDescriptionPart =
         if nextToken.WasInserted then
             "lexer-inserted "
         else
             ""
 
-    {
-        Description = $"Encountered unexpected {virtualErrorDescriptionPart}token: {nextToken.Text}"
-        Position = currentTextPosition state
-    }
+    compile_error(
+        description = $"Encountered unexpected {virtualErrorDescriptionPart}token: {nextToken.Text}",
+        position = currentTextPosition state
+    )
 
 let peekExpectedTokenAfterWhitespace (state: ParseState) (expectedTokenType: token_type): Option<Token> * ParseState =
     let (optionNextToken, state) = peekTokenAfterWhitespace state
@@ -173,10 +172,10 @@ let peekToken (state: ParseState): Option<Token> * ParseState =
     | Some nextToken ->
         (optionNextToken, state)
     | None ->
-        let error = {
-            Description = "Unexpectedly reached the end of the tokens."
-            Position = currentTextPosition state
-        }
+        let error = compile_error(
+            description = "Unexpectedly reached the end of the tokens.",
+            position = currentTextPosition state
+        )
 
         (
             optionNextToken,
@@ -688,10 +687,10 @@ and parsePrefixExpression (state: ParseState): Option<ParseNode> * ParseState =
         | token_type.number_literal ->
             wrapInExpressionNode (parseToken state token_type.number_literal)
         | _ ->
-            let error = {
-                Description = $"Encountered unexpected token: {nextToken.Text}"
-                Position = currentTextPosition state
-            }
+            let error = compile_error(
+                description = $"Encountered unexpected token: {nextToken.Text}",
+                position = currentTextPosition state
+            )
 
             (None, { state with Errors = List.append state.Errors [error] })
     | None -> (None, state)

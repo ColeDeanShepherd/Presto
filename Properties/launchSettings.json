@@ -2,7 +2,7 @@
   "profiles": {
     "Presto": {
       "commandName": "Project",
-      "commandLineArgs": "../../../BootstrappedCompiler.pst"
+      "commandLineArgs": "../../../Test.pst"
     }
   }
 }

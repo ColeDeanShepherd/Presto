@@ -19,6 +19,7 @@
   </ItemGroup>
 
   <ItemGroup>
+    <ProjectReference Include="Presto.Runtime\Presto.Runtime.csproj" />
     <ProjectReference Include="Presto.SelfHosting\Presto.SelfHosting.csproj" />
   </ItemGroup>
 

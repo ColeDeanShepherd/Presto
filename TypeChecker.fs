@@ -10,7 +10,7 @@ type TypeCheckerState = {
     TypesByExpressionId: Map<System.Guid, PrestoType>
     ResolvedSymbolsByExpressionId: Map<System.Guid, Symbol>
     TypeCanonicalNamesByScopeId: Map<System.Guid, string>
-    Errors: List<CompileError>
+    Errors: List<compile_error>
 }
 
 let getTypeScopeId (state: TypeCheckerState) (prestoType: PrestoType): (Option<System.Guid> * TypeCheckerState) =
@@ -18,7 +18,13 @@ let getTypeScopeId (state: TypeCheckerState) (prestoType: PrestoType): (Option<S
     | Text scopeId -> (Some scopeId, state)
     | RecordType (scopeId, _) -> (Some scopeId, state)
     | UnionType scopeId -> (Some scopeId, state)
-    | _ -> (None, { state with Errors = state.Errors @ [{ Description = $"Couldn't access members of type: {prestoType}"; Position = { ColumnIndex = 0; LineIndex = 0 } }] })
+    | _ ->
+        let error = compile_error(
+            description = $"Couldn't access members of type: {prestoType}",
+            position = text_position(line_index = 0u, column_index = 0u)
+        )
+
+        (None, { state with Errors = state.Errors @ [error] })
 
 let rec resolveSymbolInternal (state: TypeCheckerState) (scope: Scope) (nameToken: Token): (Option<Symbol> * TypeCheckerState) =
     if scope.SymbolsByName.ContainsKey nameToken.Text then
@@ -28,7 +34,11 @@ let rec resolveSymbolInternal (state: TypeCheckerState) (scope: Scope) (nameToke
 
         resolveSymbolInternal state parentScope nameToken
     else
-        let errors = List.append state.Errors [{ Description = $"Unknown name: {nameToken.Text}"; Position = nameToken.Position }]
+        let error = compile_error(
+            description = $"Unknown name: {nameToken.Text}",
+            position = nameToken.Position
+        )
+        let errors = List.append state.Errors [error]
         (None, { state with Errors = errors })
 
 let resolveSymbol (state: TypeCheckerState) (nameToken: Token): (Option<Symbol> * TypeCheckerState) =
@@ -122,10 +132,10 @@ and checkFunction (state: TypeCheckerState) (expression: Expression) (fn: Functi
             if inferredReturnType = optionSpecifiedReturnType.Value then
                 (state, Some state.TypesByExpressionId[expression.Id])
             else
-                let error = {
-                    Description = $"Function's specified return type ({optionSpecifiedReturnType.Value}) doesn't match its inferred return type ({inferredReturnType})";
-                    Position = { LineIndex = 0; ColumnIndex = 0 } // TODO: init
-                }
+                let error = compile_error(
+                    description = $"Function's specified return type ({optionSpecifiedReturnType.Value}) doesn't match its inferred return type ({inferredReturnType})",
+                    position = text_position(line_index = 0u, column_index = 0u)
+                )
                 let state = { state with Errors = state.Errors @ [error] }
 
                 (state, None)
@@ -154,20 +164,20 @@ and checkIfThenElse (state: TypeCheckerState) (ifThenElse: IfThenElse): TypeChec
                     if areTypesEqual thenExpressionType elseExpressionType then
                         (state, Some thenExpressionType)
                     else
-                        let error = {
-                            Description = $"\"then\" type ({thenExpressionType}) doesn't match \"else\" type ({elseExpressionType})";
-                            Position = { LineIndex = 0; ColumnIndex = 0 } // TODO: init
-                        }
+                        let error = compile_error(
+                            description = $"\"then\" type ({thenExpressionType}) doesn't match \"else\" type ({elseExpressionType})",
+                            position = text_position(line_index = 0u, column_index = 0u)
+                        )
                         let state = { state with Errors = state.Errors @ [error] }
 
                         (state, None) // TODO: error
                 | None -> (state, None)
             | None -> (state, None)
         else
-            let error = {
-                Description = $"\"if\" type ({ifExpressionType}) isn't a bool";
-                Position = { LineIndex = 0; ColumnIndex = 0 } // TODO: init
-            }
+            let error = compile_error(
+                description = $"\"if\" type ({ifExpressionType}) isn't a bool",
+                position = text_position(line_index = 0u, column_index = 0u)
+            )
             let state = { state with Errors = state.Errors @ [error] }
 
             (state, None) // TODO: error
@@ -189,7 +199,11 @@ and checkFunctionCall (state: TypeCheckerState) (functionCall: FunctionCall): Ty
             match functionType with
             | FunctionType (scopeId, paramTypes, returnType) -> (state, Some returnType)
             | _ ->
-                let state = { state with Errors = state.Errors @ [{ Description = $"Expected function type, got {functionType}"; Position = { LineIndex = 0; ColumnIndex = 0 } }]}
+                let error = compile_error(
+                    description = $"Expected function type, got {functionType}",
+                    position = text_position(line_index = 0u, column_index = 0u)
+                )
+                let state = { state with Errors = state.Errors @ [error]}
 
                 (state, Some functionType)
         | None -> (state, None)
@@ -239,8 +253,13 @@ and checkMemberAccess (state: TypeCheckerState) (memberAccess: MemberAccess): Ty
                 | Some rightType -> (state, Some rightType)
                 | None -> (state, None)
             else
+                let error = compile_error(
+                    description = $"Invalid member: {memberName}",
+                    position = memberAccess.RightIdentifier.Position
+                )
+
                 (
-                    { state with Errors = state.Errors @ [{ Description = $"Invalid member: {memberName}"; Position = memberAccess.RightIdentifier.Position }]},
+                    { state with Errors = state.Errors @ [error]},
                     None
                 )
         | None -> (state, None)
@@ -310,7 +329,7 @@ and checkBinding (state: TypeCheckerState) (binding: Binding): TypeCheckerState 
 
     checkExpression state binding.Value
 
-let checkTypes (program: Program): Program * List<CompileError> =
+let checkTypes (program: Program): Program * List<compile_error> =
     let state = {
         CurrentScopeId = program.ScopeId
         ScopesById = program.ScopesById

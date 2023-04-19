@@ -10,58 +10,63 @@ let commandLineArgs = System.Environment.GetCommandLineArgs()
 if commandLineArgs.Length < 2 then
     failwith "Invalid file."
 
-let filePath = commandLineArgs[1]
-let dirPath = Path.GetDirectoryName(filePath)
-let fileName = Path.GetFileName(filePath)
-let fileNameWithoutExtension = Path.GetFileNameWithoutExtension(filePath)
+let filePaths = Array.skip 1 commandLineArgs
 
-let sourceCode = File.ReadAllText filePath
+let compileFile (filePath: string) =
+    let dirPath = Path.GetDirectoryName(filePath)
+    let fileName = Path.GetFileName(filePath)
+    let fileNameWithoutExtension = Path.GetFileNameWithoutExtension(filePath)
 
-// tokenize
-let tokenizeOutput = tokenize sourceCode
+    let sourceCode = File.ReadAllText filePath
 
-if not tokenizeOutput.Errors.IsEmpty then
-    for error in tokenizeOutput.Errors do
-         printfn $"{error}"
-else
-    printfn "Done lexing!"
+    // tokenize
+    let tokenizeOutput = tokenize sourceCode
 
-    // parse
-    let parseOutput = parse tokenizeOutput.Tokens
-
-    if not parseOutput.Errors.IsEmpty then
-        for error in parseOutput.Errors do
+    if not tokenizeOutput.Errors.IsEmpty then
+        for error in tokenizeOutput.Errors do
              printfn $"{error}"
     else
-        printfn "Done parsing!"
+        printfn "Done lexing!"
 
-        // build AST
-        let buildAstOutput = buildAst parseOutput.Program
+        // parse
+        let parseOutput = parse tokenizeOutput.Tokens
 
-        if not buildAstOutput.Errors.IsEmpty then
-            for error in buildAstOutput.Errors do
+        if not parseOutput.Errors.IsEmpty then
+            for error in parseOutput.Errors do
                  printfn $"{error}"
         else
-            printfn "Done building the AST!"
+            printfn "Done parsing!"
 
-            // generate code
-            let (program, typeCheckingErrors) = checkTypes buildAstOutput.Program
+            // build AST
+            let buildAstOutput = buildAst parseOutput.Program
 
-            if not typeCheckingErrors.IsEmpty then
-                for error in typeCheckingErrors do
+            if not buildAstOutput.Errors.IsEmpty then
+                for error in buildAstOutput.Errors do
                      printfn $"{error}"
             else
-                printfn "Done type checking!"
+                printfn "Done building the AST!"
 
                 // generate code
-                let codeGeneratorOutput = generateCode program
+                let (program, typeCheckingErrors) = checkTypes buildAstOutput.Program
 
-                if not codeGeneratorOutput.Errors.IsEmpty then
-                    for error in codeGeneratorOutput.Errors do
+                if not typeCheckingErrors.IsEmpty then
+                    for error in typeCheckingErrors do
                          printfn $"{error}"
                 else
-                    printfn "Compile succeeded!"
-                    printfn ""
-                    printfn $"{codeGeneratorOutput.GeneratedCode}"
+                    printfn "Done type checking!"
 
-                    File.WriteAllText(Path.Combine(dirPath, fileNameWithoutExtension + ".g.cs"), codeGeneratorOutput.GeneratedCode)
+                    // generate code
+                    let codeGeneratorOutput = generateCode program
+
+                    if not codeGeneratorOutput.Errors.IsEmpty then
+                        for error in codeGeneratorOutput.Errors do
+                             printfn $"{error}"
+                    else
+                        printfn "Compile succeeded!"
+                        printfn ""
+                        printfn $"{codeGeneratorOutput.GeneratedCode}"
+
+                        File.WriteAllText(Path.Combine(dirPath, fileNameWithoutExtension + ".g.cs"), codeGeneratorOutput.GeneratedCode)
+
+for filePath in filePaths do
+    compileFile filePath

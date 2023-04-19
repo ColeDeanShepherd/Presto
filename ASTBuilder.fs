@@ -106,24 +106,24 @@ type Program = {
 type ASTBuilderState = {
     CurrentScopeId: System.Guid
     ScopesById: Map<System.Guid, Scope>
-    Errors: List<CompileError>
+    Errors: List<compile_error>
 }
 
 type ASTBuilderOutput = {
     Program: Program
-    Errors: List<CompileError>
+    Errors: List<compile_error>
 }
 
 let newExpression (value: ExpressionValue) =
     { Id = System.Guid.NewGuid(); Value = value }
 
-let getSymbolTextPosition (symbol: Symbol): TextPosition =
+let getSymbolTextPosition (symbol: Symbol): text_position =
     match symbol with
     | BindingSymbol binding -> binding.NameToken.Position
     | ParameterSymbol parameter -> parameter.NameToken.Position
     | RecordFieldSymbol recordField -> recordField.NameToken.Position
     | UnionCaseSymbol unionCase -> unionCase.NameToken.Position
-    | BuiltInSymbol (builtInSymbol, prestoType) -> { LineIndex = 0; ColumnIndex = 0; }
+    | BuiltInSymbol (builtInSymbol, prestoType) -> text_position(line_index = 0u, column_index = 0u)
     
 let pushScope (state: ASTBuilderState): (Scope * ASTBuilderState) =
     let parentScopeId = state.CurrentScopeId
@@ -148,7 +148,12 @@ let addSymbol (state: ASTBuilderState) (name: string) (symbol: Symbol): (bool * 
         let scope = { scope with SymbolsByName = (scope.SymbolsByName.Add (name,symbol)) }
         (true, { state with ScopesById = state.ScopesById.Change(state.CurrentScopeId, (fun x -> Some scope)) })
     else
-        (false, { state with Errors = List.append state.Errors [{ Description = $"Name \"{name}\" is already defined."; Position = getSymbolTextPosition symbol }] })
+        let error = compile_error(
+            description = $"Name \"{name}\" is already defined.",
+            position = getSymbolTextPosition symbol
+        )
+
+        (false, { state with Errors = List.append state.Errors [error] })
 
 let rec buildMany
     (state: ASTBuilderState)
@@ -461,7 +466,12 @@ and buildExpression (state: ASTBuilderState) (node: ParseNode): (Option<Expressi
     | ParseNodeType.Token when child.Token.Value.Type = token_type.number_literal ->
         let numberLiteral = { Token = child.Token.Value }
         (Some (newExpression (NumberLiteralExpression numberLiteral)), state)
-    | _ -> (None, { state with Errors = List.append state.Errors [{ Description = $"Unexpected parse node type: {child.Type}"; Position = nodeTextPosition child }] })
+    | _ ->
+        let error = compile_error(
+            description = $"Unexpected parse node type: {child.Type}",
+            position = nodeTextPosition child
+        )
+        (None, { state with Errors = List.append state.Errors [error] })
 
 and buildBinding (state: ASTBuilderState) (node: ParseNode): (Option<Binding> * ASTBuilderState) =
     assert (node.Type = ParseNodeType.Binding)

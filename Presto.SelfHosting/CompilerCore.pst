@@ -1,0 +1,7 @@
+﻿text_position = record
+    line_index: nat
+    column_index: nat
+
+compile_error = record
+    description: text
+    position: text_position

@@ -1,4 +1,4 @@
-<Project Sdk="Microsoft.NET.Sdk">
+﻿<Project Sdk="Microsoft.NET.Sdk">
 
   <PropertyGroup>
     <TargetFramework>net7.0</TargetFramework>
@@ -7,7 +7,11 @@
   </PropertyGroup>
 
   <Target Name="PreBuild" BeforeTargets="PreBuildEvent">
-    <Exec Command="&quot;../bin/Debug/net7.0/Presto.exe&quot; Lexer.pst" />
+    <Exec Command="&quot;../bin/Debug/net7.0/Presto.exe&quot; CompilerCore.pst Lexer.pst" />
   </Target>
+
+  <ItemGroup>
+    <ProjectReference Include="..\Presto.Runtime\Presto.Runtime.csproj" />
+  </ItemGroup>
 
 </Project>

@@ -1,18 +1,17 @@
 ﻿module CodeGenerator
 
 open ASTBuilder
-open CompilerCore
 open Lexer
 
 type CodeGeneratorState = {
     Program: Program
     GeneratedCode: string
-    Errors: List<CompileError>
+    Errors: List<compile_error>
 }
 
 type CodeGeneratorOutput = {
     GeneratedCode: string
-    Errors: List<CompileError>
+    Errors: List<compile_error>
 }
 
 let generateString (state: CodeGeneratorState) (str: string): CodeGeneratorState =
@@ -38,7 +37,7 @@ let rec generateMany
 
             generateMany state nodes.Tail generateFn separator false
 
-let generateSymbol (state: CodeGeneratorState) (token: Token) (expressionId: System.Guid): CodeGeneratorState =
+let rec generateSymbol (state: CodeGeneratorState) (token: Token) (expressionId: System.Guid): CodeGeneratorState =
     let symbol = state.Program.ResolvedSymbolsByExpressionId[expressionId]
     // TODO: handle expression not resolved
 
@@ -47,9 +46,13 @@ let generateSymbol (state: CodeGeneratorState) (token: Token) (expressionId: Sys
     | ParameterSymbol parameter ->  generateString state parameter.NameToken.Text
     | RecordFieldSymbol recordField -> generateString state recordField.NameToken.Text
     | UnionCaseSymbol unionCase -> generateString state unionCase.NameToken.Text
-    | BuiltInSymbol (builtInSymbol, prestoType) -> generateString state builtInSymbol
+    | BuiltInSymbol (builtInSymbol, prestoType) ->
+        // TODO: make less hacky
+        match builtInSymbol with
+        | "text" -> generateTypeReference state prestoType
+        | _ -> generateString state builtInSymbol
 
-let rec generateIfThenElse (state: CodeGeneratorState) (ifThenElse: IfThenElse): CodeGeneratorState =
+and generateIfThenElse (state: CodeGeneratorState) (ifThenElse: IfThenElse): CodeGeneratorState =
     let state = generateString state "("
     let state = generateString state "("
     let state = generateExpression state ifThenElse.IfExpression
@@ -88,9 +91,9 @@ and generateBlockChild (state: CodeGeneratorState) (blockChild: BlockChild): Cod
 and generateBlock (state: CodeGeneratorState) (block: Block): CodeGeneratorState =
     if block.Children.Length <> 1 then
         let state = generateString state "{"
-        let state = generateString state "\n"
-        let state = generateMany state block.Children generateBlockChild ";\n" true
-        let state = generateString state "\n"
+        let state = generateString state System.Environment.NewLine
+        let state = generateMany state block.Children generateBlockChild (";" + System.Environment.NewLine) true
+        let state = generateString state System.Environment.NewLine
         let state = generateString state "}"
 
         state
@@ -234,22 +237,18 @@ let generatedCodeHeader =
     "using System;
     using System.Collections.Generic;
     
-    using nat = System.UInt32;
-    
-    public static partial class PrestoProgram {
-        static bool eq<T>(T a, T b) => (a != null) ? a.Equals(b) : (b == null);
-        static bool not(bool x) => !x;"
+    using nat = System.UInt32;"
 
 let generatedCodeFooter =
-    "}"
+    ""
 
 let generateCode (program: Program): CodeGeneratorOutput =
     let state = { Program = program; GeneratedCode = ""; Errors = [] }
 
     let state = generateString state generatedCodeHeader
-    let state = generateString state "\n\n"
-    let state = generateMany state program.Bindings generateBinding "\n" true
-    let state = generateString state "\n\n"
+    let state = generateString state (System.Environment.NewLine + System.Environment.NewLine)
+    let state = generateMany state program.Bindings generateBinding System.Environment.NewLine true
+    let state = generateString state (System.Environment.NewLine + System.Environment.NewLine)
     let state = generateString state generatedCodeFooter
 
     { GeneratedCode = state.GeneratedCode; Errors = state.Errors }
