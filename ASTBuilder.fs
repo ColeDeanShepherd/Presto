@@ -31,14 +31,14 @@ and ExpressionValue =
     | BlockExpression of Block
     | FunctionCallExpression of FunctionCall
     | MemberAccessExpression of MemberAccess
-    | SymbolReference of Token
+    | SymbolReference of token
     | NumberLiteralExpression of NumberLiteral
 and Binding = {
-    NameToken: Token
+    NameToken: token
     Value: Expression
 }
 and Parameter = {
-    NameToken: Token
+    NameToken: token
     TypeExpression: Expression
 }
 and Function = {
@@ -53,10 +53,10 @@ and FunctionCall = {
 }
 and MemberAccess = {
     LeftExpression: Expression;
-    RightIdentifier: Token;
+    RightIdentifier: token;
 }
 and RecordField = {
-    NameToken: Token
+    NameToken: token
     TypeExpression: Expression
 }
 and Record = {
@@ -64,14 +64,14 @@ and Record = {
     ScopeId: System.Guid
 }
 and UnionCase = {
-    NameToken: Token
+    NameToken: token
 }
 and Union = {
     Cases: List<UnionCase>
     ScopeId: System.Guid
 }
 and NumberLiteral = {
-    Token: Token
+    Token: token
 }
 and Scope = {
     SymbolsByName: Map<string, Symbol>

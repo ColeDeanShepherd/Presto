@@ -37,7 +37,7 @@ let rec generateMany
 
             generateMany state nodes.Tail generateFn separator false
 
-let rec generateSymbol (state: CodeGeneratorState) (token: Token) (expressionId: System.Guid): CodeGeneratorState =
+let rec generateSymbol (state: CodeGeneratorState) (token: token) (expressionId: System.Guid): CodeGeneratorState =
     let symbol = state.Program.ResolvedSymbolsByExpressionId[expressionId]
     // TODO: handle expression not resolved
 

@@ -3,7 +3,7 @@
 open System
 open CompilerCore
 
-type Token = {
+type token = {
     Type: token_type
     Text: string
     Position: text_position
@@ -11,7 +11,7 @@ type Token = {
 }
 
 type TokenizeOutput = {
-    Tokens: List<Token>
+    Tokens: List<token>
     Errors: List<compile_error>
 }
 
@@ -19,7 +19,7 @@ type TokenizeState = {
     TextLeft: string
     Position: text_position
     IndentationStack: List<int>
-    Tokens: List<Token>
+    Tokens: List<token>
     Errors: List<compile_error>
 }
 
@@ -116,7 +116,7 @@ let isValidWhitespace (c: char): bool = (Char.IsWhiteSpace c) && (c <> '\t')
 
 // TODO: make sure this works with blank line with & without line break at end of file
 
-let readWhitespaceTokens (state: TokenizeState): List<Token> * TokenizeState =
+let readWhitespaceTokens (state: TokenizeState): List<token> * TokenizeState =
     let startPosition = state.Position
     let (tokenText, state) = takeCharsWhile state (fun c -> (c <> '\r') && (c <> '\n') && (isValidWhitespace c))
     let (optionLineBreak, state) = readLineBreak state
@@ -132,7 +132,7 @@ let readWhitespaceTokens (state: TokenizeState): List<Token> * TokenizeState =
         else
             None
 
-    let tokens: List<Token> =
+    let tokens: List<token> =
         match optionWhitespaceToken with
         | Some whitespaceToken -> [whitespaceToken]
         | None -> []

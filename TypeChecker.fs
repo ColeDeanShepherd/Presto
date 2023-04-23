@@ -26,7 +26,7 @@ let getTypeScopeId (state: TypeCheckerState) (prestoType: PrestoType): (Option<S
 
         (None, { state with Errors = state.Errors @ [error] })
 
-let rec resolveSymbolInternal (state: TypeCheckerState) (scope: Scope) (nameToken: Token): (Option<Symbol> * TypeCheckerState) =
+let rec resolveSymbolInternal (state: TypeCheckerState) (scope: Scope) (nameToken: token): (Option<Symbol> * TypeCheckerState) =
     if scope.SymbolsByName.ContainsKey nameToken.Text then
         (Some scope.SymbolsByName.[nameToken.Text], state)
     else if scope.ParentId.IsSome then
@@ -41,7 +41,7 @@ let rec resolveSymbolInternal (state: TypeCheckerState) (scope: Scope) (nameToke
         let errors = List.append state.Errors [error]
         (None, { state with Errors = errors })
 
-let resolveSymbol (state: TypeCheckerState) (nameToken: Token): (Option<Symbol> * TypeCheckerState) =
+let resolveSymbol (state: TypeCheckerState) (nameToken: token): (Option<Symbol> * TypeCheckerState) =
     let currentScope = state.ScopesById[state.CurrentScopeId]
 
     resolveSymbolInternal state currentScope nameToken
@@ -273,7 +273,7 @@ and checkSymbol (state: TypeCheckerState) (symbol: Symbol): TypeCheckerState * O
     | UnionCaseSymbol unionCase -> (state, None)
     | BuiltInSymbol (builtInSymbol, prestoType) -> (state, Some prestoType)
 
-and checkSymbolReference (state: TypeCheckerState) (token: Token) (expressionId: System.Guid): TypeCheckerState * Option<PrestoType> =
+and checkSymbolReference (state: TypeCheckerState) (token: token) (expressionId: System.Guid): TypeCheckerState * Option<PrestoType> =
     let (optionSymbol, state) = resolveSymbol state token
 
     match optionSymbol with
