@@ -32,8 +32,8 @@ let compileFile (program: Program) (filePath: string): Program =
     // tokenize
     let tokenizeOutput = tokenize sourceCode
 
-    if not tokenizeOutput.Errors.IsEmpty then
-        for error in tokenizeOutput.Errors do
+    if tokenizeOutput.errors.Count > 0 then
+        for error in tokenizeOutput.errors do
             printfn $"{error}"
 
         program
@@ -41,7 +41,7 @@ let compileFile (program: Program) (filePath: string): Program =
         printfn "Done lexing!"
 
         // parse
-        let parseOutput = parse tokenizeOutput.Tokens
+        let parseOutput = parse (List.ofSeq tokenizeOutput.tokens)
 
         if not parseOutput.Errors.IsEmpty then
             for error in parseOutput.Errors do

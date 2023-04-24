@@ -50,6 +50,7 @@ let rec generateSymbol (state: CodeGeneratorState) (token: token) (expressionId:
         // TODO: make less hacky
         match builtInSymbol with
         | "text" -> generateTypeReference state prestoType
+        | "list" -> generateString state "List"
         | _ -> generateString state builtInSymbol
 
 and generateIfThenElse (state: CodeGeneratorState) (ifThenElse: IfThenElse): CodeGeneratorState =

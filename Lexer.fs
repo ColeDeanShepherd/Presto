@@ -3,11 +3,6 @@
 open System
 open CompilerCore
 
-type TokenizeOutput = {
-    Tokens: List<token>
-    Errors: List<compile_error>
-}
-
 type TokenizeState = {
     TextLeft: string
     Position: text_position
@@ -228,7 +223,7 @@ let iterateTokenize (state: TokenizeState): TokenizeState =
         else
             { state with TextLeft = state.TextLeft[1..]; Errors = state.Errors @ [compile_error(description = $"Encountered an unexpected character: '{nextChar}'", position = state.Position)] }
 
-let tokenize (sourceCode: string): TokenizeOutput =
+let tokenize (sourceCode: string): tokenize_output =
     let seedState: TokenizeState = {
         TextLeft = sourceCode
         Position = text_position(line_index = 0u, column_index = 0u)
@@ -251,4 +246,4 @@ let tokenize (sourceCode: string): TokenizeOutput =
         else
             finalState
 
-    { Tokens = finalState.Tokens; Errors = finalState.Errors }
+    tokenize_output(tokens = (ResizeArray<token> finalState.Tokens), errors = (ResizeArray<compile_error> finalState.Errors))

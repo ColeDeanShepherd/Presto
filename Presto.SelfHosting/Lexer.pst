@@ -24,3 +24,7 @@ token = record
     _text: text
     position: text_position
     was_inserted: bool
+
+tokenize_output = record
+    tokens: list(token)
+    errors: list(compile_error)
