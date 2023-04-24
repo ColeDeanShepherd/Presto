@@ -27,16 +27,16 @@ let getTypeScopeId (state: TypeCheckerState) (prestoType: PrestoType): (Option<S
         (None, { state with Errors = state.Errors @ [error] })
 
 let rec resolveSymbolInternal (state: TypeCheckerState) (scope: Scope) (nameToken: token): (Option<Symbol> * TypeCheckerState) =
-    if scope.SymbolsByName.ContainsKey nameToken.Text then
-        (Some scope.SymbolsByName.[nameToken.Text], state)
+    if scope.SymbolsByName.ContainsKey nameToken._text then
+        (Some scope.SymbolsByName.[nameToken._text], state)
     else if scope.ParentId.IsSome then
         let parentScope = state.ScopesById[scope.ParentId.Value]
 
         resolveSymbolInternal state parentScope nameToken
     else
         let error = compile_error(
-            description = $"Unknown name: {nameToken.Text}",
-            position = nameToken.Position
+            description = $"Unknown name: {nameToken._text}",
+            position = nameToken.position
         )
         let errors = List.append state.Errors [error]
         (None, { state with Errors = errors })
@@ -242,7 +242,7 @@ and checkMemberAccess (state: TypeCheckerState) (memberAccess: MemberAccess): Ty
         match optionScopeId with
         | Some scopeId ->
             let scope = state.ScopesById[scopeId]
-            let memberName = memberAccess.RightIdentifier.Text
+            let memberName = memberAccess.RightIdentifier._text
 
             if scope.SymbolsByName.ContainsKey memberName then
                 let rightSymbol = scope.SymbolsByName[memberName]
@@ -255,7 +255,7 @@ and checkMemberAccess (state: TypeCheckerState) (memberAccess: MemberAccess): Ty
             else
                 let error = compile_error(
                     description = $"Invalid member: {memberName}",
-                    position = memberAccess.RightIdentifier.Position
+                    position = memberAccess.RightIdentifier.position
                 )
 
                 (
@@ -318,7 +318,7 @@ and trySetTypesCanonicalName (state: TypeCheckerState) (scopeId: System.Guid) (n
         state
 
 and checkBinding (state: TypeCheckerState) (binding: Binding): TypeCheckerState * Option<PrestoType> =
-    let name = binding.NameToken.Text
+    let name = binding.NameToken._text
 
     let state =
         match binding.Value.Value with

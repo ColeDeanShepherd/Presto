@@ -42,10 +42,10 @@ let rec generateSymbol (state: CodeGeneratorState) (token: token) (expressionId:
     // TODO: handle expression not resolved
 
     match symbol with
-    | BindingSymbol binding -> generateString state binding.NameToken.Text
-    | ParameterSymbol parameter ->  generateString state parameter.NameToken.Text
-    | RecordFieldSymbol recordField -> generateString state recordField.NameToken.Text
-    | UnionCaseSymbol unionCase -> generateString state unionCase.NameToken.Text
+    | BindingSymbol binding -> generateString state binding.NameToken._text
+    | ParameterSymbol parameter ->  generateString state parameter.NameToken._text
+    | RecordFieldSymbol recordField -> generateString state recordField.NameToken._text
+    | UnionCaseSymbol unionCase -> generateString state unionCase.NameToken._text
     | BuiltInSymbol (builtInSymbol, prestoType) ->
         // TODO: make less hacky
         match builtInSymbol with
@@ -105,12 +105,12 @@ and generateBlock (state: CodeGeneratorState) (block: Block): CodeGeneratorState
 and generateMemberAccess (state: CodeGeneratorState) (memberAccess: MemberAccess): CodeGeneratorState =
     let state = generateExpression state memberAccess.LeftExpression
     let state = generateString state "."
-    let state = generateString state memberAccess.RightIdentifier.Text
+    let state = generateString state memberAccess.RightIdentifier._text
 
     state
 
 and generateNumberLiteral (state: CodeGeneratorState) (numberLiteral: NumberLiteral): CodeGeneratorState =
-    let state = generateString state numberLiteral.Token.Text
+    let state = generateString state numberLiteral.Token._text
 
     state
 
@@ -149,7 +149,7 @@ and generateTypeExpression (state: CodeGeneratorState) (expression: Expression):
 and generateParameter (state: CodeGeneratorState) (parameter: Parameter): CodeGeneratorState =
     let state = generateTypeExpression state parameter.TypeExpression
     let state = generateString state " "
-    let state = generateString state parameter.NameToken.Text
+    let state = generateString state parameter.NameToken._text
 
     state
 
@@ -178,7 +178,7 @@ and generateFunction (state: CodeGeneratorState) (name: string) (fn: Function): 
 and generateRecordField (state: CodeGeneratorState) (recordField: RecordField): CodeGeneratorState =
     let state = generateTypeExpression state recordField.TypeExpression
     let state = generateString state " "
-    let state = generateString state recordField.NameToken.Text
+    let state = generateString state recordField.NameToken._text
 
     state
 
@@ -192,7 +192,7 @@ and generateRecord (state: CodeGeneratorState) (name: string) (record: Record): 
     state
 
 and generateUnionCase (state: CodeGeneratorState) (unionCase: UnionCase): CodeGeneratorState =
-    let state = generateString state unionCase.NameToken.Text
+    let state = generateString state unionCase.NameToken._text
 
     state
 
@@ -213,15 +213,15 @@ and shouldTerminateWithSemicolon (binding: Binding): bool =
 and generateBinding (state: CodeGeneratorState) (binding: Binding): CodeGeneratorState =
     let state =
         match binding.Value.Value with
-        | RecordExpression record -> generateRecord state binding.NameToken.Text record
-        | UnionExpression union -> generateUnion state binding.NameToken.Text union
-        | FunctionExpression fn -> generateFunction state binding.NameToken.Text fn
+        | RecordExpression record -> generateRecord state binding.NameToken._text record
+        | UnionExpression union -> generateUnion state binding.NameToken._text union
+        | FunctionExpression fn -> generateFunction state binding.NameToken._text fn
         | _ ->
             let valueType = state.Program.TypesByExpressionId[binding.Value.Id]
 
             let state = generateTypeReference state valueType
             let state = generateString state " "
-            let state = generateString state binding.NameToken.Text
+            let state = generateString state binding.NameToken._text
             let state = generateString state " = "
             let state = generateExpression state binding.Value
 

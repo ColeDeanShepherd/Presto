@@ -104,8 +104,15 @@ type Program = {
 }
 
 type ASTBuilderState = {
-    CurrentScopeId: System.Guid
+    // Program fields
+    Bindings: List<Binding>
+    TypesByExpressionId: Map<System.Guid, PrestoType>
+    ResolvedSymbolsByExpressionId: Map<System.Guid, Symbol>
     ScopesById: Map<System.Guid, Scope>
+    ScopeId: System.Guid
+    TypeCanonicalNamesByScopeId: Map<System.Guid, string>
+    
+    CurrentScopeId: System.Guid
     Errors: List<compile_error>
 }
 
@@ -119,10 +126,10 @@ let newExpression (value: ExpressionValue) =
 
 let getSymbolTextPosition (symbol: Symbol): text_position =
     match symbol with
-    | BindingSymbol binding -> binding.NameToken.Position
-    | ParameterSymbol parameter -> parameter.NameToken.Position
-    | RecordFieldSymbol recordField -> recordField.NameToken.Position
-    | UnionCaseSymbol unionCase -> unionCase.NameToken.Position
+    | BindingSymbol binding -> binding.NameToken.position
+    | ParameterSymbol parameter -> parameter.NameToken.position
+    | RecordFieldSymbol recordField -> recordField.NameToken.position
+    | UnionCaseSymbol unionCase -> unionCase.NameToken.position
     | BuiltInSymbol (builtInSymbol, prestoType) -> text_position(line_index = 0u, column_index = 0u)
     
 let pushScope (state: ASTBuilderState): (Scope * ASTBuilderState) =
@@ -187,7 +194,7 @@ let rec buildParameter (state: ASTBuilderState) (node: ParseNode): (Option<Param
 
     let identifier = childOfTokenType node token_type.identifier
     let nameToken = identifier.Token.Value
-    let name = nameToken.Text
+    let name = nameToken._text
 
     let typeExpressionNode = childOfType node ParseNodeType.Expression
     let (optionTypeExpression, state) = buildExpression state typeExpressionNode
@@ -271,7 +278,7 @@ and buildRecordField (state: ASTBuilderState) (node: ParseNode): (Option<RecordF
     
     let identifierNode = childOfTokenType node token_type.identifier
     let nameToken = identifierNode.Token.Value;
-    let name = nameToken.Text
+    let name = nameToken._text
     
     let typeExpressionNode = childOfType node ParseNodeType.Expression
     let (optionTypeExpression, state) = buildExpression state typeExpressionNode
@@ -306,7 +313,7 @@ and buildUnionCase (state: ASTBuilderState) (node: ParseNode): (Option<UnionCase
     
     let identifierNode = childOfTokenType node token_type.identifier
     let nameToken = identifierNode.Token.Value;
-    let name = nameToken.Text
+    let name = nameToken._text
 
     let case = { NameToken = nameToken; }
     let (success, state) = addSymbol state name (UnionCaseSymbol case)
@@ -461,9 +468,9 @@ and buildExpression (state: ASTBuilderState) (node: ParseNode): (Option<Expressi
         | None -> (None, state)
     | ParseNodeType.Expression ->
         buildExpression state child
-    | ParseNodeType.Token when child.Token.Value.Type = token_type.identifier ->
+    | ParseNodeType.Token when child.Token.Value._type = token_type.identifier ->
         (Some (newExpression (SymbolReference child.Token.Value)), state)
-    | ParseNodeType.Token when child.Token.Value.Type = token_type.number_literal ->
+    | ParseNodeType.Token when child.Token.Value._type = token_type.number_literal ->
         let numberLiteral = { Token = child.Token.Value }
         (Some (newExpression (NumberLiteralExpression numberLiteral)), state)
     | _ ->
@@ -479,7 +486,7 @@ and buildBinding (state: ASTBuilderState) (node: ParseNode): (Option<Binding> * 
     let identifierNode = childOfTokenType node token_type.identifier
     let expressionNode = childOfType node ParseNodeType.Expression
     let nameToken = identifierNode.Token.Value;
-    let name = nameToken.Text
+    let name = nameToken._text
 
     let (optionExpression, state) = buildExpression state expressionNode
     
@@ -530,12 +537,9 @@ let getInitialScopesById =
 
     (scopeId, scopesById)
 
-let buildProgram (node: ParseNode): (Option<Program> * ASTBuilderState) =
-    assert (node.Type = ParseNodeType.Program)
+let buildCompilationUnit (state: ASTBuilderState) (node: ParseNode): (Option<Program> * ASTBuilderState) =
+    assert (node.Type = ParseNodeType.CompilationUnit)
     
-    let (scopeId, scopesById) = getInitialScopesById
-    let state = { Errors = []; ScopesById = scopesById; CurrentScopeId = scopeId }
-
     let bindingParseNodes = childrenOfType node ParseNodeType.Binding
     let (optionBindings, state) = buildMany state bindingParseNodes buildBinding []
     let bindings =
@@ -547,14 +551,26 @@ let buildProgram (node: ParseNode): (Option<Program> * ASTBuilderState) =
             Bindings = bindings
             ScopeId = state.CurrentScopeId
             ScopesById = state.ScopesById
-            TypesByExpressionId = Map.empty
-            ResolvedSymbolsByExpressionId = Map.empty
-            TypeCanonicalNamesByScopeId = Map.empty
+            TypesByExpressionId = state.TypesByExpressionId
+            ResolvedSymbolsByExpressionId = state.ResolvedSymbolsByExpressionId
+            TypeCanonicalNamesByScopeId = state.TypeCanonicalNamesByScopeId
         },
         state
     )
 
-let buildAst (programNode: ParseNode): ASTBuilderOutput =
-    let (optionProgram, state) = buildProgram programNode
+let buildAst (compilationUnitNode: ParseNode) (program: Program): ASTBuilderOutput =
+    let state = {
+        Bindings = program.Bindings
+        TypesByExpressionId = program.TypesByExpressionId
+        ResolvedSymbolsByExpressionId = program.ResolvedSymbolsByExpressionId
+        ScopesById = program.ScopesById
+        ScopeId = program.ScopeId
+        TypeCanonicalNamesByScopeId = program.TypeCanonicalNamesByScopeId
+        
+        CurrentScopeId = program.ScopeId
+        Errors = []
+    }
+
+    let (optionProgram, state) = buildCompilationUnit state compilationUnitNode
 
     { Program = optionProgram.Value; Errors = state.Errors }

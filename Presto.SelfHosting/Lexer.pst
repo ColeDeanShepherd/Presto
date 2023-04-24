@@ -18,3 +18,9 @@ token_type = union
     comma
     colon
     period
+
+token = record
+    _type: token_type
+    _text: text
+    position: text_position
+    was_inserted: bool
