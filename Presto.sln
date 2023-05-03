@@ -9,7 +9,9 @@ Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Presto.SelfHosting", "Prest
 EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Presto.AI.Agents", "Presto.AI.Agents\Presto.AI.Agents.csproj", "{E52EB732-A8D7-4531-B733-D515A0EADDC8}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Presto.Runtime", "Presto.Runtime\Presto.Runtime.csproj", "{E10EF511-B0FE-4CCC-B841-EB2EBC5129ED}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Presto.Runtime", "Presto.Runtime\Presto.Runtime.csproj", "{E10EF511-B0FE-4CCC-B841-EB2EBC5129ED}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Presto.AI.Assistant", "Presto.AI.Assistant\Presto.AI.Assistant.csproj", "{9A7EAF9A-64FF-4472-825F-B570E69B1B3F}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
@@ -33,6 +35,10 @@ Global
 		{E10EF511-B0FE-4CCC-B841-EB2EBC5129ED}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{E10EF511-B0FE-4CCC-B841-EB2EBC5129ED}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{E10EF511-B0FE-4CCC-B841-EB2EBC5129ED}.Release|Any CPU.Build.0 = Release|Any CPU
+		{9A7EAF9A-64FF-4472-825F-B570E69B1B3F}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{9A7EAF9A-64FF-4472-825F-B570E69B1B3F}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{9A7EAF9A-64FF-4472-825F-B570E69B1B3F}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{9A7EAF9A-64FF-4472-825F-B570E69B1B3F}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
