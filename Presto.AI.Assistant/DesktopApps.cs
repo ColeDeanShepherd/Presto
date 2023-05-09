@@ -33,6 +33,10 @@ public interface IDesktopApps
 
     public void OpenGoogleCalendar() =>
         OpenUrlInBrowser("https://calendar.google.com/");
+
+    public string GetDockerDesktopExecutablePath() =>
+        Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ProgramFiles), "Docker", "Docker", "Docker Desktop.exe");
+    public void OpenDockerDesktop() => OpenApp(GetDockerDesktopExecutablePath());
 }
 
 public class DesktopApps : IDesktopApps
