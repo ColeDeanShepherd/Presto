@@ -12,5 +12,6 @@ public record token(token_type _type, string _text, text_position position, bool
 public record tokenize_output(List<token> tokens, List<compile_error> errors);
 public record tokenize_state(string text_left, text_position position, List<nat> indentation_stack, List<token> tokens, List<compile_error> errors);
 public static bool is_done(tokenize_state state) {return eq(length(state.text_left), 0u);}
+public static bool is_not_done(tokenize_state state) {return not(is_done(state));}
 
 }

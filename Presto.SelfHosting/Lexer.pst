@@ -37,3 +37,4 @@ tokenize_state = record
     errors: list(compile_error)
 
 is_done = fn (state: tokenize_state): bool -> eq(length(state.text_left), 0)
+is_not_done = fn (state: tokenize_state): bool -> not(is_done(state))

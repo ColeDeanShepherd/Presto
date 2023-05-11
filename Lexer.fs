@@ -10,8 +10,6 @@ let getCurrentIndentation (state: tokenize_state) =
         0u
     else state.indentation_stack[state.indentation_stack.Count - 1]
 
-let isNotDone (state: tokenize_state) = not (is_done state)
-
 let advanceTextPosition (position: text_position) (readChar: char): text_position =
     if readChar <> '\n' then
         text_position(line_index = position.line_index, column_index = position.column_index + 1u)
@@ -19,7 +17,7 @@ let advanceTextPosition (position: text_position) (readChar: char): text_positio
         text_position(line_index = position.line_index + 1u, column_index = 0u)
 
 let tryPeekExpectedChar (state: tokenize_state) (expectedChar: char): Option<char> =
-    if isNotDone state then
+    if is_not_done state then
         let nextChar = state.text_left[0]
 
         if nextChar = expectedChar then
@@ -28,7 +26,7 @@ let tryPeekExpectedChar (state: tokenize_state) (expectedChar: char): Option<cha
     else None
 
 let peekChar (state: tokenize_state): char =
-    if isNotDone state then state.text_left[0]
+    if is_not_done state then state.text_left[0]
     else failwith "Unexpectedly reached the end of the source code."
 
 let tryReadChar (state: tokenize_state): Option<char> * tokenize_state = 
@@ -289,7 +287,7 @@ let tokenize (sourceCode: string): tokenize_output =
         text_left = sourceCode,
         position = text_position(line_index = 0u, column_index = 0u)
     )
-    let finalState = applyWhile iterateTokenize isNotDone seedState
+    let finalState = applyWhile iterateTokenize is_not_done seedState
 
     let finalState =
         if finalState.indentation_stack.Count > 0
