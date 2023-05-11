@@ -3,13 +3,14 @@
 open System
 open CompilerCore
 
+open type PrestoProgram
+
 let getCurrentIndentation (state: tokenize_state) = 
     if state.indentation_stack.Count = 0 then
         0u
     else state.indentation_stack[state.indentation_stack.Count - 1]
 
-let isDone (state: tokenize_state) = state.text_left.Length = 0
-let isNotDone (state: tokenize_state) = not (isDone state)
+let isNotDone (state: tokenize_state) = not (is_done state)
 
 let advanceTextPosition (position: text_position) (readChar: char): text_position =
     if readChar <> '\n' then
@@ -31,7 +32,7 @@ let peekChar (state: tokenize_state): char =
     else failwith "Unexpectedly reached the end of the source code."
 
 let tryReadChar (state: tokenize_state): Option<char> * tokenize_state = 
-    if isDone state then (None, state)
+    if is_done state then (None, state)
     else
         let nextChar = state.text_left[0]
         (
@@ -51,7 +52,7 @@ let readChar (state: tokenize_state): char * tokenize_state =
     (maybeNextChar.Value, nextState)
 
 let rec appendCharsWhile (state: tokenize_state) (predicate: char -> bool) (str: string): string * tokenize_state =
-    if isDone state then (str, state)
+    if is_done state then (str, state)
     else
         let nextChar = peekChar state
 

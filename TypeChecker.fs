@@ -4,6 +4,8 @@ open CompilerCore
 open ASTBuilder
 open Lexer
 
+open type PrestoProgram
+
 type TypeCheckerState = {
     CurrentScopeId: System.Guid
     ScopesById: Map<System.Guid, Scope>

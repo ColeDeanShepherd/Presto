@@ -3,6 +3,8 @@
 open ASTBuilder
 open Lexer
 
+open type PrestoProgram
+
 type CodeGeneratorState = {
     Program: Program
     GeneratedCode: string
@@ -112,6 +114,7 @@ and generateMemberAccess (state: CodeGeneratorState) (memberAccess: MemberAccess
 
 and generateNumberLiteral (state: CodeGeneratorState) (numberLiteral: NumberLiteral): CodeGeneratorState =
     let state = generateString state numberLiteral.Token._text
+    let state = generateString state "u"
 
     state
 
@@ -155,6 +158,8 @@ and generateParameter (state: CodeGeneratorState) (parameter: Parameter): CodeGe
     state
 
 and generateFunction (state: CodeGeneratorState) (name: string) (fn: Function): CodeGeneratorState =
+    let state = generateString state "public"
+    let state = generateString state " "
     let state = generateString state "static"
     let state = generateString state " "
 
@@ -238,10 +243,14 @@ let generatedCodeHeader =
     "using System;
     using System.Collections.Generic;
     
-    using nat = System.UInt32;"
+    using nat = System.UInt32;
+    
+    using static Presto.Runtime.PrestoProgram;
+    
+    public static partial class PrestoProgram {"
 
 let generatedCodeFooter =
-    ""
+    "}"
 
 let generateCode (program: Program): CodeGeneratorOutput =
     let state = { Program = program; GeneratedCode = ""; Errors = [] }

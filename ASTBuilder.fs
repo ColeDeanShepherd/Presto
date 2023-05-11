@@ -4,6 +4,8 @@ open Parser
 open CompilerCore
 open Lexer
 
+open type PrestoProgram
+
 type PrestoType =
     | Nat
     | Text of System.Guid
@@ -527,6 +529,7 @@ let getInitialScopesById =
                 .Add("eq", BuiltInSymbol ("eq", FunctionType (System.Guid.NewGuid(), [PrestoType.Nat; PrestoType.Nat], PrestoType.Boolean)))
                 .Add("not", BuiltInSymbol ("not", FunctionType (System.Guid.NewGuid(), [PrestoType.Boolean], PrestoType.Boolean)))
                 .Add("sum", BuiltInSymbol ("sum", FunctionType (System.Guid.NewGuid(), [PrestoType.Nat; PrestoType.Nat], PrestoType.Nat)))
+                .Add("length", BuiltInSymbol ("length", FunctionType (System.Guid.NewGuid(), [PrestoType.Text textScopeId], PrestoType.Nat)))
                 .Add("difference", BuiltInSymbol ("difference", FunctionType (System.Guid.NewGuid(), [PrestoType.Nat; PrestoType.Nat], PrestoType.Nat)))
                 .Add("product", BuiltInSymbol ("product", FunctionType (System.Guid.NewGuid(), [PrestoType.Nat; PrestoType.Nat], PrestoType.Nat)))
                 .Add("quotient", BuiltInSymbol ("quotient", FunctionType (System.Guid.NewGuid(), [PrestoType.Nat; PrestoType.Nat], PrestoType.Nat)));

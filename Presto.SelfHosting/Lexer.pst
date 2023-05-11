@@ -35,3 +35,5 @@ tokenize_state = record
     indentation_stack: list(nat)
     tokens: list(token)
     errors: list(compile_error)
+
+is_done = fn (state: tokenize_state): bool -> eq(length(state.text_left), 0)

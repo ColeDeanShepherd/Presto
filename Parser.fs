@@ -3,6 +3,8 @@
 open CompilerCore
 open Lexer
 
+open type PrestoProgram
+
 (*
 CompilationUnit -> Binding*
 Binding -> Identifier "=" Expression
