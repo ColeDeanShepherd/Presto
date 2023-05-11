@@ -3,18 +3,10 @@
 open System
 open CompilerCore
 
-type tokenize_state = {
-    text_left: string
-    position: text_position
-    indentation_stack: List<int>
-    tokens: List<token>
-    errors: List<compile_error>
-}
-
 let getCurrentIndentation (state: tokenize_state) = 
-    if state.indentation_stack.IsEmpty then
-        0
-    else state.indentation_stack[state.indentation_stack.Length - 1]
+    if state.indentation_stack.Count = 0 then
+        0u
+    else state.indentation_stack[state.indentation_stack.Count - 1]
 
 let isDone (state: tokenize_state) = state.text_left.Length = 0
 let isNotDone (state: tokenize_state) = not (isDone state)
@@ -44,11 +36,13 @@ let tryReadChar (state: tokenize_state): Option<char> * tokenize_state =
         let nextChar = state.text_left[0]
         (
             Some(nextChar),
-            {
-                state with
-                    text_left = state.text_left.Substring(1)
-                    position = advanceTextPosition state.position nextChar
-            }
+            tokenize_state(
+                tokens = state.tokens,
+                errors = state.errors,
+                indentation_stack = state.indentation_stack,
+                text_left = state.text_left.Substring(1),
+                position = advanceTextPosition state.position nextChar
+            )
         )
 
 let readChar (state: tokenize_state): char * tokenize_state =
@@ -70,11 +64,27 @@ let rec appendCharsWhile (state: tokenize_state) (predicate: char -> bool) (str:
 let takeCharsWhile (state: tokenize_state) (predicate: char -> bool): string * tokenize_state =
     appendCharsWhile state predicate ""
 
+let listAppend (list: ResizeArray<'a>) (e: 'a): ResizeArray<'a> =
+    let newList = ResizeArray<'a> list
+    newList.Add(e)
+    newList
+
+let listAppendRange (a: ResizeArray<'a>) (b: ResizeArray<'a>): ResizeArray<'a> =
+    let newList = ResizeArray<'a> a
+    newList.AddRange(b)
+    newList
+
 let readSingleCharToken (state: tokenize_state) (tokenType: token_type): tokenize_state =
     let startPosition = state.position
     let (nextChar, state) = readChar state
     
-    { state with tokens = state.tokens @ [token(_type = tokenType, _text = nextChar.ToString(), position = startPosition, was_inserted = false)] }
+    tokenize_state(
+        tokens = listAppend state.tokens (token(_type = tokenType, _text = nextChar.ToString(), position = startPosition, was_inserted = false)),
+        errors = state.errors,
+        indentation_stack = state.indentation_stack,
+        text_left = state.text_left,
+        position = state.position
+    )
 
 let readLineBreak (state: tokenize_state): Option<string> * tokenize_state =
     let optionCarriageReturn = tryPeekExpectedChar state '\r'
@@ -133,26 +143,44 @@ let readWhitespaceTokens (state: tokenize_state): List<token> * tokenize_state =
         if isIndentation then
             let newIndentation =
                 match optionWhitespaceToken with
-                | Some whitespaceToken -> whitespaceToken._text.Length
-                | None -> 0
+                | Some whitespaceToken -> uint whitespaceToken._text.Length
+                | None -> 0u
             let indentationIncreased = newIndentation > (getCurrentIndentation state)
             let indentationDecreased = newIndentation < (getCurrentIndentation state)
 
             if indentationIncreased then
                 (
                     tokens @ [token(_type = token_type.left_curly_bracket, _text = "{", position = state.position, was_inserted = true)],
-                    { state with indentation_stack = state.indentation_stack @ [newIndentation] }
+                    tokenize_state(
+                        tokens = state.tokens,
+                        errors = state.errors,
+                        indentation_stack = listAppend state.indentation_stack newIndentation,
+                        text_left = state.text_left,
+                        position = state.position
+                    )
                 )
             else if indentationDecreased then
                 let (tokens, state) = (
                     tokens @ [token(_type = token_type.right_curly_bracket, _text = "}", position = state.position, was_inserted = true)],
-                    { state with indentation_stack = List.take (state.indentation_stack.Length - 1) state.indentation_stack }
+                    tokenize_state(
+                        tokens = state.tokens,
+                        errors = state.errors,
+                        indentation_stack = ResizeArray<uint> (Seq.take (state.indentation_stack.Count - 1) state.indentation_stack),
+                        text_left = state.text_left,
+                        position = state.position
+                    )
                 )
 
                 if newIndentation > (getCurrentIndentation state) then
                     (
                         tokens @ [token(_type = token_type.left_curly_bracket, _text = "{", position = state.position, was_inserted = true)],
-                        { state with indentation_stack = state.indentation_stack @ [newIndentation] }
+                        tokenize_state(
+                            tokens = state.tokens,
+                            errors = state.errors,
+                            indentation_stack = listAppend state.indentation_stack newIndentation,
+                            text_left = state.text_left,
+                            position = state.position
+                        )
                     )
                 else
                     (tokens, state)
@@ -167,7 +195,14 @@ let rec readWhitespace (state: tokenize_state): tokenize_state =
     let (tokens, state) = readWhitespaceTokens state
 
     if not tokens.IsEmpty then
-        let state = { state with tokens = state.tokens @ tokens }
+        let state = tokenize_state(
+            tokens = listAppendRange state.tokens (ResizeArray<token> tokens),
+            errors = state.errors,
+            indentation_stack = state.indentation_stack,
+            text_left = state.text_left,
+            position = state.position
+        )
+
         readWhitespace state
     else
         state
@@ -194,12 +229,28 @@ let iterateTokenize (state: tokenize_state): tokenize_state =
                 | "else" -> token_type.else_keyword
                 | _ -> token_type.identifier
 
-            { nextState with tokens = nextState.tokens @ [token(_type = tokenType, _text = tokenText, position = startPosition, was_inserted = false)] }
+            let nextToken = token(_type = tokenType, _text = tokenText, position = startPosition, was_inserted = false)
+
+            tokenize_state(
+                tokens = listAppend nextState.tokens nextToken,
+                errors = nextState.errors,
+                indentation_stack = nextState.indentation_stack,
+                text_left = nextState.text_left,
+                position = nextState.position
+            )
         else if Char.IsDigit nextChar then
             let (tokenText, nextState) = takeCharsWhile state Char.IsDigit
             let tokenType = token_type.number_literal
 
-            { nextState with tokens = nextState.tokens @ [token(_type = tokenType, _text = tokenText, position = startPosition, was_inserted = false)] }
+            let nextToken = token(_type = tokenType, _text = tokenText, position = startPosition, was_inserted = false)
+
+            tokenize_state(
+                tokens = listAppend nextState.tokens nextToken,
+                errors = nextState.errors,
+                indentation_stack = nextState.indentation_stack,
+                text_left = nextState.text_left,
+                position = nextState.position
+            )
         else if nextChar = '=' then
             readSingleCharToken state token_type.equals
         else if nextChar = '-' then
@@ -221,28 +272,36 @@ let iterateTokenize (state: tokenize_state): tokenize_state =
         else if nextChar = '.' then
             readSingleCharToken state token_type.period
         else
-            { state with text_left = state.text_left[1..]; errors = state.errors @ [compile_error(description = $"Encountered an unexpected character: '{nextChar}'", position = state.position)] }
+            tokenize_state(
+                tokens = state.tokens,
+                errors = listAppend state.errors (compile_error(description = $"Encountered an unexpected character: '{nextChar}'", position = state.position)),
+                indentation_stack = state.indentation_stack,
+                text_left = state.text_left[1..],
+                position = state.position
+            )
 
 let tokenize (sourceCode: string): tokenize_output =
-    let seedState: tokenize_state = {
-        text_left = sourceCode
+    let seedState = tokenize_state(
+        tokens = ResizeArray<token>(),
+        errors = ResizeArray<compile_error>(),
+        indentation_stack = ResizeArray<uint>(),
+        text_left = sourceCode,
         position = text_position(line_index = 0u, column_index = 0u)
-        indentation_stack = []
-        tokens = []
-        errors = []
-    }
+    )
     let finalState = applyWhile iterateTokenize isNotDone seedState
 
     let finalState =
-        if finalState.indentation_stack.Length > 0
+        if finalState.indentation_stack.Count > 0
         then
             let token = token(_type = token_type.right_curly_bracket, _text = "}", position = finalState.position, was_inserted = true)
 
-            {
-                finalState with
-                    indentation_stack = []
-                    tokens = finalState.tokens @ (List.replicate finalState.indentation_stack.Length token)
-            }
+            tokenize_state(
+                tokens = listAppendRange finalState.tokens (ResizeArray<token> (List.replicate finalState.indentation_stack.Count token)),
+                errors = finalState.errors,
+                indentation_stack = ResizeArray<uint>(),
+                text_left = finalState.text_left,
+                position = finalState.position
+            )
         else
             finalState
 

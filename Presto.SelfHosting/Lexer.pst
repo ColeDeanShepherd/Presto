@@ -28,3 +28,10 @@ token = record
 tokenize_output = record
     tokens: list(token)
     errors: list(compile_error)
+
+tokenize_state = record
+    text_left: text
+    position: text_position
+    indentation_stack: list(nat)
+    tokens: list(token)
+    errors: list(compile_error)
