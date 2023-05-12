@@ -5,7 +5,7 @@ open CompilerCore
 
 open type PrestoProgram
 
-let getCurrentIndentation (state: tokenize_state) = 
+let get_current_indentation (state: tokenize_state) = 
     if state.indentation_stack.Count = 0 then
         0u
     else state.indentation_stack[state.indentation_stack.Count - 1]
@@ -144,8 +144,8 @@ let readWhitespaceTokens (state: tokenize_state): List<token> * tokenize_state =
                 match optionWhitespaceToken with
                 | Some whitespaceToken -> uint whitespaceToken._text.Length
                 | None -> 0u
-            let indentationIncreased = newIndentation > (getCurrentIndentation state)
-            let indentationDecreased = newIndentation < (getCurrentIndentation state)
+            let indentationIncreased = newIndentation > (get_current_indentation state)
+            let indentationDecreased = newIndentation < (get_current_indentation state)
 
             if indentationIncreased then
                 (
@@ -170,7 +170,7 @@ let readWhitespaceTokens (state: tokenize_state): List<token> * tokenize_state =
                     )
                 )
 
-                if newIndentation > (getCurrentIndentation state) then
+                if newIndentation > (get_current_indentation state) then
                     (
                         tokens @ [token(_type = token_type.left_curly_bracket, _text = "{", position = state.position, was_inserted = true)],
                         tokenize_state(
