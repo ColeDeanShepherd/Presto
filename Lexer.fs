@@ -254,6 +254,8 @@ let iterateTokenize (state: tokenize_state): tokenize_state =
             readSingleCharToken state token_type.equals
         else if nextChar = '-' then
             readSingleCharToken state token_type.minus
+        else if nextChar = '<' then
+            readSingleCharToken state token_type.less_than
         else if nextChar = '>' then
             readSingleCharToken state token_type.greater_than
         else if nextChar = '(' then

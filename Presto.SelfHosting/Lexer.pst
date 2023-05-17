@@ -10,6 +10,7 @@ token_type = union
     whitespace
     equals
     minus
+    less_than
     greater_than
     left_paren
     right_paren

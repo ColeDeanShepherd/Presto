@@ -6,6 +6,45 @@ open Lexer
 
 open type PrestoProgram
 
+(*
+Type System
+===========
+
+- Nat (unbounded non-negative integer)
+- Boolean (should eventually just be an enum)
+- Text (any amount of text, unicode internally)
+- Character? (individual character in text? what about glyph runs?)
+- Type (the type of a type)
+- Record (a collection of named fields)
+- Union
+- Function
+
+Generics
+- in "list(int)", "list" is a function that takes a type (int) and returns a type (list of int)
+
+
+identity = fn (implicit T: type, x: T): T -> x
+
+So, how do we write a function like "first_or_default"?
+
+first_or_default = fn (x: list(T), default: T): T -> ...
+
+"T" is a type variable. One way to view it is as an implicit parameter. We *could* require it be explicit like so:
+
+first_or_default = fn (t: Type, x: list(t), default: t): t -> ...
+
+
+If we think about more complex functions like so:
+
+clamp = fn (x: nat, min: nat, max: nat, proof: proof(min <= max)): nat -> ...
+
+
+token_type: a Union type with the possible values: identifier, number_literal, etc.
+token: a Record type with the fields: _type, _text, position, was_inserted
+list(token): An expression that evaluates to an internal type (let's call it __list_of_token). "list" is a function that takes a type, and returns a type. If we evaluate this twice with the same args, the types are the same (list(token) == list(token)).
+fn (state: tokenize_state): bool -> ...: A function type with one arg of type "tokenize_state" that returns "bool"
+*)
+
 type PrestoType =
     | Nat
     | Text of System.Guid
@@ -15,6 +54,7 @@ type PrestoType =
     | RecordType of System.Guid * List<PrestoType>
     | UnionType of System.Guid
     | FunctionType of System.Guid * List<PrestoType> * PrestoType
+    | TypeParameterType of uint (* index into the list of parameters *)
 and Symbol =
     | BindingSymbol of Binding
     | ParameterSymbol of Parameter
@@ -509,8 +549,7 @@ let getInitialScopesById =
     let textScopeId = System.Guid.NewGuid()
     let textScope = {
         SymbolsByName =
-            Map.empty
-                .Add("length", BuiltInSymbol ("length", PrestoType.Text textScopeId));
+            Map.empty;
         ParentId = Some scopeId;
         ChildIds = []
     }
@@ -525,9 +564,13 @@ let getInitialScopesById =
                 .Add("false", BuiltInSymbol ("false", PrestoType.Boolean))
                 .Add("char", BuiltInSymbol ("char", PrestoType.Character))
                 .Add("text", BuiltInSymbol ("text", PrestoType.Text textScopeId))
+
                 .Add("list", BuiltInSymbol ("list", FunctionType (System.Guid.NewGuid(), [PrestoType.Type], PrestoType.Type)))
+
                 .Add("eq", BuiltInSymbol ("eq", FunctionType (System.Guid.NewGuid(), [PrestoType.Nat; PrestoType.Nat], PrestoType.Boolean)))
+
                 .Add("not", BuiltInSymbol ("not", FunctionType (System.Guid.NewGuid(), [PrestoType.Boolean], PrestoType.Boolean)))
+
                 .Add("sum", BuiltInSymbol ("sum", FunctionType (System.Guid.NewGuid(), [PrestoType.Nat; PrestoType.Nat], PrestoType.Nat)))
                 .Add("length", BuiltInSymbol ("length", FunctionType (System.Guid.NewGuid(), [PrestoType.Text textScopeId], PrestoType.Nat)))
                 .Add("difference", BuiltInSymbol ("difference", FunctionType (System.Guid.NewGuid(), [PrestoType.Nat; PrestoType.Nat], PrestoType.Nat)))

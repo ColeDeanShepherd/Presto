@@ -1,6 +1,9 @@
 # Presto
 A programming language.
 
+## To-Do
+* Implement comments
+
 ## Ideas
 * Numbers are boundless by default. Bounded numbers are an optimization.
 * Concurrency with green threads
@@ -28,6 +31,74 @@ A programming language.
 * Multi-file support
 * Name shadowing?
 * Better error handling than "incorrectly pushed scope"
+
+## Example Functions
+* identity
+  * type variables: T
+  * domain: x: T
+  * codomain: T
+  * return value = x
+  * identity = fn <T> (x: T): T -> x
+* equals
+  * type variables: T
+  * domain: x: T, y: T
+  * codomain: bool
+  * returns true iff values are equal
+  * equals = fn <T> (x: T, y: T): bool -> x == y
+* not_equals
+  * type variables: T
+  * domain: x: T, y: T
+  * codomain: bool
+  * returns true iff values are not equal
+  * not_equals = fn <T> (x: T, y: T): bool -> x != y
+* to_string
+  * There are different implementations of this depending on the type... Need to figure this out.
+* sum
+  * Also different implementations depending on the type
+* difference
+* product
+* quotient
+* remainder
+* pow
+* log
+* not
+* and
+* or
+* xor
+* head
+* first
+* tail
+* nth
+* min
+* max
+* clamp
+* abs
+* sign
+* floor
+* ceil
+* round
+* truncate
+* sqrt
+* cbrt
+* sin
+* cos
+* tan
+* asin
+* acos
+* atan
+* atan2
+* sinh
+* cosh
+* tanh
+* asinh
+* acosh
+* atanh
+* exp
+* exp2
+* exp10
+* log2
+* log10
+* logn
 
 ## Example Programs
 

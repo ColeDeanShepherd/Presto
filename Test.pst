@@ -1,11 +1,1 @@
-﻿text_position = record
-    line_index: nat
-    column_index: nat
-
-compile_error = record
-    description: text
-    position: text_position
-
-fact = fn (n: nat): nat ->
-    if eq(n, 0) then 1
-    else product(n, fact(difference(n, 1)))
+﻿identity = fn <T> (x: T): T -> x

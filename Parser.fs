@@ -32,8 +32,9 @@ type ParseNodeType =
     | Union
     | UnionCase
     | Function
-    | FunctionCall
+    | TypeParameter
     | Parameter
+    | FunctionCall
     | MemberAccess
     | IfThenElse
     | Block
@@ -326,6 +327,21 @@ let rec parseOptionalWhitespaceSeparatedUntilDone
             | None -> (accumulator, state)
         | None -> (accumulator, state)
 
+and parseTypeParameter (state: ParseState): Option<ParseNode> * ParseState =
+    let (optionIdentifier, state) = parseToken state token_type.identifier
+
+    match optionIdentifier with
+    | Some identifier ->
+        (
+            Some {
+                Type = ParseNodeType.TypeParameter
+                Children = [identifier]
+                Token = None
+            },
+            state
+        )
+    | None -> (None, state)
+
 and parseParameter (state: ParseState): Option<ParseNode> * ParseState =
     let (optionIdentifier, state) = parseToken state token_type.identifier
 
@@ -549,46 +565,72 @@ and parseFunction (state: ParseState): Option<ParseNode> * ParseState =
     match optionFnToken with
     | Some fnToken ->
         let (whitespace1, state) = parseWhitespace state
-        let (optionLeftParen, state) = parseToken state token_type.left_paren
+        let (optionNextToken, state) = peekToken state
 
-        match optionLeftParen with
-        | Some leftParen ->
-            let (whitespace2, state) = parseWhitespace state
-            let (parameters, state) = parseSeparatedByToken state parseParameter token_type.comma []
-            let (whitespace3, state) = parseWhitespace state
-            let (optionRightParen, state) = parseToken state token_type.right_paren
+        match optionNextToken with
+        | Some nextToken ->
+            let (typeParametersNodes, state) =
+                if nextToken._type = token_type.less_than then
+                    let (optionLessThan, state) = parseToken state token_type.less_than
+                    
+                    match optionLessThan with
+                    | Some lessThan ->
+                        let (whitespace2, state) = parseWhitespace state
+                        let (typeParameters, state) = parseSeparatedByToken state parseTypeParameter token_type.comma []
+                        let (whitespace3, state) = parseWhitespace state
+                        let (optionGreaterThan, state) = parseToken state token_type.greater_than
 
-            // If next token is ':', then parse it & a return type expression.
-            let (optionColonToken, state) = peekExpectedTokenAfterWhitespace state token_type.colon
-            let (returnTypeNodes, state) =
-                match optionColonToken with
-                | Some _ -> parseFunctionReturnType state
-                | None -> ([], state)
+                        match optionGreaterThan with
+                        | Some greaterThan ->
+                            let (trailingWhiteSpace, state) = parseWhitespace state
 
-            match optionRightParen with
-            | Some rightParen ->
+                            ((List.concat [ [lessThan]; whitespace2; typeParameters; whitespace3; [greaterThan]; trailingWhiteSpace ]), state)
+                        | None -> ([], state)
+                    | None -> ([], state)
+                else
+                    ([], state)
+
+            let (optionLeftParen, state) = parseToken state token_type.left_paren
+
+            match optionLeftParen with
+            | Some leftParen ->
                 let (whitespace4, state) = parseWhitespace state
-                let (optionMinus, state) = parseToken state token_type.minus
+                let (parameters, state) = parseSeparatedByToken state parseParameter token_type.comma []
+                let (whitespace5, state) = parseWhitespace state
+                let (optionRightParen, state) = parseToken state token_type.right_paren
 
-                match optionMinus with
-                | Some minus ->
-                    let (optionGreaterThan, state) = parseToken state token_type.greater_than
+                // If next token is ':', then parse it & a return type expression.
+                let (optionColonToken, state) = peekExpectedTokenAfterWhitespace state token_type.colon
+                let (returnTypeNodes, state) =
+                    match optionColonToken with
+                    | Some _ -> parseFunctionReturnType state
+                    | None -> ([], state)
 
-                    match optionGreaterThan with
-                    | Some greaterThan ->
-                        let (whitespace5, state) = parseWhitespace state
-                        let (optionResult, state) = parseExpression state
+                match optionRightParen with
+                | Some rightParen ->
+                    let (whitespace6, state) = parseWhitespace state
+                    let (optionMinus, state) = parseToken state token_type.minus
 
-                        match optionResult with
-                        | Some result ->
-                            (
-                                Some {
-                                    Type = ParseNodeType.Function
-                                    Children = List.concat [ [fnToken]; whitespace1; [leftParen]; whitespace2; parameters; whitespace3; [rightParen]; returnTypeNodes; whitespace4; [minus]; [greaterThan]; whitespace5; [result] ]
-                                    Token = None
-                                },
-                                state
-                            )
+                    match optionMinus with
+                    | Some minus ->
+                        let (optionGreaterThan, state) = parseToken state token_type.greater_than
+
+                        match optionGreaterThan with
+                        | Some greaterThan ->
+                            let (whitespace7, state) = parseWhitespace state
+                            let (optionResult, state) = parseExpression state
+
+                            match optionResult with
+                            | Some result ->
+                                (
+                                    Some {
+                                        Type = ParseNodeType.Function
+                                        Children = List.concat [ [fnToken]; whitespace1; typeParametersNodes; [leftParen]; whitespace4; parameters; whitespace5; [rightParen]; returnTypeNodes; whitespace6; [minus]; [greaterThan]; whitespace7; [result] ]
+                                        Token = None
+                                    },
+                                    state
+                                )
+                            | None -> (None, state)
                         | None -> (None, state)
                     | None -> (None, state)
                 | None -> (None, state)
