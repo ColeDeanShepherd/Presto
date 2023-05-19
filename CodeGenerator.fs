@@ -45,6 +45,7 @@ let rec generateSymbol (state: CodeGeneratorState) (token: token) (expressionId:
 
     match symbol with
     | BindingSymbol binding -> generateString state binding.NameToken._text
+    | TypeParameterSymbol typeParameter -> generateString state typeParameter.NameToken._text
     | ParameterSymbol parameter ->  generateString state parameter.NameToken._text
     | RecordFieldSymbol recordField -> generateString state recordField.NameToken._text
     | UnionCaseSymbol unionCase -> generateString state unionCase.NameToken._text
@@ -144,6 +145,7 @@ and generateTypeReference (state: CodeGeneratorState) (prestoType: PrestoType): 
         | RecordType (scopeId, _) -> state.Program.TypeCanonicalNamesByScopeId[scopeId]
         | UnionType scopeId -> state.Program.TypeCanonicalNamesByScopeId[scopeId]
         | FunctionType (scopeId, _, _) -> state.Program.TypeCanonicalNamesByScopeId[scopeId]
+        | TypeParameterType typeParameter -> typeParameter
 
     generateString state typeReferenceString
 
@@ -157,6 +159,18 @@ and generateParameter (state: CodeGeneratorState) (parameter: Parameter): CodeGe
 
     state
 
+and generateTypeParameter (state: CodeGeneratorState) (typeParameter: TypeParameter): CodeGeneratorState =
+    let state = generateString state typeParameter.NameToken._text
+
+    state
+
+and generateTypeParameters (state: CodeGeneratorState) (typeParameters: List<TypeParameter>): CodeGeneratorState =
+    let state = generateString state "<"
+    let state = generateMany state typeParameters generateTypeParameter ", " true
+    let state = generateString state ">"
+    
+    state
+
 and generateFunction (state: CodeGeneratorState) (name: string) (fn: Function): CodeGeneratorState =
     let state = generateString state "public"
     let state = generateString state " "
@@ -168,6 +182,13 @@ and generateFunction (state: CodeGeneratorState) (name: string) (fn: Function): 
 
     let state = generateString state " "
     let state = generateString state name
+
+    let state =
+        if fn.TypeParameters.Length > 0 then
+            generateTypeParameters state fn.TypeParameters
+        else
+            state
+
     let state = generateString state "("
     let state = generateMany state fn.Parameters generateParameter ", " true
     let state = generateString state ")"

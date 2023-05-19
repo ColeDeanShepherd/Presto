@@ -98,6 +98,9 @@ and checkRecord (state: TypeCheckerState) (record: Record): TypeCheckerState * O
         (popScope state, Some prestoType)
     else
         (popScope state, None)
+
+and checkTypeParameter (state: TypeCheckerState) (typeParameter: TypeParameter): TypeCheckerState * Option<PrestoType> =
+    (state, Some (TypeParameterType typeParameter.NameToken._text))
     
 and checkParameter (state: TypeCheckerState) (parameter: Parameter): TypeCheckerState * Option<PrestoType> =
     checkExpression state parameter.TypeExpression
@@ -270,6 +273,7 @@ and checkMemberAccess (state: TypeCheckerState) (memberAccess: MemberAccess): Ty
 and checkSymbol (state: TypeCheckerState) (symbol: Symbol): TypeCheckerState * Option<PrestoType> =
     match symbol with
     | BindingSymbol binding -> checkExpression state binding.Value
+    | TypeParameterSymbol typeParameter -> checkTypeParameter state typeParameter
     | ParameterSymbol parameter -> checkExpression state parameter.TypeExpression
     | RecordFieldSymbol recordField -> checkExpression state recordField.TypeExpression
     | UnionCaseSymbol unionCase -> (state, None)

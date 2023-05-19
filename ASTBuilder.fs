@@ -54,9 +54,10 @@ type PrestoType =
     | RecordType of System.Guid * List<PrestoType>
     | UnionType of System.Guid
     | FunctionType of System.Guid * List<PrestoType> * PrestoType
-    | TypeParameterType of uint (* index into the list of parameters *)
+    | TypeParameterType of string (* name of type parameter *)
 and Symbol =
     | BindingSymbol of Binding
+    | TypeParameterSymbol of TypeParameter
     | ParameterSymbol of Parameter
     | RecordFieldSymbol of RecordField
     | UnionCaseSymbol of UnionCase
@@ -79,11 +80,15 @@ and Binding = {
     NameToken: token
     Value: Expression
 }
+and TypeParameter = {
+    NameToken: token
+}
 and Parameter = {
     NameToken: token
     TypeExpression: Expression
 }
 and Function = {
+    TypeParameters: List<TypeParameter>
     Parameters: List<Parameter>
     OptionReturnTypeExpression: Option<Expression>
     Value: Expression
@@ -169,6 +174,7 @@ let newExpression (value: ExpressionValue) =
 let getSymbolTextPosition (symbol: Symbol): text_position =
     match symbol with
     | BindingSymbol binding -> binding.NameToken.position
+    | TypeParameterSymbol typeParameter -> typeParameter.NameToken.position
     | ParameterSymbol parameter -> parameter.NameToken.position
     | RecordFieldSymbol recordField -> recordField.NameToken.position
     | UnionCaseSymbol unionCase -> unionCase.NameToken.position
@@ -231,6 +237,22 @@ let buildAllOrNone
         else
             (None, state)
 
+let rec buildTypeParameter (state: ASTBuilderState) (node: ParseNode): (Option<TypeParameter> * ASTBuilderState) =
+    assert (node.Type = ParseNodeType.TypeParameter)
+
+    let identifier = childOfTokenType node token_type.identifier
+    let nameToken = identifier.Token.Value
+    let name = nameToken._text
+    
+    let typeParameter: TypeParameter = { NameToken = nameToken }
+
+    let (success, state) = addSymbol state name (TypeParameterSymbol typeParameter)
+
+    if success then
+        (Some typeParameter, state)
+    else
+        (None, state)
+
 let rec buildParameter (state: ASTBuilderState) (node: ParseNode): (Option<Parameter> * ASTBuilderState) =
     assert (node.Type = ParseNodeType.Parameter)
 
@@ -258,42 +280,49 @@ and buildFunction (state: ASTBuilderState) (node: ParseNode): (Option<Function> 
 
     let (scope, state) = pushScope state
 
-    let parameterNodes = childrenOfType node ParseNodeType.Parameter
-    let (optionParameters, state) = buildAllOrNone state parameterNodes buildParameter
+    let typeParameterNodes = childrenOfType node ParseNodeType.TypeParameter
+    let (optionTypeParameters, state) = buildAllOrNone state typeParameterNodes buildTypeParameter
 
-    match optionParameters with
-    | Some parameters ->
-        let expressionNodes = childrenOfType node ParseNodeType.Expression
+    match optionTypeParameters with
+    | Some typeParameters ->
+        let parameterNodes = childrenOfType node ParseNodeType.Parameter
+        let (optionParameters, state) = buildAllOrNone state parameterNodes buildParameter
 
-        // if only one expression, then that is the value, if 2 exprs, then 1st is return type, 2nd is value
-        let (optionReturnTypeExpression, optionExpression, state) =
-            if expressionNodes.Length = 1 then
-                let (optionExpression, state) = buildExpression state expressionNodes[0]
+        match optionParameters with
+        | Some parameters ->
+            let expressionNodes = childrenOfType node ParseNodeType.Expression
 
-                (None, optionExpression, state)
-            else if expressionNodes.Length = 2 then
-                let (optionReturnTypeExpression, state) = buildExpression state expressionNodes[0]
+            // if only one expression, then that is the value, if 2 exprs, then 1st is return type, 2nd is value
+            let (optionReturnTypeExpression, optionExpression, state) =
+                if expressionNodes.Length = 1 then
+                    let (optionExpression, state) = buildExpression state expressionNodes[0]
 
-                match optionReturnTypeExpression with
-                | Some returnTypeExpression ->
-                    let (optionExpression, state) = buildExpression state expressionNodes[1]
+                    (None, optionExpression, state)
+                else if expressionNodes.Length = 2 then
+                    let (optionReturnTypeExpression, state) = buildExpression state expressionNodes[0]
 
-                    (Some returnTypeExpression, optionExpression, state)
-                | None -> (None, None, state)
-            else
-                failwith "Function parse node contains more than 2 expression nodes."
+                    match optionReturnTypeExpression with
+                    | Some returnTypeExpression ->
+                        let (optionExpression, state) = buildExpression state expressionNodes[1]
 
-        match optionExpression with
-        | Some expression ->
-            (
-                Some {
-                    Parameters = parameters
-                    OptionReturnTypeExpression = optionReturnTypeExpression
-                    Value = expression
-                    ScopeId = state.CurrentScopeId
-                },
-                popScope state
-            )
+                        (Some returnTypeExpression, optionExpression, state)
+                    | None -> (None, None, state)
+                else
+                    failwith "Function parse node contains more than 2 expression nodes."
+
+            match optionExpression with
+            | Some expression ->
+                (
+                    Some {
+                        TypeParameters = typeParameters
+                        Parameters = parameters
+                        OptionReturnTypeExpression = optionReturnTypeExpression
+                        Value = expression
+                        ScopeId = state.CurrentScopeId
+                    },
+                    popScope state
+                )
+            | None -> (None, popScope state)
         | None -> (None, popScope state)
     | None -> (None, popScope state)
 
