@@ -16,6 +16,8 @@ token_type = union
     right_paren
     left_curly_bracket
     right_curly_bracket
+    left_square_bracket
+    right_square_bracket
     comma
     colon
     period
@@ -27,15 +29,16 @@ token = record
     was_inserted: bool
 
 tokenize_output = record
-    tokens: list(token)
-    errors: list(compile_error)
+    tokens: list[token]
+    errors: list[compile_error]
 
 tokenize_state = record
     text_left: text
     position: text_position
-    indentation_stack: list(nat)
-    tokens: list(token)
-    errors: list(compile_error)
+    indentation_stack: list[nat]
+    tokens: list[token]
+    errors: list[compile_error]
 
 is_done = fn (state: tokenize_state): bool -> eq(length(state.text_left), 0)
 is_not_done = fn (state: tokenize_state): bool -> not(is_done(state))
+get_current_indentation = fn (state: tokenize_state): nat -> last_or_default[nat](state.indentation_stack, 0)

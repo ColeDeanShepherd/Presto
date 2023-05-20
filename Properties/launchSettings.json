@@ -2,7 +2,7 @@
   "profiles": {
     "Presto": {
       "commandName": "Project",
-      "commandLineArgs": "../../../Test.pst"
+      "commandLineArgs": "../../../Presto.SelfHosting/CompilerCore.pst ../../../Presto.SelfHosting/Lexer.pst"
     }
   }
 }

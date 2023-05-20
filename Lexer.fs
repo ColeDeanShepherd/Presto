@@ -266,6 +266,10 @@ let iterateTokenize (state: tokenize_state): tokenize_state =
             readSingleCharToken state token_type.left_curly_bracket
         else if nextChar = '}' then
             readSingleCharToken state token_type.right_curly_bracket
+        else if nextChar = '[' then
+            readSingleCharToken state token_type.left_square_bracket
+        else if nextChar = ']' then
+            readSingleCharToken state token_type.right_square_bracket
         else if nextChar = ',' then
             readSingleCharToken state token_type.comma
         else if nextChar = ':' then

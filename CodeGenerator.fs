@@ -144,7 +144,7 @@ and generateTypeReference (state: CodeGeneratorState) (prestoType: PrestoType): 
         | Type -> "Type"
         | RecordType (scopeId, _) -> state.Program.TypeCanonicalNamesByScopeId[scopeId]
         | UnionType scopeId -> state.Program.TypeCanonicalNamesByScopeId[scopeId]
-        | FunctionType (scopeId, _, _) -> state.Program.TypeCanonicalNamesByScopeId[scopeId]
+        | FunctionType (scopeId, _, _, _) -> state.Program.TypeCanonicalNamesByScopeId[scopeId]
         | TypeParameterType typeParameter -> typeParameter
 
     generateString state typeReferenceString

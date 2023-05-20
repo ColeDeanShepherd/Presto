@@ -111,43 +111,62 @@ and checkFunction (state: TypeCheckerState) (expression: Expression) (fn: Functi
     let state = pushScope state fn.ScopeId
 
     let (state, optionParameterTypes) = checkMany state checkParameter fn.Parameters []
-    let parameterTypes = List.map<Parameter, PrestoType> (fun x -> state.TypesByExpressionId[x.TypeExpression.Id]) fn.Parameters
+    let successfullyCheckedParameterTypes = not (List.exists<Option<'a>> (fun x -> x.IsNone) optionParameterTypes)
 
-    let (state, optionSpecifiedReturnType) =
-        match fn.OptionReturnTypeExpression with
-        | Some returnTypeExpression -> checkExpression state returnTypeExpression
-        | None -> (state, None)
+    if successfullyCheckedParameterTypes then
+        let parameterTypes = List.map<Parameter, PrestoType> (fun x -> state.TypesByExpressionId[x.TypeExpression.Id]) fn.Parameters
 
-    let state =
-        match optionSpecifiedReturnType with
-        | Some specifiedReturnType ->
-            let prestoType = FunctionType (fn.ScopeId, parameterTypes, specifiedReturnType)
-            { state with TypesByExpressionId = state.TypesByExpressionId.Add(expression.Id, prestoType) }
-        | None -> state
+        let (state, optionTypeParameterTypes) = checkMany state checkTypeParameter fn.TypeParameters []
+        let successfullyCheckedTypeParameterTypes = not (List.exists<Option<'a>> (fun x -> x.IsNone) optionTypeParameterTypes)
+        
+        let typeParameterNames =
+            List.map<Option<PrestoType>, string>
+                (fun x ->
+                    match x.Value with
+                    | TypeParameterType name -> name
+                    | _ -> failwith "Unexpected failure")
+                optionTypeParameterTypes
 
-    // TODO: fix recursion when return type isn't specified
-    let (state, optionInferredReturnType) = checkExpression state fn.Value
+        if successfullyCheckedTypeParameterTypes then
+            let (state, optionSpecifiedReturnType) =
+                match fn.OptionReturnTypeExpression with
+                | Some returnTypeExpression -> checkExpression state returnTypeExpression
+                | None -> (state, None)
 
-    match optionInferredReturnType with
-    | Some inferredReturnType ->
+            let state =
+                match optionSpecifiedReturnType with
+                | Some specifiedReturnType ->
+                    let prestoType = FunctionType (fn.ScopeId, typeParameterNames, parameterTypes, specifiedReturnType)
+                    { state with TypesByExpressionId = state.TypesByExpressionId.Add(expression.Id, prestoType) }
+                | None -> state
 
-        if optionSpecifiedReturnType.IsSome then
-            let state = popScope state
+            // TODO: fix recursion when return type isn't specified
+            let (state, optionInferredReturnType) = checkExpression state fn.Value
 
-            if inferredReturnType = optionSpecifiedReturnType.Value then
-                (state, Some state.TypesByExpressionId[expression.Id])
-            else
-                let error = compile_error(
-                    description = $"Function's specified return type ({optionSpecifiedReturnType.Value}) doesn't match its inferred return type ({inferredReturnType})",
-                    position = text_position(line_index = 0u, column_index = 0u)
-                )
-                let state = { state with Errors = state.Errors @ [error] }
+            match optionInferredReturnType with
+            | Some inferredReturnType ->
 
-                (state, None)
+                if optionSpecifiedReturnType.IsSome then
+                    let state = popScope state
+
+                    if inferredReturnType = optionSpecifiedReturnType.Value then
+                        (state, Some state.TypesByExpressionId[expression.Id])
+                    else
+                        let error = compile_error(
+                            description = $"Function's specified return type ({optionSpecifiedReturnType.Value}) doesn't match its inferred return type ({inferredReturnType})",
+                            position = text_position(line_index = 0u, column_index = 0u)
+                        )
+                        let state = { state with Errors = state.Errors @ [error] }
+
+                        (state, None)
+                else
+                    let inferredPrestoType = FunctionType (fn.ScopeId, typeParameterNames, parameterTypes, inferredReturnType)
+                    (popScope state, Some inferredPrestoType)
+            | None -> (popScope state, None)
         else
-            let inferredPrestoType = FunctionType (fn.ScopeId, parameterTypes, inferredReturnType)
-            (popScope state, Some inferredPrestoType)
-    | None -> (popScope state, None)
+            (popScope state, None)
+    else
+        (popScope state, None)
 
 and areTypesEqual (a: PrestoType) (b: PrestoType): bool =
     a = b
@@ -189,29 +208,40 @@ and checkIfThenElse (state: TypeCheckerState) (ifThenElse: IfThenElse): TypeChec
     | None -> (state, None)
 
 and checkFunctionCall (state: TypeCheckerState) (functionCall: FunctionCall): TypeCheckerState * Option<PrestoType> =
-    let (state, optionArgumentTypes) = checkMany state checkExpression functionCall.Arguments []
+    let (state, optionTypeArgumentTypes) = checkMany state checkExpression functionCall.TypeArguments []
+    let typeArgumentTypes = List.filter<Option<PrestoType>> (fun x -> x.IsSome) optionTypeArgumentTypes |> List.map (fun x -> x.Value)
+    let succeededCheckingTypeArguments = typeArgumentTypes.Length = optionTypeArgumentTypes.Length
+    
+    if succeededCheckingTypeArguments then
+        let (state, optionArgumentTypes) = checkMany state checkExpression functionCall.Arguments []
+        let argumentTypes = List.filter<Option<PrestoType>> (fun x -> x.IsSome) optionArgumentTypes |> List.map (fun x -> x.Value)
+        let succeededCheckingArguments = argumentTypes.Length = optionArgumentTypes.Length
 
-    let argumentTypes = List.filter<Option<PrestoType>> (fun x -> x.IsSome) optionArgumentTypes |> List.map (fun x -> x.Value)
-    let succeededCheckingArguments = argumentTypes.Length = optionArgumentTypes.Length
+        // TODO: ensure argument types match function parameter types
 
-    // TODO: ensure argument types match function parameter types
+        if succeededCheckingArguments then
+            let (state, optionFunctionType) = checkExpression state functionCall.FunctionExpression
 
-    if succeededCheckingArguments then
-        let (state, optionFunctionType) = checkExpression state functionCall.FunctionExpression
+            match optionFunctionType with
+            | Some functionType ->
+                match functionType with
+                | FunctionType (scopeId, typeParameterNames, paramTypes, returnType) ->
+                    match returnType with
+                    | TypeParameterType typeParameterName ->
+                        let typeArgumentIndex = List.findIndex (fun x -> x = typeParameterName) typeParameterNames
+                        (state, Some argumentTypes[typeArgumentIndex])
+                    | _ -> (state, Some returnType)
+                | _ ->
+                    let error = compile_error(
+                        description = $"Expected function type, got {functionType}",
+                        position = text_position(line_index = 0u, column_index = 0u)
+                    )
+                    let state = { state with Errors = state.Errors @ [error]}
 
-        match optionFunctionType with
-        | Some functionType ->
-            match functionType with
-            | FunctionType (scopeId, paramTypes, returnType) -> (state, Some returnType)
-            | _ ->
-                let error = compile_error(
-                    description = $"Expected function type, got {functionType}",
-                    position = text_position(line_index = 0u, column_index = 0u)
-                )
-                let state = { state with Errors = state.Errors @ [error]}
-
-                (state, Some functionType)
-        | None -> (state, None)
+                    (state, Some functionType)
+            | None -> (state, None)
+        else
+            (state, None)
     else
         (state, None)
 
@@ -308,6 +338,7 @@ and checkExpression (state: TypeCheckerState) (expression: Expression): TypeChec
             | MemberAccessExpression memberAccess -> checkMemberAccess state memberAccess
             | SymbolReference token -> checkSymbolReference state token expression.Id
             | NumberLiteralExpression number -> checkNumberLiteral state number
+            | TypeClassExpression typeClass -> failwith "not implemented"
 
         match optionPrestoType with
         | Some prestoType ->

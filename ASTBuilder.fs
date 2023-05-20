@@ -33,7 +33,6 @@ first_or_default = fn (x: list(T), default: T): T -> ...
 
 first_or_default = fn (t: Type, x: list(t), default: t): t -> ...
 
-
 If we think about more complex functions like so:
 
 clamp = fn (x: nat, min: nat, max: nat, proof: proof(min <= max)): nat -> ...
@@ -53,8 +52,10 @@ type PrestoType =
     | Type
     | RecordType of System.Guid * List<PrestoType>
     | UnionType of System.Guid
-    | FunctionType of System.Guid * List<PrestoType> * PrestoType
+    | FunctionType of System.Guid * List<string> * List<PrestoType> * PrestoType (* scope ID, type param names, param types, return type *)
     | TypeParameterType of string (* name of type parameter *)
+    | TypeClassType of System.Guid * List<PrestoType> (* type class id, type arguments *)
+    | TypeClassInstanceType of System.Guid * List<PrestoType> (* type class id, type arguments *)
 and Symbol =
     | BindingSymbol of Binding
     | TypeParameterSymbol of TypeParameter
@@ -69,6 +70,7 @@ and Expression = {
 and ExpressionValue =
     | RecordExpression of Record
     | UnionExpression of Union
+    | TypeClassExpression of TypeClass
     | FunctionExpression of Function
     | IfThenElseExpression of IfThenElse
     | BlockExpression of Block
@@ -96,6 +98,7 @@ and Function = {
 }
 and FunctionCall = {
     FunctionExpression: Expression
+    TypeArguments: List<Expression>
     Arguments: List<Expression>
 }
 and MemberAccess = {
@@ -115,6 +118,11 @@ and UnionCase = {
 }
 and Union = {
     Cases: List<UnionCase>
+    ScopeId: System.Guid
+}
+and TypeClass = {
+    TypeParameters: List<TypeParameter>
+    Functions: List<Function>
     ScopeId: System.Guid
 }
 and NumberLiteral = {
@@ -408,6 +416,16 @@ and buildUnion (state: ASTBuilderState) (node: ParseNode): (Option<Union> * ASTB
         )
     | None -> (None, popScope state)
 
+and buildTypeArgument (state: ASTBuilderState) (node: ParseNode): (Option<Expression> * ASTBuilderState) =
+    assert (node.Type = ParseNodeType.TypeArgument)
+
+    let expressionNode = childOfType node ParseNodeType.Expression
+    let (optionExpression, state) = buildExpression state expressionNode
+
+    match optionExpression with
+    | Some expression -> (Some expression, state)
+    | None -> (None, state)
+
 and buildFunctionCall (state: ASTBuilderState) (node: ParseNode): (Option<FunctionCall> * ASTBuilderState) =
     assert (node.Type = ParseNodeType.FunctionCall)
     
@@ -418,15 +436,25 @@ and buildFunctionCall (state: ASTBuilderState) (node: ParseNode): (Option<Functi
 
     match optionFunctionExpression with
     | Some functionExpression ->
-        let argumentExpressionNodes = expressionNodes.Tail
-        let (optionArgumentExpressions, state) = buildAllOrNone state argumentExpressionNodes buildExpression
+        let typeArgumentNodes = childrenOfType node ParseNodeType.TypeArgument
+        let (optionTypeArguments, state) = buildAllOrNone state typeArgumentNodes buildTypeArgument
 
-        match optionArgumentExpressions with
-        | Some argumentExpressions ->
-            (
-                Some { FunctionExpression = functionExpression; Arguments = argumentExpressions },
-                state
-            )
+        match optionTypeArguments with
+        | Some typeArguments ->
+            let argumentExpressionNodes = expressionNodes.Tail
+            let (optionArgumentExpressions, state) = buildAllOrNone state argumentExpressionNodes buildExpression
+
+            match optionArgumentExpressions with
+            | Some argumentExpressions ->
+                (
+                    Some {
+                        FunctionExpression = functionExpression
+                        TypeArguments = typeArguments
+                        Arguments = argumentExpressions
+                    },
+                    state
+                )
+            | None -> (None, state)
         | None -> (None, state)
     | None -> (None, state)
 
@@ -584,6 +612,8 @@ let getInitialScopesById =
     }
     let scopesById = scopesById.Add(textScopeId, textScope)
 
+    let seqScopeId = System.Guid.NewGuid()
+
     let scope = {
         SymbolsByName =
             Map.empty
@@ -594,17 +624,40 @@ let getInitialScopesById =
                 .Add("char", BuiltInSymbol ("char", PrestoType.Character))
                 .Add("text", BuiltInSymbol ("text", PrestoType.Text textScopeId))
 
-                .Add("list", BuiltInSymbol ("list", FunctionType (System.Guid.NewGuid(), [PrestoType.Type], PrestoType.Type)))
+                .Add("list", BuiltInSymbol ("list", FunctionType (System.Guid.NewGuid(), [], [PrestoType.Type], PrestoType.Type)))
+                .Add(
+                    "seq",
+                    BuiltInSymbol (
+                        "seq",
+                        TypeClassType (seqScopeId, [PrestoType.TypeParameterType "t"])
+                    )
+                )
 
-                .Add("eq", BuiltInSymbol ("eq", FunctionType (System.Guid.NewGuid(), [PrestoType.Nat; PrestoType.Nat], PrestoType.Boolean)))
+                .Add("eq", BuiltInSymbol ("eq", FunctionType (System.Guid.NewGuid(), [], [PrestoType.Nat; PrestoType.Nat], PrestoType.Boolean)))
 
-                .Add("not", BuiltInSymbol ("not", FunctionType (System.Guid.NewGuid(), [PrestoType.Boolean], PrestoType.Boolean)))
+                .Add("not", BuiltInSymbol ("not", FunctionType (System.Guid.NewGuid(), [], [PrestoType.Boolean], PrestoType.Boolean)))
 
-                .Add("sum", BuiltInSymbol ("sum", FunctionType (System.Guid.NewGuid(), [PrestoType.Nat; PrestoType.Nat], PrestoType.Nat)))
-                .Add("length", BuiltInSymbol ("length", FunctionType (System.Guid.NewGuid(), [PrestoType.Text textScopeId], PrestoType.Nat)))
-                .Add("difference", BuiltInSymbol ("difference", FunctionType (System.Guid.NewGuid(), [PrestoType.Nat; PrestoType.Nat], PrestoType.Nat)))
-                .Add("product", BuiltInSymbol ("product", FunctionType (System.Guid.NewGuid(), [PrestoType.Nat; PrestoType.Nat], PrestoType.Nat)))
-                .Add("quotient", BuiltInSymbol ("quotient", FunctionType (System.Guid.NewGuid(), [PrestoType.Nat; PrestoType.Nat], PrestoType.Nat)));
+                .Add("sum", BuiltInSymbol ("sum", FunctionType (System.Guid.NewGuid(), [], [PrestoType.Nat; PrestoType.Nat], PrestoType.Nat)))
+                .Add("length", BuiltInSymbol ("length", FunctionType (System.Guid.NewGuid(), [], [PrestoType.Text textScopeId], PrestoType.Nat)))
+                .Add("difference", BuiltInSymbol ("difference", FunctionType (System.Guid.NewGuid(), [], [PrestoType.Nat; PrestoType.Nat], PrestoType.Nat)))
+                .Add("product", BuiltInSymbol ("product", FunctionType (System.Guid.NewGuid(), [], [PrestoType.Nat; PrestoType.Nat], PrestoType.Nat)))
+                .Add("quotient", BuiltInSymbol ("quotient", FunctionType (System.Guid.NewGuid(), [], [PrestoType.Nat; PrestoType.Nat], PrestoType.Nat)))
+
+                .Add(
+                    "last_or_default",
+                    BuiltInSymbol (
+                        "last_or_default",
+                        FunctionType (
+                            System.Guid.NewGuid(),
+                            ["t"],
+                            [
+                                TypeClassInstanceType (seqScopeId, [TypeParameterType "t"])
+                                TypeParameterType "t"
+                            ],
+                            (PrestoType.TypeParameterType "t")
+                        )
+                    )
+                );
         ParentId = None;
         ChildIds = [textScopeId]
     }

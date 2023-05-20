@@ -27,6 +27,8 @@ let compileFile (program: Program) (filePath: string): Program =
     let fileName = Path.GetFileName(filePath)
     let fileNameWithoutExtension = Path.GetFileNameWithoutExtension(filePath)
 
+    printfn $"Compiling {fileName}"
+
     let sourceCode = File.ReadAllText filePath
 
     // tokenize
