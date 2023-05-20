@@ -1,1 +1,1 @@
-identity = fn <T> (x: T): T -> x
+identity = fn <t> (x: t): t -> x

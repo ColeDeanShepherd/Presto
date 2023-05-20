@@ -7,6 +7,6 @@ using System;
     
     public static partial class PrestoProgram {
 
-public static T identity<T>(T x) {return x;}
+public static t identity<t>(t x) {return x;}
 
 }
