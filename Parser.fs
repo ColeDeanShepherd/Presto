@@ -720,10 +720,16 @@ and parseGenericInstantiation (state: ParseState) (prefixExpression: ParseNode):
                     let (optionGreaterThan, state) = parseToken state token_type.right_square_bracket
                     match optionGreaterThan with
                     | Some greaterThan ->
+                        let innerNode = {
+                            Type = ParseNodeType.GenericInstantiation
+                            Children = List.concat [ [prefixExpression]; [leftSquareBracket]; whitespace1; typeArguments; whitespace2; [greaterThan] ]
+                            Token = None
+                        }
+                        
                         (
                             Some {
-                                Type = ParseNodeType.GenericInstantiation
-                                Children = List.concat [ [prefixExpression]; [leftSquareBracket]; whitespace1; typeArguments; whitespace2; [greaterThan] ]
+                                Type = ParseNodeType.Expression
+                                Children = [innerNode]
                                 Token = None
                             },
                             state
