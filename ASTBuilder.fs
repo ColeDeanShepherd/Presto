@@ -76,6 +76,7 @@ and ExpressionValue =
     | BlockExpression of Block
     | FunctionCallExpression of FunctionCall
     | MemberAccessExpression of MemberAccess
+    | GenericInstantiationExpression of GenericInstantiation
     | SymbolReference of token
     | NumberLiteralExpression of NumberLiteral
 and Binding = {
@@ -100,6 +101,10 @@ and FunctionCall = {
     FunctionExpression: Expression
     TypeArguments: List<Expression>
     Arguments: List<Expression>
+}
+and GenericInstantiation = {
+    Expression: Expression
+    TypeArguments: List<Expression>
 }
 and MemberAccess = {
     LeftExpression: Expression;
@@ -517,6 +522,31 @@ and buildMemberAccess (state: ASTBuilderState) (node: ParseNode): (Option<Member
         (Some { LeftExpression = leftExpression; RightIdentifier = rightIdentifier.Token.Value; }, state)
     | None -> (None, state)
 
+and buildGenericInstantiation (state: ASTBuilderState) (node: ParseNode): (Option<GenericInstantiation> * ASTBuilderState) =
+    assert (node.Type = ParseNodeType.GenericInstantiation)
+    
+    let expressionNodes = childrenOfType node ParseNodeType.Expression
+    let expressionNode = expressionNodes.Head
+
+    let (optionExpression, state) = buildExpression state expressionNode
+
+    match optionExpression with
+    | Some expression ->
+        let typeArgumentNodes = childrenOfType node ParseNodeType.TypeArgument
+        let (optionTypeArguments, state) = buildAllOrNone state typeArgumentNodes buildTypeArgument
+
+        match optionTypeArguments with
+        | Some typeArguments ->
+            (
+                Some {
+                    Expression = expression
+                    TypeArguments = typeArguments
+                },
+                state
+            )
+        | None -> (None, state)
+    | None -> (None, state)
+
 and buildExpression (state: ASTBuilderState) (node: ParseNode): (Option<Expression> * ASTBuilderState) =
     assert (node.Type = ParseNodeType.Expression)
     
@@ -564,6 +594,12 @@ and buildExpression (state: ASTBuilderState) (node: ParseNode): (Option<Expressi
 
         match optionMemberAccess with
         | Some memberAccess -> (Some (newExpression (MemberAccessExpression memberAccess)), state)
+        | None -> (None, state)
+    | ParseNodeType.GenericInstantiation ->
+        let (optionGenericInstantiation, state) = buildGenericInstantiation state child
+
+        match optionGenericInstantiation with
+        | Some genericInstantiation -> (Some (newExpression (GenericInstantiationExpression genericInstantiation)), state)
         | None -> (None, state)
     | ParseNodeType.Expression ->
         buildExpression state child
@@ -624,7 +660,6 @@ let getInitialScopesById =
                 .Add("char", BuiltInSymbol ("char", PrestoType.Character))
                 .Add("text", BuiltInSymbol ("text", PrestoType.Text textScopeId))
 
-                .Add("list", BuiltInSymbol ("list", FunctionType (System.Guid.NewGuid(), [], [PrestoType.Type], PrestoType.Type)))
                 .Add(
                     "seq",
                     BuiltInSymbol (

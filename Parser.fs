@@ -39,6 +39,7 @@ type ParseNodeType =
     | MemberAccess
     | IfThenElse
     | Block
+    | GenericInstantiation
     | Token
     | Whitespace
 
@@ -656,17 +657,17 @@ and parseTypeArgument (state: ParseState): Option<ParseNode> * ParseState =
     | None -> (None, state)
 
 and parseFunctionCall (state: ParseState) (prefixExpression: ParseNode): Option<ParseNode> * ParseState =
-    let (optionLessThan, state) = peekToken state
+    let (optionLeftSquareBracket, state) = peekToken state
 
     // I want to modify the let statement below to return all parsed nodes in addition to the state.
     let (typeArgumentNodes, state) =
-        match optionLessThan with
-        | Some lessThan ->
-            match lessThan._type with
+        match optionLeftSquareBracket with
+        | Some leftSquareBracket ->
+            match leftSquareBracket._type with
             | token_type.left_square_bracket ->
-                let (optionLessThan, state) = parseToken state token_type.left_square_bracket
-                match optionLessThan with
-                | Some lessThan ->
+                let (optionLeftSquareBracket, state) = parseToken state token_type.left_square_bracket
+                match optionLeftSquareBracket with
+                | Some leftSquareBracket ->
                     let (whitespace1, state) = parseWhitespace state
                     let (typeArguments, state) = parseSeparatedByToken state parseTypeArgument token_type.comma []
                     let (whitespace2, state) = parseWhitespace state
@@ -675,7 +676,7 @@ and parseFunctionCall (state: ParseState) (prefixExpression: ParseNode): Option<
                     | Some greaterThan ->
                         let (trailingWhiteSpace, state) = parseWhitespace state
                     
-                        (List.concat [ [lessThan]; whitespace1; typeArguments; whitespace2; [greaterThan]; trailingWhiteSpace ], state)
+                        (List.concat [ [leftSquareBracket]; whitespace1; typeArguments; whitespace2; [greaterThan]; trailingWhiteSpace ], state)
                     | None -> ([], state)
                 | None -> ([], state)
             | _ -> ([], state)
@@ -702,6 +703,35 @@ and parseFunctionCall (state: ParseState) (prefixExpression: ParseNode): Option<
             )
         | None -> (None, state)
     | None -> (None, state)
+
+and parseGenericInstantiation (state: ParseState) (prefixExpression: ParseNode): Option<ParseNode> * ParseState =
+    let (optionLeftSquareBracket, state) = peekToken state
+
+    match optionLeftSquareBracket with
+        | Some leftSquareBracket ->
+            match leftSquareBracket._type with
+            | token_type.left_square_bracket ->
+                let (optionLeftSquareBracket, state) = parseToken state token_type.left_square_bracket
+                match optionLeftSquareBracket with
+                | Some leftSquareBracket ->
+                    let (whitespace1, state) = parseWhitespace state
+                    let (typeArguments, state) = parseSeparatedByToken state parseTypeArgument token_type.comma []
+                    let (whitespace2, state) = parseWhitespace state
+                    let (optionGreaterThan, state) = parseToken state token_type.right_square_bracket
+                    match optionGreaterThan with
+                    | Some greaterThan ->
+                        (
+                            Some {
+                                Type = ParseNodeType.GenericInstantiation
+                                Children = List.concat [ [prefixExpression]; [leftSquareBracket]; whitespace1; typeArguments; whitespace2; [greaterThan] ]
+                                Token = None
+                            },
+                            state
+                        )
+                    | None -> (None, state)
+                | None -> (None, state)
+            | _ -> (None, state)
+        | None -> (None, state)
 
 and parseMemberAccess (state: ParseState) (prefixExpression: ParseNode) (rightBindingPower: int): Option<ParseNode> * ParseState =
     let (optionPeriod, state) = parseToken state token_type.period
@@ -827,7 +857,7 @@ and tryParsePostfixAndInfixExpressions (state: ParseState) (prefixExpression: Pa
             if postfixLeftBindingPower < minBindingPower then
                 (Some prefixExpression, state)
             else
-                if (nextToken._type = token_type.left_paren) || (nextToken._type = token_type.left_square_bracket) then
+                if nextToken._type = token_type.left_paren then
                     let (whitespace, state) = parseWhitespace state
                     let prefixExpression = { prefixExpression with Children = prefixExpression.Children @ whitespace }
 
@@ -836,6 +866,18 @@ and tryParsePostfixAndInfixExpressions (state: ParseState) (prefixExpression: Pa
                     match optionFunctionCall with
                     | Some functionCall ->
                         tryParsePostfixAndInfixExpressions state functionCall minBindingPower
+                    | None ->
+                        (None, state)
+                else if nextToken._type = token_type.left_square_bracket then
+                    let (whitespace, state) = parseWhitespace state
+                    let prefixExpression = { prefixExpression with Children = prefixExpression.Children @ whitespace }
+
+                    // parse type arguments
+                    let (optionGenericInstantiation, state) = parseGenericInstantiation state prefixExpression
+
+                    match optionGenericInstantiation with
+                    | Some genericInstantiation ->
+                        tryParsePostfixAndInfixExpressions state genericInstantiation minBindingPower
                     | None ->
                         (None, state)
                 else

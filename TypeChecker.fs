@@ -245,6 +245,44 @@ and checkFunctionCall (state: TypeCheckerState) (functionCall: FunctionCall): Ty
     else
         (state, None)
 
+and checkGenericInstantiation (state: TypeCheckerState) (genericInstantiation: GenericInstantiation): TypeCheckerState * Option<PrestoType> =
+    let (state, optionTypeArgumentTypes) = checkMany state checkExpression genericInstantiation.TypeArguments []
+    let typeArgumentTypes = List.filter<Option<PrestoType>> (fun x -> x.IsSome) optionTypeArgumentTypes |> List.map (fun x -> x.Value)
+    let succeededCheckingTypeArguments = typeArgumentTypes.Length = optionTypeArgumentTypes.Length
+    
+    if succeededCheckingTypeArguments then
+        let (state, optionExpressionType) = checkExpression state genericInstantiation.Expression
+
+        match optionExpressionType with
+        | Some expressionType ->
+            match expressionType with
+            | TypeClassType (scopeId, typeParameterNames) ->
+                let typeParameterNameCount = typeParameterNames.Length
+                let typeArgumentCount = typeArgumentTypes.Length
+
+                if typeParameterNameCount = typeArgumentCount then
+                    let expressionType = TypeClassInstanceType (scopeId, typeArgumentTypes)
+                    (state, Some expressionType)
+                else
+                    let error = compile_error(
+                        description = $"Expected {typeParameterNameCount} type arguments, got {typeArgumentCount}",
+                        position = text_position(line_index = 0u, column_index = 0u)
+                    )
+                    let state = { state with Errors = state.Errors @ [error]}
+
+                    (state, Some expressionType) // Why are we returning expression type?
+            | _ ->
+                let error = compile_error(
+                    description = $"Unexpected expression type {expressionType}",
+                    position = text_position(line_index = 0u, column_index = 0u)
+                )
+                let state = { state with Errors = state.Errors @ [error]}
+
+                (state, Some expressionType) // Why are we returning expression type?
+        | None -> (state, None)
+    else
+        (state, None)
+
 and checkBlockChild (state: TypeCheckerState) (blockChild: BlockChild): TypeCheckerState * Option<PrestoType> =
     match blockChild with
     | BlockChildBinding binding ->
@@ -336,6 +374,7 @@ and checkExpression (state: TypeCheckerState) (expression: Expression): TypeChec
             | FunctionCallExpression call -> checkFunctionCall state call
             | BlockExpression block -> checkBlock state block
             | MemberAccessExpression memberAccess -> checkMemberAccess state memberAccess
+            | GenericInstantiationExpression genericInstantiation -> checkGenericInstantiation state genericInstantiation
             | SymbolReference token -> checkSymbolReference state token expression.Id
             | NumberLiteralExpression number -> checkNumberLiteral state number
             | TypeClassExpression typeClass -> failwith "not implemented"

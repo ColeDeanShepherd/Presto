@@ -29,15 +29,15 @@ token = record
     was_inserted: bool
 
 tokenize_output = record
-    tokens: list[token]
-    errors: list[compile_error]
+    tokens: seq[token]
+    errors: seq[compile_error]
 
 tokenize_state = record
     text_left: text
     position: text_position
-    indentation_stack: list[nat]
-    tokens: list[token]
-    errors: list[compile_error]
+    indentation_stack: seq[nat]
+    tokens: seq[token]
+    errors: seq[compile_error]
 
 is_done = fn (state: tokenize_state): bool -> eq(length(state.text_left), 0)
 is_not_done = fn (state: tokenize_state): bool -> not(is_done(state))
