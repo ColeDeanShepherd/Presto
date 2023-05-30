@@ -5,6 +5,16 @@ open CompilerCore
 
 open type PrestoProgram
 
+let listAppend (list: ResizeArray<'a>) (e: 'a): ResizeArray<'a> =
+    let newList = ResizeArray<'a> list
+    newList.Add(e)
+    newList
+
+let listAppendRange (a: ResizeArray<'a>) (b: ResizeArray<'a>): ResizeArray<'a> =
+    let newList = ResizeArray<'a> a
+    newList.AddRange(b)
+    newList
+
 let advance_text_position (position: text_position) (readChar: char): text_position =
     if readChar <> '\n' then
         text_position(line_index = position.line_index, column_index = position.column_index + 1u)
@@ -44,6 +54,22 @@ let readChar (state: tokenize_state): char * tokenize_state =
 
     (maybeNextChar.Value, nextState)
 
+let readExpectedChar (state: tokenize_state) (expectedChar: char): Option<char> * tokenize_state =
+    let (nextChar, state) = readChar state
+
+    if nextChar = expectedChar then
+        (Some nextChar, state)
+    else
+        let state = tokenize_state(
+            tokens = state.tokens,
+            errors = listAppend state.errors (compile_error(description = $"Expected '{expectedChar}' but encountered '{nextChar}'", position = state.position)),
+            indentation_stack = state.indentation_stack,
+            text_left = state.text_left,
+            position = state.position
+        )
+
+        (None, state)
+
 let rec appendCharsWhile (state: tokenize_state) (predicate: char -> bool) (str: string): string * tokenize_state =
     if is_done state then (str, state)
     else
@@ -57,16 +83,6 @@ let rec appendCharsWhile (state: tokenize_state) (predicate: char -> bool) (str:
 
 let takeCharsWhile (state: tokenize_state) (predicate: char -> bool): string * tokenize_state =
     appendCharsWhile state predicate ""
-
-let listAppend (list: ResizeArray<'a>) (e: 'a): ResizeArray<'a> =
-    let newList = ResizeArray<'a> list
-    newList.Add(e)
-    newList
-
-let listAppendRange (a: ResizeArray<'a>) (b: ResizeArray<'a>): ResizeArray<'a> =
-    let newList = ResizeArray<'a> a
-    newList.AddRange(b)
-    newList
 
 let readSingleCharToken (state: tokenize_state) (tokenType: token_type): tokenize_state =
     let startPosition = state.position
@@ -271,6 +287,20 @@ let iterateTokenize (state: tokenize_state): tokenize_state =
             readSingleCharToken state token_type.colon
         else if nextChar = '.' then
             readSingleCharToken state token_type.period
+        else if nextChar = ''' then
+            let (_, state) = readExpectedChar state '\''
+            let (charText, state) = takeCharsWhile state (fun x -> x <> '\'')
+            let (_, state) = readExpectedChar state '\''
+
+            let nextToken = token(_type = token_type.character_literal, _text = "'" + charText + "'", position = startPosition, was_inserted = false)
+
+            tokenize_state(
+                tokens = listAppend state.tokens nextToken,
+                errors = state.errors,
+                indentation_stack = state.indentation_stack,
+                text_left = state.text_left,
+                position = state.position
+            )
         else
             tokenize_state(
                 tokens = state.tokens,

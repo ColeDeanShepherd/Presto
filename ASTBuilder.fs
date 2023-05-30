@@ -79,6 +79,7 @@ and ExpressionValue =
     | GenericInstantiationExpression of GenericInstantiation
     | SymbolReference of token
     | NumberLiteralExpression of NumberLiteral
+    | CharacterLiteralExpression of CharacterLiteral
 and Binding = {
     NameToken: token
     Value: Expression
@@ -131,6 +132,9 @@ and TypeClass = {
     ScopeId: System.Guid
 }
 and NumberLiteral = {
+    Token: token
+}
+and CharacterLiteral = {
     Token: token
 }
 and Scope = {
@@ -606,8 +610,11 @@ and buildExpression (state: ASTBuilderState) (node: ParseNode): (Option<Expressi
     | ParseNodeType.Token when child.Token.Value._type = token_type.identifier ->
         (Some (newExpression (SymbolReference child.Token.Value)), state)
     | ParseNodeType.Token when child.Token.Value._type = token_type.number_literal ->
-        let numberLiteral = { Token = child.Token.Value }
+        let numberLiteral: NumberLiteral = { Token = child.Token.Value }
         (Some (newExpression (NumberLiteralExpression numberLiteral)), state)
+    | ParseNodeType.Token when child.Token.Value._type = token_type.character_literal ->
+        let characterLiteral: CharacterLiteral = { Token = child.Token.Value }
+        (Some (newExpression (CharacterLiteralExpression characterLiteral)), state)
     | _ ->
         let error = compile_error(
             description = $"Unexpected parse node type: {child.Type}",
@@ -668,7 +675,30 @@ let getInitialScopesById =
                     )
                 )
 
-                .Add("eq", BuiltInSymbol ("eq", FunctionType (System.Guid.NewGuid(), [], [PrestoType.Nat; PrestoType.Nat], PrestoType.Boolean)))
+                .Add(
+                    "eq",
+                    BuiltInSymbol (
+                        "eq",
+                        FunctionType (
+                            System.Guid.NewGuid(),
+                            ["t"],
+                            [TypeParameterType "t"; TypeParameterType "t"],
+                            PrestoType.Boolean
+                        )
+                    )
+                )
+                .Add(
+                    "not_eq",
+                    BuiltInSymbol (
+                        "not_eq",
+                        FunctionType (
+                            System.Guid.NewGuid(),
+                            ["t"],
+                            [TypeParameterType "t"; TypeParameterType "t"],
+                            PrestoType.Boolean
+                        )
+                    )
+                )
 
                 .Add("not", BuiltInSymbol ("not", FunctionType (System.Guid.NewGuid(), [], [PrestoType.Boolean], PrestoType.Boolean)))
 
