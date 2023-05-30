@@ -5,11 +5,6 @@ open CompilerCore
 
 open type PrestoProgram
 
-let get_current_indentation (state: tokenize_state) = 
-    if state.indentation_stack.Count = 0 then
-        0u
-    else state.indentation_stack[state.indentation_stack.Count - 1]
-
 let advanceTextPosition (position: text_position) (readChar: char): text_position =
     if readChar <> '\n' then
         text_position(line_index = position.line_index, column_index = position.column_index + 1u)

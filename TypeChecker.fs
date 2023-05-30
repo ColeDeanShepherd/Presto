@@ -271,6 +271,39 @@ and checkGenericInstantiation (state: TypeCheckerState) (genericInstantiation: G
                     let state = { state with Errors = state.Errors @ [error]}
 
                     (state, Some expressionType) // Why are we returning expression type?
+            | FunctionType (scopeId, typeParameterNames, parameterTypes, returnType) ->
+                let typeParameterNameCount = typeParameterNames.Length
+                let typeArgumentCount = typeArgumentTypes.Length
+
+                if typeParameterNameCount = typeArgumentCount then
+                    let rec reifyType (prestoType: PrestoType) =
+                        match prestoType with
+                        | TypeParameterType typeParameterName ->
+                            let typeParameterIndex =
+                                List.findIndex
+                                    (fun x -> x = typeParameterName)
+                                    typeParameterNames
+
+                            typeArgumentTypes[typeParameterIndex]
+                        | TypeClassInstanceType (scopeId, typeArgumentTypes) ->
+                            let typeArgumentTypes = List.map reifyType typeArgumentTypes
+                            TypeClassInstanceType (scopeId, typeArgumentTypes)
+                        | _ -> prestoType
+
+                    let typeParameterNames = []
+                    let parameterTypes = List.map reifyType parameterTypes
+                    let returnType = reifyType returnType
+                    let expressionType = FunctionType (scopeId, typeParameterNames, parameterTypes, returnType)
+
+                    (state, Some expressionType)
+                else
+                    let error = compile_error(
+                        description = $"Expected {typeParameterNameCount} type arguments, got {typeArgumentCount}",
+                        position = text_position(line_index = 0u, column_index = 0u)
+                    )
+                    let state = { state with Errors = state.Errors @ [error]}
+
+                    (state, None)
             | _ ->
                 let error = compile_error(
                     description = $"Unexpected expression type {expressionType}",

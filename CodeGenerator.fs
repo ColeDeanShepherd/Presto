@@ -54,7 +54,15 @@ let rec generateSymbol (state: CodeGeneratorState) (token: token) (expressionId:
         match builtInSymbol with
         | "text" -> generateTypeReference state prestoType
         | "list" -> generateString state "List"
+        | "seq" -> generateString state "List"
         | _ -> generateString state builtInSymbol
+
+and generateGenericInstantiation (state: CodeGeneratorState) (genericInstantiation: GenericInstantiation): CodeGeneratorState =
+    let state = generateExpression state genericInstantiation.Expression
+    let state = generateString state "<"
+    let state = generateMany state genericInstantiation.TypeArguments generateTypeExpression ", " true
+    let state = generateString state ">"
+    state
 
 and generateIfThenElse (state: CodeGeneratorState) (ifThenElse: IfThenElse): CodeGeneratorState =
     let state = generateString state "("
@@ -129,6 +137,7 @@ and generateExpressionInternal (state: CodeGeneratorState) (expression: Expressi
     | BlockExpression block -> generateBlock state block
     | MemberAccessExpression memberAccess -> generateMemberAccess state memberAccess
     | SymbolReference symbol -> generateSymbol state symbol expression.Id
+    | GenericInstantiationExpression genericInstantiation -> generateGenericInstantiation state genericInstantiation
     | NumberLiteralExpression number -> generateNumberLiteral state number
     
 and generateExpression (state: CodeGeneratorState) (expression: Expression): CodeGeneratorState =
