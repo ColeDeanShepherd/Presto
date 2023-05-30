@@ -5,7 +5,7 @@ open CompilerCore
 
 open type PrestoProgram
 
-let advanceTextPosition (position: text_position) (readChar: char): text_position =
+let advance_text_position (position: text_position) (readChar: char): text_position =
     if readChar <> '\n' then
         text_position(line_index = position.line_index, column_index = position.column_index + 1u)
     else
@@ -35,7 +35,7 @@ let tryReadChar (state: tokenize_state): Option<char> * tokenize_state =
                 errors = state.errors,
                 indentation_stack = state.indentation_stack,
                 text_left = state.text_left.Substring(1),
-                position = advanceTextPosition state.position nextChar
+                position = advance_text_position state.position nextChar
             )
         )
 
