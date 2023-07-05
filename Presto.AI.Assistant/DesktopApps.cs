@@ -37,6 +37,10 @@ public interface IDesktopApps
     public string GetDockerDesktopExecutablePath() =>
         Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ProgramFiles), "Docker", "Docker", "Docker Desktop.exe");
     public void OpenDockerDesktop() => OpenApp(GetDockerDesktopExecutablePath());
+
+    public string GetVisualStudioCodeExecutablePath() =>
+        Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "Programs", "Microsoft VS Code", "Code.exe");
+    public void OpenVisualStudioCode() => OpenApp(GetVisualStudioCodeExecutablePath());
 }
 
 public class DesktopApps : IDesktopApps

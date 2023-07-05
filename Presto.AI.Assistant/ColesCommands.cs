@@ -6,7 +6,6 @@ public static class ColesCommands
 {
     public static void OpenRecRoomDesktopEnvironment(Injected<IDesktopApps> desktopApps = default)
     {
-        desktopApps.Value.OpenChrome();
         desktopApps.Value.OpenYouTube();
         OpenColesNotesDoc();
         desktopApps.Value.OpenGmail();
@@ -14,7 +13,7 @@ public static class ColesCommands
         OpenRecRoomAdoPullRequests();
         desktopApps.Value.OpenSlack();
         desktopApps.Value.OpenApp(GetRecNetDevEnvPath());
-        desktopApps.Value.OpenNotepadPlusPlus();
+        desktopApps.Value.OpenVisualStudioCode();
     }
 
     public static void OpenColesNotesDoc(Injected<IDesktopApps> desktopApps = default) =>
