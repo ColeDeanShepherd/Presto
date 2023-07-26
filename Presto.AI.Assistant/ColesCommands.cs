@@ -7,6 +7,7 @@ public static class ColesCommands
     public static void OpenRecRoomDesktopEnvironment(Injected<IDesktopApps> desktopApps = default)
     {
         desktopApps.Value.OpenYouTube();
+        desktopApps.Value.OpenTodoist();
         OpenColesNotesDoc();
         desktopApps.Value.OpenGmail();
         desktopApps.Value.OpenGoogleCalendar();
