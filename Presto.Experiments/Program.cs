@@ -64,19 +64,18 @@ namespace Presto.Experiments
 
         public interface TypeRefinement<T>
         {
-            TypeRefinement<T> Create();
             bool Refine(T value);
         }
 
-        public class RefinedType<TValue, TRefinement> where TRefinement : TypeRefinement<TValue>
+        public class RefinedType<TValue, TRefinement> where TRefinement : TypeRefinement<TValue>, new()
         {
             public static RefinedType<TValue, TRefinement>? TryCreate(TValue x) =>
-                x.Any()
+                (new TRefinement()).Refine(x)
                     ? new RefinedType<TValue, TRefinement>(x)
-            : null;
+                    : null;
 
-            public static NRefinedType<TValue, TRefinement> CreateOrThrow(TValue x) =>
-                x.Any()
+            public static RefinedType<TValue, TRefinement> CreateOrThrow(TValue x) =>
+                (new TRefinement()).Refine(x)
                     ? new RefinedType<TValue, TRefinement>(x)
                     : throw new Exception();
 
