@@ -15,7 +15,9 @@ Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Presto.AI.Assistant", "Pres
 EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Presto.Core", "Presto.Core\Presto.Core.csproj", "{CE04B1E5-9B9C-4E0A-B7FD-F47E63D63B84}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Presto.StandardLibrary", "Presto.StandardLibrary\Presto.StandardLibrary.csproj", "{C333EFE8-539F-4FD1-9547-BC4F7FC3C763}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Presto.StandardLibrary", "Presto.StandardLibrary\Presto.StandardLibrary.csproj", "{C333EFE8-539F-4FD1-9547-BC4F7FC3C763}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Presto.Experiments", "Presto.Experiments\Presto.Experiments.csproj", "{B19E74B4-5CF6-44F8-AC31-70F046919746}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
@@ -51,6 +53,10 @@ Global
 		{C333EFE8-539F-4FD1-9547-BC4F7FC3C763}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{C333EFE8-539F-4FD1-9547-BC4F7FC3C763}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{C333EFE8-539F-4FD1-9547-BC4F7FC3C763}.Release|Any CPU.Build.0 = Release|Any CPU
+		{B19E74B4-5CF6-44F8-AC31-70F046919746}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{B19E74B4-5CF6-44F8-AC31-70F046919746}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{B19E74B4-5CF6-44F8-AC31-70F046919746}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{B19E74B4-5CF6-44F8-AC31-70F046919746}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
