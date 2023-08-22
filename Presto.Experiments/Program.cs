@@ -15,14 +15,16 @@ namespace Presto.Experiments
         public class NonEmptyArray<T>
         {
             public static NonEmptyArray<T>? TryCreate(ImmutableArray<T> x) =>
-                x.Any()
+                IsValueValid(x)
                     ? new NonEmptyArray<T>(x)
                     : null;
 
             public static NonEmptyArray<T> CreateOrThrow(ImmutableArray<T> x) =>
-                x.Any()
+                IsValueValid(x)
                     ? new NonEmptyArray<T>(x)
                     : throw new Exception();
+
+            private static bool IsValueValid(ImmutableArray<T> value) => value.Any();
 
             public readonly ImmutableArray<T> Value;
 
@@ -35,20 +37,22 @@ namespace Presto.Experiments
         public struct MutableNonEmptyArray<T>
         {
             public static MutableNonEmptyArray<T>? TryCreate(T[] x) =>
-                x.Any()
+                IsValueValid(x)
                     ? new MutableNonEmptyArray<T>(x)
                     : null;
 
             public static MutableNonEmptyArray<T> CreateOrThrow(T[] x) =>
-                x.Any()
+                IsValueValid(x)
                     ? new MutableNonEmptyArray<T>(x)
                     : throw new Exception();
+
+            private static bool IsValueValid(T[] value) => value.Any();
 
             public readonly T[] Value;
 
             public MutableNonEmptyArray(MutableNonEmptyArray<T> other)
             {
-                if (!other.Value.Any())
+                if (!IsValueValid(other.Value))
                 {
                     throw new Exception();
                 }
