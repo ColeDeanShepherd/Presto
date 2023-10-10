@@ -4,10 +4,10 @@ namespace Presto.AI.Assistant;
 
 internal class Program
 {
-    static void Main(string[] args)
+    static async Task Main(string[] args)
     {
         SetupDependencyInjection();
-        Run();
+        await Run();
     }
 
     static void SetupDependencyInjection()
@@ -16,8 +16,8 @@ internal class Program
         Injected<IDesktopApps>.Register(desktopApps);
     }
 
-    static void Run(Injected<IDesktopApps> desktopApps = default)
+    static async Task Run(Injected<IDesktopApps> desktopApps = default)
     {
-        ColesCommands.OpenRecRoomDesktopEnvironment();
+        await ColesCommands.OpenRecRoomDesktopEnvironment();
     }
 }

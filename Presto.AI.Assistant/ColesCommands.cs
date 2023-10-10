@@ -4,17 +4,30 @@ namespace Presto.AI.Assistant;
 
 public static class ColesCommands
 {
-    public static void OpenRecRoomDesktopEnvironment(Injected<IDesktopApps> desktopApps = default)
+    public static async Task OpenRecRoomDesktopEnvironment(Injected<IDesktopApps> desktopApps = default)
     {
+        #region Web Pages
+
         desktopApps.Value.OpenYouTube();
+
+        // Wait to give the web browser a moment to open.
+        await Task.Delay(1000);
+
         desktopApps.Value.OpenTodoist();
         OpenColesNotesDoc();
         desktopApps.Value.OpenGmail();
         desktopApps.Value.OpenGoogleCalendar();
         OpenRecRoomAdoPullRequests();
+
+        #endregion Web Pages
+
+        #region Desktop Apps
+
         desktopApps.Value.OpenSlack();
         desktopApps.Value.OpenApp(GetRecNetDevEnvPath());
         desktopApps.Value.OpenVisualStudioCode();
+
+        #endregion Desktop Apps
     }
 
     public static void OpenColesNotesDoc(Injected<IDesktopApps> desktopApps = default) =>
