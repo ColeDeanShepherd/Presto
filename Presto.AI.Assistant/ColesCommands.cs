@@ -11,7 +11,7 @@ public static class ColesCommands
         desktopApps.Value.OpenYouTube();
 
         // Wait to give the web browser a moment to open.
-        await Task.Delay(1000);
+        await Task.Delay(3000);
 
         desktopApps.Value.OpenTodoist();
         OpenColesNotesDoc();
@@ -26,6 +26,7 @@ public static class ColesCommands
         desktopApps.Value.OpenSlack();
         desktopApps.Value.OpenApp(GetRecNetDevEnvPath());
         desktopApps.Value.OpenVisualStudioCode();
+        desktopApps.Value.OpenDockerDesktop();
 
         #endregion Desktop Apps
     }
