@@ -17,6 +17,7 @@ public static class ColesCommands
         OpenColesNotesDoc();
         desktopApps.Value.OpenGmail();
         desktopApps.Value.OpenGoogleCalendar();
+        desktopApps.Value.OpenChatGPT();
         OpenRecRoomAdoPullRequests();
 
         #endregion Web Pages

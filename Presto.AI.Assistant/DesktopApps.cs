@@ -37,6 +37,9 @@ public interface IDesktopApps
     public void OpenTodoist() =>
         OpenUrlInBrowser("https://todoist.com");
 
+    public void OpenChatGPT() =>
+        OpenUrlInBrowser("https://chat.openai.com");
+
     public string GetDockerDesktopExecutablePath() =>
         Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ProgramFiles), "Docker", "Docker", "Docker Desktop.exe");
     public void OpenDockerDesktop() => OpenApp(GetDockerDesktopExecutablePath());
