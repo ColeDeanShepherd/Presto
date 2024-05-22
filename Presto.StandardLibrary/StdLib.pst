@@ -1,2 +1,89 @@
 identity = fn [t] (x: t): t -> x
-# comment test
+# value_equals
+# value_not_equals
+
+##### Boolean #####
+# is_true
+# is_false
+# not
+# logical_and
+# logical_or
+# logical_xor
+# logical_nand
+# logical_nor
+# logical_not
+# logical_xnor
+
+##### Arithmetic #####
+# add
+# subtract
+# multiply
+# divide
+# modulus
+# remainder
+# power
+# floor
+# ceiling
+# is_even
+# is_odd
+# is_divisble_by
+# lcd
+# gcd
+# abs
+# sin
+# cos
+# tan
+# asin
+# acos
+# atan
+# atan2
+# sinh
+# cosh
+# tanh
+# asinh
+# acosh
+# atanh
+# clamp
+# divrem
+# exp
+# log
+# log2
+# log10
+# round
+# sign
+# sqrt
+# truncate
+
+##### Comparable #####
+# min
+# max
+
+##### Char #####
+# is_ascii
+# is_digit
+# is_alpha
+# is_whitespace
+# is_lower
+# is_upper
+# to_lower
+# to_upper
+
+##### String #####
+# length
+# concat
+# contains
+# starts_with
+# ends_with
+# first_index_of
+# last_index_of
+# pad_left
+# pad_right
+# insert
+# remove
+# replace
+# split
+# to_upper
+# to_lower
+# trim
+# trim_start
+# trim_end
