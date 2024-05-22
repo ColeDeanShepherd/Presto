@@ -13,14 +13,32 @@ internal class Program
 
         string apiKey = configuration["OpenAIAPIKey"] ?? "";
 
-        var bookTitle = "Music Theory";
-        var book = await BookGenerator.ComposeABook(
-            apiKey,
-            bookTitle,
-            "An informational book about music theory and its applications.",
-            onlyOutline: false);
+        await WriteSectionOfWhatEveryoneShouldKnowBook(apiKey);
+    }
 
-        File.WriteAllText($"{bookTitle}.md", book);
+    static async Task WriteSectionOfWhatEveryoneShouldKnowBook(string apiKey)
+    {
+        string model = "gpt-3.5-turbo";
+        string systemMessage = "You are a conversation partner.";
+        string sectionName = "Addition & subtraction";
+        string prompt = $"I'm writing a book called \"What Everyone Should Know\". This book contains all the information that I believe every human should know to be a happy, healthy, good adult. I'm currently writing a section called \"{sectionName}\". I want the section to contain both an explanation of the most important relevant pieces of information, and why it's important to know this. Can you write this section for me? Please keep the section brief. Keep the writing casual, simple, and brief. Prefer writing with prose over outputting lists. Please output in markdown. Here's an example of the writing style I'm looking for: \"There's a lot we need to know to be happy, healthy, good people in today's society, and unfortunately we learn very little of it in school. This book is an attempt to cover **all** of this information at a high level in an unbiased way, and fill in the gaps left by our school system.\"";
+        
+        //prompt = "I'm writing a book called \"What Everyone Should Know\". This book contains all the information that I believe every human should know to be a happy, healthy, good adult. Can you please write a very brief introduction? Keep the writing casual, simple, and brief. Here's an example of the writing style I'm looking for: \"There's a lot we need to know to be happy, healthy, good people in today's society, and unfortunately we learn very little of it in school. This book is an attempt to cover **all** of this information at a high level in an unbiased way, and fill in the gaps left by our school system.\"";
+
+        List<ChatMessage> chatMessages = new()
+        {
+            new ChatMessage("system", systemMessage),
+            new ChatMessage("user", prompt)
+        };
+
+        var request = new ChatCompletionRequest(
+            model,
+            chatMessages.ToArray());
+
+        ChatCompletionResponse response = await API.CreateChatCompletion(apiKey, request);
+        ChatMessage responseChatMessage = response.Choices[0].Message;
+
+        Console.WriteLine(responseChatMessage.Content);
     }
 
     static async Task TwoConversingAgents(string apiKey)

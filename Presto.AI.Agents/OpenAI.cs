@@ -56,6 +56,7 @@ namespace OpenAI
                 var content = new StringContent(dataJson, Encoding.UTF8, "application/json");
                 httpClient.DefaultRequestHeaders.Add("Authorization", $"Bearer {apiKey}");
                 var responseMessage = await httpClient.PostAsync("https://api.openai.com/v1/chat/completions", content);
+                responseMessage.EnsureSuccessStatusCode();
 
                 var response = await responseMessage.Content.ReadFromJsonAsync<ChatCompletionResponse>();
 
