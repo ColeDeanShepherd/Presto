@@ -17,9 +17,9 @@ let listAppendRange (a: ResizeArray<'a>) (b: ResizeArray<'a>): ResizeArray<'a> =
 
 let advance_text_position (position: text_position) (readChar: char): text_position =
     if readChar <> '\n' then
-        text_position(line_index = position.line_index, column_index = position.column_index + 1u)
+        text_position(file_name = position.file_name, line_index = position.line_index, column_index = position.column_index + 1u)
     else
-        text_position(line_index = position.line_index + 1u, column_index = 0u)
+        text_position(file_name = position.file_name, line_index = position.line_index + 1u, column_index = 0u)
 
 let tryPeekExpectedChar (state: tokenize_state) (expectedChar: char): Option<char> =
     if is_not_done state then
@@ -310,13 +310,13 @@ let iterateTokenize (state: tokenize_state): tokenize_state =
                 position = state.position
             )
 
-let tokenize (sourceCode: string): tokenize_output =
+let tokenize (fileName: string) (sourceCode: string): tokenize_output =
     let seedState = tokenize_state(
         tokens = ResizeArray<token>(),
         errors = ResizeArray<compile_error>(),
         indentation_stack = ResizeArray<uint>(),
         text_left = sourceCode,
-        position = text_position(line_index = 0u, column_index = 0u)
+        position = text_position(file_name = fileName, line_index = 0u, column_index = 0u)
     )
     let finalState = applyWhile iterateTokenize is_not_done seedState
 

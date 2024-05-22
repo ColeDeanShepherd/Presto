@@ -23,7 +23,7 @@ let getTypeScopeId (state: TypeCheckerState) (prestoType: PrestoType): (Option<S
     | _ ->
         let error = compile_error(
             description = $"Couldn't access members of type: {prestoType}",
-            position = text_position(line_index = 0u, column_index = 0u)
+            position = text_position(file_name = "", line_index = 0u, column_index = 0u)
         )
 
         (None, { state with Errors = state.Errors @ [error] })
@@ -154,7 +154,7 @@ and checkFunction (state: TypeCheckerState) (expression: Expression) (fn: Functi
                     else
                         let error = compile_error(
                             description = $"Function's specified return type ({optionSpecifiedReturnType.Value}) doesn't match its inferred return type ({inferredReturnType})",
-                            position = text_position(line_index = 0u, column_index = 0u)
+                            position = text_position(file_name = "", line_index = 0u, column_index = 0u)
                         )
                         let state = { state with Errors = state.Errors @ [error] }
 
@@ -190,7 +190,7 @@ and checkIfThenElse (state: TypeCheckerState) (ifThenElse: IfThenElse): TypeChec
                     else
                         let error = compile_error(
                             description = $"\"then\" type ({thenExpressionType}) doesn't match \"else\" type ({elseExpressionType})",
-                            position = text_position(line_index = 0u, column_index = 0u)
+                            position = text_position(file_name = "", line_index = 0u, column_index = 0u)
                         )
                         let state = { state with Errors = state.Errors @ [error] }
 
@@ -200,7 +200,7 @@ and checkIfThenElse (state: TypeCheckerState) (ifThenElse: IfThenElse): TypeChec
         else
             let error = compile_error(
                 description = $"\"if\" type ({ifExpressionType}) isn't a bool",
-                position = text_position(line_index = 0u, column_index = 0u)
+                position = text_position(file_name = "", line_index = 0u, column_index = 0u)
             )
             let state = { state with Errors = state.Errors @ [error] }
 
@@ -234,7 +234,7 @@ and checkFunctionCall (state: TypeCheckerState) (functionCall: FunctionCall): Ty
                 | _ ->
                     let error = compile_error(
                         description = $"Expected function type, got {functionType}",
-                        position = text_position(line_index = 0u, column_index = 0u)
+                        position = text_position(file_name = "", line_index = 0u, column_index = 0u)
                     )
                     let state = { state with Errors = state.Errors @ [error]}
 
@@ -266,7 +266,7 @@ and checkGenericInstantiation (state: TypeCheckerState) (genericInstantiation: G
                 else
                     let error = compile_error(
                         description = $"Expected {typeParameterNameCount} type arguments, got {typeArgumentCount}",
-                        position = text_position(line_index = 0u, column_index = 0u)
+                        position = text_position(file_name = "", line_index = 0u, column_index = 0u)
                     )
                     let state = { state with Errors = state.Errors @ [error]}
 
@@ -299,7 +299,7 @@ and checkGenericInstantiation (state: TypeCheckerState) (genericInstantiation: G
                 else
                     let error = compile_error(
                         description = $"Expected {typeParameterNameCount} type arguments, got {typeArgumentCount}",
-                        position = text_position(line_index = 0u, column_index = 0u)
+                        position = text_position(file_name = "", line_index = 0u, column_index = 0u)
                     )
                     let state = { state with Errors = state.Errors @ [error]}
 
@@ -307,7 +307,7 @@ and checkGenericInstantiation (state: TypeCheckerState) (genericInstantiation: G
             | _ ->
                 let error = compile_error(
                     description = $"Unexpected expression type {expressionType}",
-                    position = text_position(line_index = 0u, column_index = 0u)
+                    position = text_position(file_name = "", line_index = 0u, column_index = 0u)
                 )
                 let state = { state with Errors = state.Errors @ [error]}
 

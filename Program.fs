@@ -32,7 +32,7 @@ let compileFile (program: Program) (filePath: string): Program =
     let sourceCode = File.ReadAllText filePath
 
     // tokenize
-    let tokenizeOutput = tokenize sourceCode
+    let tokenizeOutput = tokenize filePath sourceCode
 
     if tokenizeOutput.errors.Count > 0 then
         for error in tokenizeOutput.errors do

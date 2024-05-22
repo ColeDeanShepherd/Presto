@@ -195,7 +195,7 @@ let getSymbolTextPosition (symbol: Symbol): text_position =
     | ParameterSymbol parameter -> parameter.NameToken.position
     | RecordFieldSymbol recordField -> recordField.NameToken.position
     | UnionCaseSymbol unionCase -> unionCase.NameToken.position
-    | BuiltInSymbol (builtInSymbol, prestoType) -> text_position(line_index = 0u, column_index = 0u)
+    | BuiltInSymbol (builtInSymbol, prestoType) -> text_position(file_name = "", line_index = 0u, column_index = 0u)
     
 let pushScope (state: ASTBuilderState): (Scope * ASTBuilderState) =
     let parentScopeId = state.CurrentScopeId

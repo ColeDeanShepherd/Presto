@@ -103,7 +103,7 @@ let currentTextPosition (state: ParseState): text_position =
     if state.NextTokenIndex < state.Tokens.Length then
         state.Tokens[state.NextTokenIndex].position
     else
-        text_position(line_index = 0u, column_index = 0u)
+        text_position(file_name = "", line_index = 0u, column_index = 0u)
 
 let peekTokenAfterWhitespace (state: ParseState): Option<token> * ParseState =
     let optionNextToken = tryPeekTokenAfterWhitespace state

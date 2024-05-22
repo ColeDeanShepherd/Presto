@@ -1,4 +1,5 @@
 ﻿text_position = record
+    file_name: text
     line_index: nat
     column_index: nat
 
