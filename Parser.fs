@@ -42,6 +42,7 @@ type ParseNodeType =
     | GenericInstantiation
     | Token
     | Whitespace
+    | Comment
 
 type ParseNode = {
     Type: ParseNodeType
@@ -65,8 +66,11 @@ let rec nodeTextPosition (node: ParseNode): text_position =
     | Some token -> token.position
     | None -> nodeTextPosition node.Children.Head
 
+let isTriviaParseNode (parseNodeType: ParseNodeType): bool =
+    (parseNodeType = ParseNodeType.Whitespace) || (parseNodeType = ParseNodeType.Comment)
+
 let nonTriviaChild (node: ParseNode): ParseNode =
-    List.find (fun c -> (c.Type <> ParseNodeType.Whitespace)) node.Children
+    List.find (fun c -> not (isTriviaParseNode c.Type)) node.Children
 
 let childOfTokenType (node: ParseNode) (tokenType: token_type): ParseNode =
     List.find (fun c -> (c.Type = ParseNodeType.Token) && (c.Token.Value._type = tokenType)) node.Children
@@ -89,15 +93,15 @@ let tryPeekToken (state: ParseState): Option<token> =
     else
         None
 
-let tryPeekTokenIndexAfterWhitespace (state: ParseState): Option<int> =
+let tryPeekTokenIndexAfterTrivia (state: ParseState): Option<int> =
        Seq.indexed state.Tokens
     |> Seq.skip state.NextTokenIndex
-    |> Seq.tryFind (fun (i, t) -> t._type <> token_type.whitespace)
+    |> Seq.tryFind (fun (i, t) -> not (isTriviaToken t._type))
     |> Option.bind (fun (i, t) -> Some i)
 
-let tryPeekTokenAfterWhitespace (state: ParseState): Option<token> =
+let tryPeekTokenAfterTrivia (state: ParseState): Option<token> =
        Seq.skip state.NextTokenIndex state.Tokens
-    |> Seq.tryFind (fun t -> t._type <> token_type.whitespace)
+    |> Seq.tryFind (fun t -> not (isTriviaToken t._type))
     
 let currentTextPosition (state: ParseState): text_position =
     if state.NextTokenIndex < state.Tokens.Length then
@@ -105,8 +109,8 @@ let currentTextPosition (state: ParseState): text_position =
     else
         text_position(file_name = "", line_index = 0u, column_index = 0u)
 
-let peekTokenAfterWhitespace (state: ParseState): Option<token> * ParseState =
-    let optionNextToken = tryPeekTokenAfterWhitespace state
+let peekTokenAfterTrivia (state: ParseState): Option<token> * ParseState =
+    let optionNextToken = tryPeekTokenAfterTrivia state
 
     match optionNextToken with
     | Some _ ->
@@ -121,11 +125,11 @@ let peekTokenAfterWhitespace (state: ParseState): Option<token> * ParseState =
             { state with Errors = state.Errors @ [error] }
         )
 
-let rec tryPeekTokenSequenceIgnoreWhitespace (state: ParseState) (tokenSequence: List<token_type>): bool =
+let rec tryPeekTokenSequenceIgnoreTrivia (state: ParseState) (tokenSequence: List<token_type>): bool =
     if tokenSequence.IsEmpty then
         true
     else
-        let optionTokenIndex = tryPeekTokenIndexAfterWhitespace state
+        let optionTokenIndex = tryPeekTokenIndexAfterTrivia state
 
         match optionTokenIndex with
         | Some tokenIndex ->
@@ -134,7 +138,7 @@ let rec tryPeekTokenSequenceIgnoreWhitespace (state: ParseState) (tokenSequence:
             if token._type = tokenSequence.Head then
                 let state = { state with NextTokenIndex = tokenIndex + 1 }
 
-                tryPeekTokenSequenceIgnoreWhitespace state tokenSequence.Tail
+                tryPeekTokenSequenceIgnoreTrivia state tokenSequence.Tail
             else
                 false
         | None -> false
@@ -151,8 +155,8 @@ let getUnexpectedTokenError (state: ParseState) (expectedTokenType: token_type) 
         position = currentTextPosition state
     )
 
-let peekExpectedTokenAfterWhitespace (state: ParseState) (expectedTokenType: token_type): Option<token> * ParseState =
-    let (optionNextToken, state) = peekTokenAfterWhitespace state
+let peekExpectedTokenAfterTrivia (state: ParseState) (expectedTokenType: token_type): Option<token> * ParseState =
+    let (optionNextToken, state) = peekTokenAfterTrivia state
 
     match optionNextToken with
     | Some nextToken ->
@@ -214,11 +218,23 @@ let parseToken (state: ParseState) (tokenType: token_type): Option<ParseNode> * 
     | Some nextToken -> (Some { Type = ParseNodeType.Token; Children = []; Token = Some nextToken }, state)
     | None -> (None, state)
 
-let parseWhitespace (state: ParseState): List<ParseNode> * ParseState = 
+let parseTrivia (state: ParseState): List<ParseNode> * ParseState = 
     let whitespace =
            List.skip state.NextTokenIndex state.Tokens
-        |> List.takeWhile (fun t -> t._type = token_type.whitespace)
-        |> List.map (fun t -> { Type = ParseNodeType.Whitespace; Children = []; Token = Some t })
+        |> List.takeWhile (fun t -> isTriviaToken t._type)
+        |> List.map (
+            fun t ->
+                {
+                    Type = (
+                        match t._type with
+                        | token_type.whitespace -> ParseNodeType.Whitespace
+                        | token_type.comment -> ParseNodeType.Comment
+                        | _ -> failwith "Assert failed"
+                    )
+                    Children = []
+                    Token = Some t
+                }
+            )
 
     (
         whitespace,
@@ -258,7 +274,7 @@ let rec parseSeparatedByToken
 
             match maybeNode with
             | Some node ->
-                let (whitespace, state) = parseWhitespace state
+                let (whitespace, state) = parseTrivia state
                 let accumulator = accumulator @ [node] @ whitespace
                 let optionNextToken = tryPeekExpectedToken state tokenType
 
@@ -268,7 +284,7 @@ let rec parseSeparatedByToken
 
                     match optionSeparator with
                     | Some separator ->
-                        let (whitespace2, state) = parseWhitespace state
+                        let (whitespace2, state) = parseTrivia state
                         let accumulator = accumulator @ [separator] @ whitespace2
                         
                         parseSeparatedByToken state parseFn tokenType accumulator
@@ -292,7 +308,7 @@ let rec parseSeparatedByWhitespace
 
                 match maybeNode with
                 | Some node ->
-                    let (whitespace, state) = parseWhitespace state
+                    let (whitespace, state) = parseTrivia state
                     let newNodes = List.append [node] whitespace
                     let accumulator = List.append accumulator newNodes
 
@@ -318,7 +334,7 @@ let rec parseOptionalWhitespaceSeparatedUntilDone
 
             match maybeNode with
             | Some node ->
-                let (whitespace, state) = parseWhitespace state
+                let (whitespace, state) = parseTrivia state
                 let newNodes = List.append [node] whitespace
                 let accumulator = List.append accumulator newNodes
 
@@ -349,12 +365,12 @@ and parseParameter (state: ParseState): Option<ParseNode> * ParseState =
 
     match optionIdentifier with
     | Some identifier ->
-        let (whitespace1, state) = parseWhitespace state
+        let (whitespace1, state) = parseTrivia state
         let (optionColon, state) = parseToken state token_type.colon
 
         match optionColon with
         | Some colon ->
-            let (whitespace2, state) = parseWhitespace state
+            let (whitespace2, state) = parseTrivia state
             let (optionTypeExpression, state) = parseExpression state
 
             match optionTypeExpression with
@@ -376,12 +392,12 @@ and parseRecordField (state: ParseState): Option<ParseNode> * ParseState =
 
     match optionIdentifier with
     | Some identifier ->
-        let (whitespace1, state) = parseWhitespace state
+        let (whitespace1, state) = parseTrivia state
         let (optionColon, state) = parseToken state token_type.colon
 
         match optionColon with
         | Some colon ->
-            let (whitespace2, state) = parseWhitespace state
+            let (whitespace2, state) = parseTrivia state
             let (optionTypeExpression, state) = parseExpression state
 
             match optionTypeExpression with
@@ -403,14 +419,14 @@ and parseRecord (state: ParseState): Option<ParseNode> * ParseState =
 
     match optionRecordToken with
     | Some recordToken ->
-        let (whitespace1, state) = parseWhitespace state
+        let (whitespace1, state) = parseTrivia state
         let (optionLeftCurlyBracket, state) = parseToken state token_type.left_curly_bracket
 
         match optionLeftCurlyBracket with
         | Some leftCurlyBracket -> 
-            let (whitespace2, state) = parseWhitespace state
+            let (whitespace2, state) = parseTrivia state
             let (fields, state) = parseSeparatedByWhitespace state parseRecordField (Some token_type.right_curly_bracket) []
-            let (whitespace3, state) = parseWhitespace state
+            let (whitespace3, state) = parseTrivia state
             let (optionRightCurlyBracket, state) = parseToken state token_type.right_curly_bracket
 
             match optionRightCurlyBracket with
@@ -447,14 +463,14 @@ and parseUnion (state: ParseState): Option<ParseNode> * ParseState =
 
     match optionUnionToken with
     | Some unionToken ->
-        let (whitespace1, state) = parseWhitespace state
+        let (whitespace1, state) = parseTrivia state
         let (optionLeftCurlyBracket, state) = parseToken state token_type.left_curly_bracket
 
         match optionLeftCurlyBracket with
         | Some leftCurlyBracket -> 
-            let (whitespace2, state) = parseWhitespace state
+            let (whitespace2, state) = parseTrivia state
             let (cases, state) = parseSeparatedByWhitespace state parseUnionCase (Some token_type.right_curly_bracket) []
-            let (whitespace3, state) = parseWhitespace state
+            let (whitespace3, state) = parseTrivia state
             let (optionRightCurlyBracket, state) = parseToken state token_type.right_curly_bracket
 
             match optionRightCurlyBracket with
@@ -476,27 +492,27 @@ and parseIfThenElse (state: ParseState): Option<ParseNode> * ParseState =
 
     match optionIfToken with
     | Some ifToken ->
-        let (whitespace1, state) = parseWhitespace state
+        let (whitespace1, state) = parseTrivia state
         let (optionIfExpression, state) = parseExpression state
 
         match optionIfExpression with
         | Some ifExpression ->
-            let (whitespace2, state) = parseWhitespace state
+            let (whitespace2, state) = parseTrivia state
             let (optionThenToken, state) = parseToken state token_type.then_keyword
 
             match optionThenToken with
             | Some thenToken ->
-                let (whitespace3, state) = parseWhitespace state
+                let (whitespace3, state) = parseTrivia state
                 let (optionThenExpression, state) = parseExpression state
 
                 match optionThenExpression with
                 | Some thenExpression ->
-                    let (whitespace4, state) = parseWhitespace state
+                    let (whitespace4, state) = parseTrivia state
                     let (optionElseToken, state) = parseToken state token_type.else_keyword
 
                     match optionElseToken with
                     | Some elseToken ->
-                        let (whitespace5, state) = parseWhitespace state
+                        let (whitespace5, state) = parseTrivia state
                         let (optionElseExpression, state) = parseExpression state
 
                         match optionElseExpression with
@@ -517,7 +533,7 @@ and parseIfThenElse (state: ParseState): Option<ParseNode> * ParseState =
     | None -> (None, state)
 
 and parseBindingOrExpression (state: ParseState): Option<ParseNode> * ParseState =
-    if (tryPeekTokenSequenceIgnoreWhitespace state [token_type.identifier; token_type.equals]) then
+    if (tryPeekTokenSequenceIgnoreTrivia state [token_type.identifier; token_type.equals]) then
         parseBinding state
     else
         parseExpression state
@@ -527,7 +543,7 @@ and parseBlock (state: ParseState): Option<ParseNode> * ParseState =
 
     match optionLeftCurlyBracket with
     | Some leftCurlyBracket ->
-        let (whitespace1, state) = parseWhitespace state
+        let (whitespace1, state) = parseTrivia state
         let (children, state) = parseSeparatedByWhitespace state parseBindingOrExpression (Some token_type.right_curly_bracket) []
         let (optionRightCurlyBracket, state) = parseToken state token_type.right_curly_bracket
 
@@ -546,12 +562,12 @@ and parseBlock (state: ParseState): Option<ParseNode> * ParseState =
 
 and parseFunctionReturnType (state: ParseState): List<ParseNode> * ParseState =
     // read whitespace, then the colon, then more whitespace, then parse an expression
-    let (whitespace1, state) = parseWhitespace state
+    let (whitespace1, state) = parseTrivia state
     let (optionColon, state) = parseToken state token_type.colon
 
     match optionColon with
     | Some colon ->
-        let (whitespace2, state) = parseWhitespace state
+        let (whitespace2, state) = parseTrivia state
         let (optionReturnTypeExpression, state) = parseExpression state
 
         match optionReturnTypeExpression with
@@ -566,7 +582,7 @@ and parseFunction (state: ParseState): Option<ParseNode> * ParseState =
 
     match optionFnToken with
     | Some fnToken ->
-        let (whitespace1, state) = parseWhitespace state
+        let (whitespace1, state) = parseTrivia state
         let (optionNextToken, state) = peekToken state
 
         match optionNextToken with
@@ -577,14 +593,14 @@ and parseFunction (state: ParseState): Option<ParseNode> * ParseState =
                     
                     match optionLessThan with
                     | Some lessThan ->
-                        let (whitespace2, state) = parseWhitespace state
+                        let (whitespace2, state) = parseTrivia state
                         let (typeParameters, state) = parseSeparatedByToken state parseTypeParameter token_type.comma []
-                        let (whitespace3, state) = parseWhitespace state
+                        let (whitespace3, state) = parseTrivia state
                         let (optionGreaterThan, state) = parseToken state token_type.right_square_bracket
 
                         match optionGreaterThan with
                         | Some greaterThan ->
-                            let (trailingWhiteSpace, state) = parseWhitespace state
+                            let (trailingWhiteSpace, state) = parseTrivia state
 
                             ((List.concat [ [lessThan]; whitespace2; typeParameters; whitespace3; [greaterThan]; trailingWhiteSpace ]), state)
                         | None -> ([], state)
@@ -596,13 +612,13 @@ and parseFunction (state: ParseState): Option<ParseNode> * ParseState =
 
             match optionLeftParen with
             | Some leftParen ->
-                let (whitespace4, state) = parseWhitespace state
+                let (whitespace4, state) = parseTrivia state
                 let (parameters, state) = parseSeparatedByToken state parseParameter token_type.comma []
-                let (whitespace5, state) = parseWhitespace state
+                let (whitespace5, state) = parseTrivia state
                 let (optionRightParen, state) = parseToken state token_type.right_paren
 
                 // If next token is ':', then parse it & a return type expression.
-                let (optionColonToken, state) = peekExpectedTokenAfterWhitespace state token_type.colon
+                let (optionColonToken, state) = peekExpectedTokenAfterTrivia state token_type.colon
                 let (returnTypeNodes, state) =
                     match optionColonToken with
                     | Some _ -> parseFunctionReturnType state
@@ -610,7 +626,7 @@ and parseFunction (state: ParseState): Option<ParseNode> * ParseState =
 
                 match optionRightParen with
                 | Some rightParen ->
-                    let (whitespace6, state) = parseWhitespace state
+                    let (whitespace6, state) = parseTrivia state
                     let (optionMinus, state) = parseToken state token_type.minus
 
                     match optionMinus with
@@ -619,7 +635,7 @@ and parseFunction (state: ParseState): Option<ParseNode> * ParseState =
 
                         match optionGreaterThan with
                         | Some greaterThan ->
-                            let (whitespace7, state) = parseWhitespace state
+                            let (whitespace7, state) = parseTrivia state
                             let (optionResult, state) = parseExpression state
 
                             match optionResult with
@@ -668,13 +684,13 @@ and parseFunctionCall (state: ParseState) (prefixExpression: ParseNode): Option<
                 let (optionLeftSquareBracket, state) = parseToken state token_type.left_square_bracket
                 match optionLeftSquareBracket with
                 | Some leftSquareBracket ->
-                    let (whitespace1, state) = parseWhitespace state
+                    let (whitespace1, state) = parseTrivia state
                     let (typeArguments, state) = parseSeparatedByToken state parseTypeArgument token_type.comma []
-                    let (whitespace2, state) = parseWhitespace state
+                    let (whitespace2, state) = parseTrivia state
                     let (optionGreaterThan, state) = parseToken state token_type.right_square_bracket
                     match optionGreaterThan with
                     | Some greaterThan ->
-                        let (trailingWhiteSpace, state) = parseWhitespace state
+                        let (trailingWhiteSpace, state) = parseTrivia state
                     
                         (List.concat [ [leftSquareBracket]; whitespace1; typeArguments; whitespace2; [greaterThan]; trailingWhiteSpace ], state)
                     | None -> ([], state)
@@ -686,9 +702,9 @@ and parseFunctionCall (state: ParseState) (prefixExpression: ParseNode): Option<
 
     match optionLeftParen with
     | Some leftParen ->
-        let (whitespace1, state) = parseWhitespace state
+        let (whitespace1, state) = parseTrivia state
         let (arguments, state) = parseSeparatedByToken state parseExpression token_type.comma []
-        let (whitespace2, state) = parseWhitespace state
+        let (whitespace2, state) = parseTrivia state
         let (optionRightParen, state) = parseToken state token_type.right_paren
 
         match optionRightParen with
@@ -714,9 +730,9 @@ and parseGenericInstantiation (state: ParseState) (prefixExpression: ParseNode):
                 let (optionLeftSquareBracket, state) = parseToken state token_type.left_square_bracket
                 match optionLeftSquareBracket with
                 | Some leftSquareBracket ->
-                    let (whitespace1, state) = parseWhitespace state
+                    let (whitespace1, state) = parseTrivia state
                     let (typeArguments, state) = parseSeparatedByToken state parseTypeArgument token_type.comma []
-                    let (whitespace2, state) = parseWhitespace state
+                    let (whitespace2, state) = parseTrivia state
                     let (optionGreaterThan, state) = parseToken state token_type.right_square_bracket
                     match optionGreaterThan with
                     | Some greaterThan ->
@@ -744,7 +760,7 @@ and parseMemberAccess (state: ParseState) (prefixExpression: ParseNode) (rightBi
 
     match optionPeriod with
     | Some period ->
-        let (whitespace1, state) = parseWhitespace state
+        let (whitespace1, state) = parseTrivia state
         let (optionIdentifier, state) = parseToken state token_type.identifier
 
         match optionIdentifier with
@@ -854,7 +870,7 @@ and getInfixBindingPowers (tokenType: token_type): Option<int * int> =
     | _ -> None
 
 and tryParsePostfixAndInfixExpressions (state: ParseState) (prefixExpression: ParseNode) (minBindingPower: int): Option<ParseNode> * ParseState =
-    let optionNextToken = tryPeekTokenAfterWhitespace state
+    let optionNextToken = tryPeekTokenAfterTrivia state
 
     match optionNextToken with
     | Some nextToken ->
@@ -866,7 +882,7 @@ and tryParsePostfixAndInfixExpressions (state: ParseState) (prefixExpression: Pa
                 (Some prefixExpression, state)
             else
                 if nextToken._type = token_type.left_paren then
-                    let (whitespace, state) = parseWhitespace state
+                    let (whitespace, state) = parseTrivia state
                     let prefixExpression = { prefixExpression with Children = prefixExpression.Children @ whitespace }
 
                     let (optionFunctionCall, state) = parseFunctionCall state prefixExpression
@@ -877,7 +893,7 @@ and tryParsePostfixAndInfixExpressions (state: ParseState) (prefixExpression: Pa
                     | None ->
                         (None, state)
                 else if nextToken._type = token_type.left_square_bracket then
-                    let (whitespace, state) = parseWhitespace state
+                    let (whitespace, state) = parseTrivia state
                     let prefixExpression = { prefixExpression with Children = prefixExpression.Children @ whitespace }
 
                     // parse type arguments
@@ -902,7 +918,7 @@ and tryParsePostfixAndInfixExpressions (state: ParseState) (prefixExpression: Pa
                 else
                     match nextToken._type with
                     | token_type.period ->
-                        let (whitespace, state) = parseWhitespace state
+                        let (whitespace, state) = parseTrivia state
                         let prefixExpression = { prefixExpression with Children = prefixExpression.Children @ whitespace }
 
                         let (optionMemberAccess, state) = parseMemberAccess state prefixExpression rightBindingPower
@@ -920,12 +936,12 @@ and parseBinding (state: ParseState): Option<ParseNode> * ParseState =
 
     match optionIdentifier with
     | Some identifier ->
-        let (whitespace1, state) = parseWhitespace state
+        let (whitespace1, state) = parseTrivia state
         let (optionEqualsSign, state) = parseToken state token_type.equals
         
         match optionEqualsSign with
         | Some equalsSign ->
-            let (whitespace2, state) = parseWhitespace state
+            let (whitespace2, state) = parseTrivia state
             let (optionExpression, state) = parseExpression state
 
             match optionExpression with
@@ -943,7 +959,7 @@ and parseBinding (state: ParseState): Option<ParseNode> * ParseState =
     | None -> (None, state)
 
 let parseCompilationUnit (state: ParseState): ParseNode * ParseState =
-    let (initialWhitespace, state) = parseWhitespace state
+    let (initialWhitespace, state) = parseTrivia state
     let (children, state) = parseOptionalWhitespaceSeparatedUntilDone state parseBinding []
     let compilationUnit: ParseNode = {
         Type = ParseNodeType.CompilationUnit

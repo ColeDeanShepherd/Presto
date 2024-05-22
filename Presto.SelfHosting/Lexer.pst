@@ -22,6 +22,7 @@ token_type = union
     comma
     colon
     period
+    comment
 
 token = record
     _type: token_type

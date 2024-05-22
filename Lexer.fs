@@ -5,6 +5,9 @@ open CompilerCore
 
 open type PrestoProgram
 
+let isTriviaToken (tokenType: token_type): bool =
+    (tokenType = token_type.whitespace) || (tokenType = token_type.comment)
+
 let listAppend (list: ResizeArray<'a>) (e: 'a): ResizeArray<'a> =
     let newList = ResizeArray<'a> list
     newList.Add(e)
@@ -217,6 +220,20 @@ let rec readWhitespace (state: tokenize_state): tokenize_state =
     else
         state
 
+let rec readComment (state: tokenize_state): tokenize_state =
+    let startPosition = state.position
+
+    let (_, state) = readExpectedChar state '#'
+    let (tokenText, state) = takeCharsWhile state (fun c -> (c <> '\r') && (c <> '\n'))
+
+    tokenize_state(
+        tokens = listAppend state.tokens (token(_type = token_type.comment, _text = "#" + tokenText, position = startPosition, was_inserted = false)),
+        errors = state.errors,
+        indentation_stack = state.indentation_stack,
+        text_left = state.text_left,
+        position = state.position
+    )
+
 let isIdentifierChar (c: char) = (Char.IsLetter c) || (c = '_')
 
 let iterateTokenize (state: tokenize_state): tokenize_state =
@@ -227,6 +244,8 @@ let iterateTokenize (state: tokenize_state): tokenize_state =
         
         if isValidWhitespace nextChar then
             readWhitespace state
+        else if nextChar = '#' then
+            readComment state
         else if isIdentifierChar nextChar then
             let (tokenText, nextState) = takeCharsWhile state isIdentifierChar
             let tokenType =
