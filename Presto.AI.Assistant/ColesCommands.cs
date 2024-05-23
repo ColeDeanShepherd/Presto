@@ -28,6 +28,7 @@ public static class ColesCommands
         desktopApps.Value.OpenApp(GetRecNetDevEnvPath());
         desktopApps.Value.OpenVisualStudioCode();
         desktopApps.Value.OpenDockerDesktop();
+        desktopApps.Value.OpenSteam();
 
         #endregion Desktop Apps
     }

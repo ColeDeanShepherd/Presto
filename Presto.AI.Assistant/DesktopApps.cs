@@ -47,6 +47,10 @@ public interface IDesktopApps
     public string GetVisualStudioCodeExecutablePath() =>
         Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "Programs", "Microsoft VS Code", "Code.exe");
     public void OpenVisualStudioCode() => OpenApp(GetVisualStudioCodeExecutablePath());
+
+    public string GetSteamExecutablePath() =>
+        Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ProgramFilesX86), "Steam", "steam.exe");
+    public void OpenSteam() => OpenApp(GetSteamExecutablePath());
 }
 
 public class DesktopApps : IDesktopApps
