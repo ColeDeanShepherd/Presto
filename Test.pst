@@ -1,1 +1,2 @@
-﻿identity = fn [T] (x: T): T -> x
+﻿no_op = fn (): nothing -> {}
+#main = fn () {}

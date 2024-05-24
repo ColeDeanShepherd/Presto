@@ -185,7 +185,7 @@ main = fn (console: Console [implicit], rand: Rand [implicit]) {
 main = fn (console: Console [implicit], rand: Rand [implicit]) {
     num = rand.randInt()
 
-    repeatUntilEq(processGuess, num)
+    doUntilTrue(processGuess)
     
     processGuess = fn (console: Console [implicit], num: Int [implicit]) {
         console.writeLine("What's your guess?")
@@ -196,50 +196,9 @@ main = fn (console: Console [implicit], rand: Rand [implicit]) {
             guess < num: console.writeLine("Your guess is too low")
             guess > num: console.writeLine("Your guess is too high")
         
-        guess
+        guess == num
     }
 }
-```
-
-OR
-
-```
-main = fn (io: IIO [implicit]) {
-    num = io.rand.randInt()
-
-    repeatUntilEq(processGuess, num)
-    
-    processGuess = fn (io: IIO [implicit]) {
-        io.console.writeLine("What's your guess?")
-        guess = io.console.readInt()
-        
-        case guess of
-            guess == num: io.console.writeLine("Correct!")
-            guess < num: io.console.writeLine("Your guess is too low")
-            guess > num: io.console.writeLine("Your guess is too high")
-        
-        guess
-    }
-}
-```
-
-OR
-
-```
-main: IIO () = do
-    num = randInt()
-    repeatUntilEq processGuess num
-
-processGuess: IIO () = do
-    writeLine("What's your guess?")
-    guess = readInt()
-    
-    case guess of
-        guess == num: writeLine("Correct!")
-        guess < num: writeLine("Your guess is too low")
-        guess > num: writeLine("Your guess is too high")
-    
-    guess
 ```
 
 ### Fibonacci

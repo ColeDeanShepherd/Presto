@@ -334,7 +334,10 @@ and checkBlock (state: TypeCheckerState) (block: Block): TypeCheckerState * Opti
     let succeededCheckingChildren = blockChildTypes.Length = optionBlockChildTypes.Length
 
     if succeededCheckingChildren then
-        (state, Some (List.last blockChildTypes))
+        if blockChildTypes.IsEmpty then
+            (state, Some PrestoType.Nothing)
+        else
+            (state, Some (List.last blockChildTypes))
     else
         (state, None)
         

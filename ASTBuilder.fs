@@ -45,17 +45,18 @@ fn (state: tokenize_state): bool -> ...: A function type with one arg of type "t
 *)
 
 type PrestoType =
-    | Nat
-    | Text of System.Guid
+    | Nothing
     | Boolean
+    | Nat
     | Character
-    | Type
+    | Text of System.Guid
     | RecordType of System.Guid * List<PrestoType>
     | UnionType of System.Guid
     | FunctionType of System.Guid * List<string> * List<PrestoType> * PrestoType (* scope ID, type param names, param types, return type *)
     | TypeParameterType of string (* name of type parameter *)
     | TypeClassType of System.Guid * List<PrestoType> (* type class id, type arguments *)
     | TypeClassInstanceType of System.Guid * List<PrestoType> (* type class id, type arguments *)
+    | Type
 and Symbol =
     | BindingSymbol of Binding
     | TypeParameterSymbol of TypeParameter
@@ -660,10 +661,11 @@ let getInitialScopesById =
     let scope = {
         SymbolsByName =
             Map.empty
-                .Add("nat", BuiltInSymbol ("nat", PrestoType.Nat))
+                .Add("nothing", BuiltInSymbol ("nothing", PrestoType.Nothing))
                 .Add("bool", BuiltInSymbol ("bool", PrestoType.Boolean))
                 .Add("true", BuiltInSymbol ("true", PrestoType.Boolean))
                 .Add("false", BuiltInSymbol ("false", PrestoType.Boolean))
+                .Add("nat", BuiltInSymbol ("nat", PrestoType.Nat))
                 .Add("char", BuiltInSymbol ("char", PrestoType.Character))
                 .Add("text", BuiltInSymbol ("text", PrestoType.Text textScopeId))
 

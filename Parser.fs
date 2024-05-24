@@ -151,7 +151,7 @@ let getUnexpectedTokenError (state: ParseState) (expectedTokenType: token_type) 
             ""
 
     compile_error(
-        description = $"Encountered unexpected {virtualErrorDescriptionPart}token: {nextToken._text}",
+        description = $"Encountered unexpected {virtualErrorDescriptionPart}token: \"{nextToken._text}\"",
         position = currentTextPosition state
     )
 
@@ -264,33 +264,36 @@ let rec parseSeparatedByToken
     (state: ParseState)
     (parseFn: (ParseState -> Option<ParseNode> * ParseState))
     (tokenType: token_type)
+    (optionTerminatorTokenType: Option<token_type>)
     (accumulator: List<ParseNode>):
     List<ParseNode> * ParseState =
         let optionNextToken = tryPeekToken state
 
         match optionNextToken with
         | Some nextToken ->
-            let (maybeNode, state) = parseFn state
+            if optionTerminatorTokenType.IsNone || (nextToken._type <> optionTerminatorTokenType.Value) then
+                let (maybeNode, state) = parseFn state
 
-            match maybeNode with
-            | Some node ->
-                let (whitespace, state) = parseTrivia state
-                let accumulator = accumulator @ [node] @ whitespace
-                let optionNextToken = tryPeekExpectedToken state tokenType
+                match maybeNode with
+                | Some node ->
+                    let (whitespace, state) = parseTrivia state
+                    let accumulator = accumulator @ [node] @ whitespace
+                    let optionNextToken = tryPeekExpectedToken state tokenType
 
-                match optionNextToken with
-                | Some nextToken ->
-                    let (optionSeparator, state) = parseToken state tokenType
+                    match optionNextToken with
+                    | Some nextToken ->
+                        let (optionSeparator, state) = parseToken state tokenType
 
-                    match optionSeparator with
-                    | Some separator ->
-                        let (whitespace2, state) = parseTrivia state
-                        let accumulator = accumulator @ [separator] @ whitespace2
+                        match optionSeparator with
+                        | Some separator ->
+                            let (whitespace2, state) = parseTrivia state
+                            let accumulator = accumulator @ [separator] @ whitespace2
                         
-                        parseSeparatedByToken state parseFn tokenType accumulator
+                            parseSeparatedByToken state parseFn tokenType optionTerminatorTokenType accumulator
+                        | None -> (accumulator, state)
                     | None -> (accumulator, state)
                 | None -> (accumulator, state)
-            | None -> (accumulator, state)
+            else (accumulator, state)
         | None -> (accumulator, state)
 
 let rec parseSeparatedByWhitespace
@@ -594,7 +597,7 @@ and parseFunction (state: ParseState): Option<ParseNode> * ParseState =
                     match optionLessThan with
                     | Some lessThan ->
                         let (whitespace2, state) = parseTrivia state
-                        let (typeParameters, state) = parseSeparatedByToken state parseTypeParameter token_type.comma []
+                        let (typeParameters, state) = parseSeparatedByToken state parseTypeParameter token_type.comma (Some token_type.right_square_bracket) []
                         let (whitespace3, state) = parseTrivia state
                         let (optionGreaterThan, state) = parseToken state token_type.right_square_bracket
 
@@ -613,7 +616,7 @@ and parseFunction (state: ParseState): Option<ParseNode> * ParseState =
             match optionLeftParen with
             | Some leftParen ->
                 let (whitespace4, state) = parseTrivia state
-                let (parameters, state) = parseSeparatedByToken state parseParameter token_type.comma []
+                let (parameters, state) = parseSeparatedByToken state parseParameter token_type.comma (Some token_type.right_paren) []
                 let (whitespace5, state) = parseTrivia state
                 let (optionRightParen, state) = parseToken state token_type.right_paren
 
@@ -685,7 +688,7 @@ and parseFunctionCall (state: ParseState) (prefixExpression: ParseNode): Option<
                 match optionLeftSquareBracket with
                 | Some leftSquareBracket ->
                     let (whitespace1, state) = parseTrivia state
-                    let (typeArguments, state) = parseSeparatedByToken state parseTypeArgument token_type.comma []
+                    let (typeArguments, state) = parseSeparatedByToken state parseTypeArgument token_type.comma (Some token_type.right_square_bracket) []
                     let (whitespace2, state) = parseTrivia state
                     let (optionGreaterThan, state) = parseToken state token_type.right_square_bracket
                     match optionGreaterThan with
@@ -703,7 +706,7 @@ and parseFunctionCall (state: ParseState) (prefixExpression: ParseNode): Option<
     match optionLeftParen with
     | Some leftParen ->
         let (whitespace1, state) = parseTrivia state
-        let (arguments, state) = parseSeparatedByToken state parseExpression token_type.comma []
+        let (arguments, state) = parseSeparatedByToken state parseExpression token_type.comma (Some token_type.right_paren) []
         let (whitespace2, state) = parseTrivia state
         let (optionRightParen, state) = parseToken state token_type.right_paren
 
@@ -731,7 +734,7 @@ and parseGenericInstantiation (state: ParseState) (prefixExpression: ParseNode):
                 match optionLeftSquareBracket with
                 | Some leftSquareBracket ->
                     let (whitespace1, state) = parseTrivia state
-                    let (typeArguments, state) = parseSeparatedByToken state parseTypeArgument token_type.comma []
+                    let (typeArguments, state) = parseSeparatedByToken state parseTypeArgument token_type.comma (Some token_type.right_square_bracket) []
                     let (whitespace2, state) = parseTrivia state
                     let (optionGreaterThan, state) = parseToken state token_type.right_square_bracket
                     match optionGreaterThan with
@@ -828,7 +831,7 @@ and parsePrefixExpression (state: ParseState): Option<ParseNode> * ParseState =
             wrapInExpressionNode (parseToken state token_type.character_literal)
         | _ ->
             let error = compile_error(
-                description = $"Encountered unexpected token: {nextToken._text}",
+                description = $"Encountered unexpected token: \"{nextToken._text}\"",
                 position = currentTextPosition state
             )
 

@@ -1,4 +1,6 @@
+no_op = fn (): nothing -> {}
 identity = fn [t] (x: t): t -> x
+
 # value_equals
 # value_not_equals
 

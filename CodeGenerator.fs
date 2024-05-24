@@ -146,6 +146,7 @@ and generateExpression (state: CodeGeneratorState) (expression: Expression): Cod
 and generateTypeReference (state: CodeGeneratorState) (prestoType: PrestoType): CodeGeneratorState =
     let typeReferenceString =
         match prestoType with
+        | Nothing -> "void"
         | Nat -> "nat"
         | Text _ -> "string"
         | Boolean -> "bool"
@@ -203,10 +204,17 @@ and generateFunction (state: CodeGeneratorState) (name: string) (fn: Function): 
     let state = generateString state ")"
     let state = generateString state " "
     let state = generateString state "{"
-    let state = generateString state "return"
-    let state = generateString state " "
-    let state = generateExpression state fn.Value
-    let state = generateString state ";"
+
+    let state =
+        if returnType <> PrestoType.Nothing then
+            let state = generateString state "return"
+            let state = generateString state " "
+            let state = generateExpression state fn.Value
+            let state = generateString state ";"
+            state
+        else
+            state
+
     let state = generateString state "}"
 
     state
