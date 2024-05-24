@@ -19,7 +19,7 @@ type CodeGeneratorOutput = {
 let generateString (state: CodeGeneratorState) (str: string): CodeGeneratorState =
     { state with GeneratedCode = state.GeneratedCode + str }
 
-let rec generateMany
+let rec generateManyWithSeparator
     (state: CodeGeneratorState)
     (nodes: List<'a>)
     (generateFn: (CodeGeneratorState -> 'a -> CodeGeneratorState))
@@ -37,7 +37,22 @@ let rec generateMany
 
             let state = generateFn state nodes.Head
 
-            generateMany state nodes.Tail generateFn separator false
+            generateManyWithSeparator state nodes.Tail generateFn separator false
+
+let rec generateManyWithDelimiter
+    (state: CodeGeneratorState)
+    (nodes: List<'a>)
+    (generateFn: (CodeGeneratorState -> 'a -> CodeGeneratorState))
+    (delimiter: string)
+    (isFirstItem: bool)
+    : CodeGeneratorState =
+        if nodes.IsEmpty then
+            state
+        else
+            let state = generateFn state nodes.Head
+            let state = generateString state delimiter
+
+            generateManyWithDelimiter state nodes.Tail generateFn delimiter false
 
 let rec generateSymbol (state: CodeGeneratorState) (token: token) (expressionId: System.Guid): CodeGeneratorState =
     let symbol = state.Program.ResolvedSymbolsByExpressionId[expressionId]
@@ -60,7 +75,7 @@ let rec generateSymbol (state: CodeGeneratorState) (token: token) (expressionId:
 and generateGenericInstantiation (state: CodeGeneratorState) (genericInstantiation: GenericInstantiation): CodeGeneratorState =
     let state = generateExpression state genericInstantiation.Expression
     let state = generateString state "<"
-    let state = generateMany state genericInstantiation.TypeArguments generateTypeExpression ", " true
+    let state = generateManyWithSeparator state genericInstantiation.TypeArguments generateTypeExpression ", " true
     let state = generateString state ">"
     state
 
@@ -88,7 +103,7 @@ and generateIfThenElse (state: CodeGeneratorState) (ifThenElse: IfThenElse): Cod
 and generateFunctionCallInternal (state: CodeGeneratorState) (functionCall: FunctionCall) (isTypeExpression: bool): CodeGeneratorState =
     let state = generateExpression state functionCall.FunctionExpression
     let state = generateString state (if isTypeExpression then "<" else "(")
-    let state = generateMany state functionCall.Arguments generateExpression ", " true
+    let state = generateManyWithSeparator state functionCall.Arguments generateExpression ", " true
     let state = generateString state (if isTypeExpression then ">" else ")")
 
     state
@@ -104,7 +119,7 @@ and generateBlock (state: CodeGeneratorState) (block: Block): CodeGeneratorState
     if block.Children.Length <> 1 then
         let state = generateString state "{"
         let state = generateString state System.Environment.NewLine
-        let state = generateMany state block.Children generateBlockChild (";" + System.Environment.NewLine) true
+        let state = generateManyWithDelimiter state block.Children generateBlockChild (";" + System.Environment.NewLine) true
         let state = generateString state System.Environment.NewLine
         let state = generateString state "}"
 
@@ -127,6 +142,16 @@ and generateNumberLiteral (state: CodeGeneratorState) (numberLiteral: NumberLite
 
     state
 
+and generateCharacterLiteral (state: CodeGeneratorState) (characterLiteral: CharacterLiteral): CodeGeneratorState =
+    let state = generateString state characterLiteral.Token._text
+
+    state
+
+and generateStringLiteral (state: CodeGeneratorState) (stringLiteral: StringLiteral): CodeGeneratorState =
+    let state = generateString state stringLiteral.Token._text
+
+    state
+
 and generateExpressionInternal (state: CodeGeneratorState) (expression: Expression) (isTypeExpression: bool): CodeGeneratorState =
     match expression.Value with
     | RecordExpression record -> failwith "Not implemented"
@@ -139,6 +164,8 @@ and generateExpressionInternal (state: CodeGeneratorState) (expression: Expressi
     | SymbolReference symbol -> generateSymbol state symbol expression.Id
     | GenericInstantiationExpression genericInstantiation -> generateGenericInstantiation state genericInstantiation
     | NumberLiteralExpression number -> generateNumberLiteral state number
+    | CharacterLiteralExpression character -> generateCharacterLiteral state character
+    | StringLiteralExpression string -> generateStringLiteral state string
     
 and generateExpression (state: CodeGeneratorState) (expression: Expression): CodeGeneratorState =
     generateExpressionInternal state expression false
@@ -176,7 +203,7 @@ and generateTypeParameter (state: CodeGeneratorState) (typeParameter: TypeParame
 
 and generateTypeParameters (state: CodeGeneratorState) (typeParameters: List<TypeParameter>): CodeGeneratorState =
     let state = generateString state "<"
-    let state = generateMany state typeParameters generateTypeParameter ", " true
+    let state = generateManyWithSeparator state typeParameters generateTypeParameter ", " true
     let state = generateString state ">"
     
     state
@@ -200,7 +227,7 @@ and generateFunction (state: CodeGeneratorState) (name: string) (fn: Function): 
             state
 
     let state = generateString state "("
-    let state = generateMany state fn.Parameters generateParameter ", " true
+    let state = generateManyWithSeparator state fn.Parameters generateParameter ", " true
     let state = generateString state ")"
     let state = generateString state " "
     let state = generateString state "{"
@@ -213,6 +240,8 @@ and generateFunction (state: CodeGeneratorState) (name: string) (fn: Function): 
             let state = generateString state ";"
             state
         else
+            let state = generateExpression state fn.Value
+            let state = generateString state ";"
             state
 
     let state = generateString state "}"
@@ -230,7 +259,7 @@ and generateRecord (state: CodeGeneratorState) (name: string) (record: Record): 
     let state = generateString state "public record "
     let state = generateString state name
     let state = generateString state "("
-    let state = generateMany state record.Fields generateRecordField ", " true
+    let state = generateManyWithSeparator state record.Fields generateRecordField ", " true
     let state = generateString state ")"
 
     state
@@ -244,7 +273,7 @@ and generateUnion (state: CodeGeneratorState) (name: string) (union: Union): Cod
     let state = generateString state "public enum "
     let state = generateString state name
     let state = generateString state "{"
-    let state = generateMany state union.Cases generateUnionCase ", " true
+    let state = generateManyWithSeparator state union.Cases generateUnionCase ", " true
     let state = generateString state "}"
 
     state
@@ -295,7 +324,7 @@ let generateCode (program: Program): CodeGeneratorOutput =
 
     let state = generateString state generatedCodeHeader
     let state = generateString state (System.Environment.NewLine + System.Environment.NewLine)
-    let state = generateMany state program.Bindings generateBinding System.Environment.NewLine true
+    let state = generateManyWithSeparator state program.Bindings generateBinding System.Environment.NewLine true
     let state = generateString state (System.Environment.NewLine + System.Environment.NewLine)
     let state = generateString state generatedCodeFooter
 

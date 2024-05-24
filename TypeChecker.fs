@@ -398,6 +398,9 @@ and checkNumberLiteral (state: TypeCheckerState) (numberLiteral: NumberLiteral):
 and checkCharacterLiteral (state: TypeCheckerState) (characterLiteral: CharacterLiteral): TypeCheckerState * Option<PrestoType> =
     (state, Some PrestoType.Character)
 
+and checkStringLiteral (state: TypeCheckerState) (stringLiteral: StringLiteral): TypeCheckerState * Option<PrestoType> =
+    (state, Some PrestoType.String)
+
 and checkExpression (state: TypeCheckerState) (expression: Expression): TypeCheckerState * Option<PrestoType> =
     if state.TypesByExpressionId.ContainsKey expression.Id then
         let prestoType = state.TypesByExpressionId[expression.Id]
@@ -417,6 +420,7 @@ and checkExpression (state: TypeCheckerState) (expression: Expression): TypeChec
             | SymbolReference token -> checkSymbolReference state token expression.Id
             | NumberLiteralExpression number -> checkNumberLiteral state number
             | CharacterLiteralExpression characterLiteral -> checkCharacterLiteral state characterLiteral
+            | StringLiteralExpression stringLiteral -> checkStringLiteral state stringLiteral
             | TypeClassExpression typeClass -> failwith "not implemented"
             | _ -> failwith "not implemented"
 

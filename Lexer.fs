@@ -311,7 +311,23 @@ let iterateTokenize (state: tokenize_state): tokenize_state =
             let (charText, state) = takeCharsWhile state (fun x -> x <> '\'')
             let (_, state) = readExpectedChar state '\''
 
+            // TODO: don't allow too many chars, newlines
             let nextToken = token(_type = token_type.character_literal, _text = "'" + charText + "'", position = startPosition, was_inserted = false)
+
+            tokenize_state(
+                tokens = listAppend state.tokens nextToken,
+                errors = state.errors,
+                indentation_stack = state.indentation_stack,
+                text_left = state.text_left,
+                position = state.position
+            )
+        else if nextChar = '"' then
+            let (_, state) = readExpectedChar state '"'
+            let (charText, state) = takeCharsWhile state (fun x -> x <> '"')
+            let (_, state) = readExpectedChar state '"'
+
+            // TODO: how to handle newlines?
+            let nextToken = token(_type = token_type.string_literal, _text = "\"" + charText + "\"", position = startPosition, was_inserted = false)
 
             tokenize_state(
                 tokens = listAppend state.tokens nextToken,

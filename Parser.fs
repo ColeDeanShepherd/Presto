@@ -829,6 +829,8 @@ and parsePrefixExpression (state: ParseState): Option<ParseNode> * ParseState =
             wrapInExpressionNode (parseToken state token_type.number_literal)
         | token_type.character_literal ->
             wrapInExpressionNode (parseToken state token_type.character_literal)
+        | token_type.string_literal ->
+            wrapInExpressionNode (parseToken state token_type.string_literal)
         | _ ->
             let error = compile_error(
                 description = $"Encountered unexpected token: \"{nextToken._text}\"",

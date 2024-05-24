@@ -7,6 +7,6 @@ using System;
     
     public static partial class PrestoProgram {
 
-public static void no_op() {}
+public static void main(Console console) {printLine(console, "Hello, world!");}
 
 }

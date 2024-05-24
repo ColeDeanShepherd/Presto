@@ -1,2 +1,3 @@
-﻿no_op = fn (): nothing -> {}
-#main = fn () {}
+﻿main = fn (console: Console): nothing -> {
+    printLine(console, "Hello, world!")
+}

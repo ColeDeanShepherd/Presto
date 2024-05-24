@@ -23,6 +23,7 @@ token_type = union
     colon
     period
     comment
+    string_literal
 
 token = record
     _type: token_type

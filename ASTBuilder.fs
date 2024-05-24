@@ -49,6 +49,7 @@ type PrestoType =
     | Boolean
     | Nat
     | Character
+    | String
     | Text of System.Guid
     | RecordType of System.Guid * List<PrestoType>
     | UnionType of System.Guid
@@ -81,6 +82,7 @@ and ExpressionValue =
     | SymbolReference of token
     | NumberLiteralExpression of NumberLiteral
     | CharacterLiteralExpression of CharacterLiteral
+    | StringLiteralExpression of StringLiteral
 and Binding = {
     NameToken: token
     Value: Expression
@@ -136,6 +138,9 @@ and NumberLiteral = {
     Token: token
 }
 and CharacterLiteral = {
+    Token: token
+}
+and StringLiteral = {
     Token: token
 }
 and Scope = {
@@ -616,6 +621,9 @@ and buildExpression (state: ASTBuilderState) (node: ParseNode): (Option<Expressi
     | ParseNodeType.Token when child.Token.Value._type = token_type.character_literal ->
         let characterLiteral: CharacterLiteral = { Token = child.Token.Value }
         (Some (newExpression (CharacterLiteralExpression characterLiteral)), state)
+    | ParseNodeType.Token when child.Token.Value._type = token_type.string_literal ->
+        let stringLiteral: StringLiteral = { Token = child.Token.Value }
+        (Some (newExpression (StringLiteralExpression stringLiteral)), state)
     | _ ->
         let error = compile_error(
             description = $"Unexpected parse node type: {child.Type}",
@@ -657,6 +665,7 @@ let getInitialScopesById =
     let scopesById = scopesById.Add(textScopeId, textScope)
 
     let seqScopeId = System.Guid.NewGuid()
+    let consoleType = RecordType (System.Guid.NewGuid(), [])
 
     let scope = {
         SymbolsByName =
@@ -724,7 +733,10 @@ let getInitialScopesById =
                             (PrestoType.TypeParameterType "t")
                         )
                     )
-                );
+                )
+
+                .Add("Console", BuiltInSymbol ("Console", consoleType))
+                .Add("printLine", BuiltInSymbol ("printLine", FunctionType (System.Guid.NewGuid(), [], [consoleType; PrestoType.String], PrestoType.Nothing)));
         ParentId = None;
         ChildIds = [textScopeId]
     }
