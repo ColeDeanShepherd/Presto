@@ -70,6 +70,7 @@ let rec generateSymbol (state: CodeGeneratorState) (token: token) (expressionId:
         | "text" -> generateTypeReference state prestoType
         | "list" -> generateString state "List"
         | "seq" -> generateString state "List"
+        | "Console" -> generateString state "Presto.Runtime.Console"
         | _ -> generateString state builtInSymbol
 
 and generateGenericInstantiation (state: CodeGeneratorState) (genericInstantiation: GenericInstantiation): CodeGeneratorState =
@@ -179,7 +180,12 @@ and generateTypeReference (state: CodeGeneratorState) (prestoType: PrestoType): 
         | Boolean -> "bool"
         | Character -> "char"
         | Type -> "Type"
-        | RecordType (scopeId, _) -> state.Program.TypeCanonicalNamesByScopeId[scopeId]
+        | RecordType (scopeId, _) ->
+            let canonicalName = state.Program.TypeCanonicalNamesByScopeId[scopeId]
+
+            match canonicalName with
+            | "Console" -> "Presto.Runtime.Console"
+            | _ -> canonicalName
         | UnionType scopeId -> state.Program.TypeCanonicalNamesByScopeId[scopeId]
         | FunctionType (scopeId, _, _, _) -> state.Program.TypeCanonicalNamesByScopeId[scopeId]
         | TypeParameterType typeParameter -> typeParameter
@@ -316,16 +322,25 @@ let generatedCodeHeader =
     
     public static partial class PrestoProgram {"
 
-let generatedCodeFooter =
-    "}"
+let generatedCodeFooter (compileGeneratedCSharpCode: bool) =
+    if compileGeneratedCSharpCode then
+        "public static void Main(string[] args)
+        {
+            Presto.Runtime.Console console = new();
 
-let generateCode (program: Program): CodeGeneratorOutput =
+            main(console);
+        }
+        }"
+    else
+        "}"
+
+let generateCode (program: Program) (compileGeneratedCSharpCode: bool): CodeGeneratorOutput =
     let state = { Program = program; GeneratedCode = ""; Errors = [] }
 
     let state = generateString state generatedCodeHeader
     let state = generateString state (System.Environment.NewLine + System.Environment.NewLine)
     let state = generateManyWithSeparator state program.Bindings generateBinding System.Environment.NewLine true
     let state = generateString state (System.Environment.NewLine + System.Environment.NewLine)
-    let state = generateString state generatedCodeFooter
+    let state = generateString state (generatedCodeFooter compileGeneratedCSharpCode)
 
     { GeneratedCode = state.GeneratedCode; Errors = state.Errors }

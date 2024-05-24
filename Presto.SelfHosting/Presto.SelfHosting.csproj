@@ -10,8 +10,8 @@
     <ProjectReference Include="..\Presto.Runtime\Presto.Runtime.csproj" />
   </ItemGroup>
 	
-  <Target Name="PreBuild" BeforeTargets="PreBuildEvent">
+  <!--<Target Name="PreBuild" BeforeTargets="PreBuildEvent">
     <Exec Command="&quot;../bin/Debug/net8.0/Presto.exe&quot; CompilerCore.pst Lexer.pst" />
-  </Target>
+  </Target>-->
 
 </Project>

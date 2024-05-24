@@ -4,13 +4,47 @@ open Parser
 open ASTBuilder
 open TypeChecker
 open CodeGenerator
+open CSharpCompiler
+
+type CompileOptions = {
+    FilePaths: string list
+    OutputPath: string
+    CompileGeneratedCSharp: bool
+}
+
+let rec parseCommandLineArgsHelper (args: string array) (options: CompileOptions): string array * CompileOptions =
+    if args.Length = 0 then
+        (args, options)
+    else
+        match args[0] with
+        | "--compile-generated-csharp" ->
+            if args.Length = 0 then
+                failwith "No value was specified for option \"--compile-generated-csharp\""
+            else
+                parseCommandLineArgsHelper args[2..] { options with CompileGeneratedCSharp = (args[1] = "true") }
+        | "--output-dir" ->
+            if args.Length = 0 then
+                failwith "No value was specified for option \"--output-dir\""
+            else
+                parseCommandLineArgsHelper args[2..] { options with OutputPath = args[1] }
+        | _ -> parseCommandLineArgsHelper args[1..] { options with FilePaths = (options.FilePaths @ [args[0]])}
+
+let parseCommandLineArgs (args: string array): CompileOptions =
+    let compileOptions: CompileOptions = {
+        FilePaths = []
+        OutputPath = System.Environment.CurrentDirectory
+        CompileGeneratedCSharp = false
+    }
+
+    let (args, compileOptions) = parseCommandLineArgsHelper (Array.skip 1 args) compileOptions
+
+    compileOptions
 
 let commandLineArgs = System.Environment.GetCommandLineArgs()
+let compileOptions = parseCommandLineArgs commandLineArgs
 
-if commandLineArgs.Length < 2 then
-    failwith "Invalid file."
-
-let filePaths = Array.skip 1 commandLineArgs
+if compileOptions.FilePaths.IsEmpty then
+    failwith "No files specified."
 
 let (scopeId, scopesById) = getInitialScopesById
 let mutable program = {
@@ -21,13 +55,12 @@ let mutable program = {
     ResolvedSymbolsByExpressionId = Map.empty
     TypeCanonicalNamesByScopeId = Map.empty
 }
+let mutable generatedFilePaths: string list = []
 
-let compileFile (program: Program) (filePath: string): Program =
-    let dirPath = Path.GetDirectoryName(filePath)
-    let fileName = Path.GetFileName(filePath)
+let compileFile (program: Program) (filePath: string): string option * Program =
     let fileNameWithoutExtension = Path.GetFileNameWithoutExtension(filePath)
 
-    printfn $"Compiling {fileName}"
+    printfn $"Compiling {filePath}"
 
     let sourceCode = File.ReadAllText filePath
 
@@ -38,7 +71,7 @@ let compileFile (program: Program) (filePath: string): Program =
         for error in tokenizeOutput.errors do
             printfn $"{error}"
 
-        program
+        (None, program)
     else
         printfn "Done lexing!"
 
@@ -49,7 +82,7 @@ let compileFile (program: Program) (filePath: string): Program =
             for error in parseOutput.Errors do
                 printfn $"{error}"
 
-            program
+            (None, program)
         else
             printfn "Done parsing!"
 
@@ -60,7 +93,7 @@ let compileFile (program: Program) (filePath: string): Program =
                 for error in buildAstOutput.Errors do
                     printfn $"{error}"
 
-                program
+                (None, program)
             else
                 printfn "Done building the AST!"
 
@@ -71,26 +104,39 @@ let compileFile (program: Program) (filePath: string): Program =
                     for error in typeCheckingErrors do
                         printfn $"{error}"
 
-                    program
+                    (None, program)
                 else
                     printfn "Done type checking!"
 
                     // generate code
-                    let codeGeneratorOutput = generateCode program
+                    let codeGeneratorOutput = generateCode program compileOptions.CompileGeneratedCSharp
 
                     if not codeGeneratorOutput.Errors.IsEmpty then
                         for error in codeGeneratorOutput.Errors do
                             printfn $"{error}"
 
-                        program
+                        (None, program)
                     else
                         printfn "Compile succeeded!"
                         printfn ""
                         printfn $"{codeGeneratorOutput.GeneratedCode}"
 
-                        File.WriteAllText(Path.Combine(dirPath, fileNameWithoutExtension + ".g.cs"), codeGeneratorOutput.GeneratedCode)
+                        let generatedFilePath = Path.Combine(compileOptions.OutputPath, (fileNameWithoutExtension + ".g.cs"))
+                        File.WriteAllText(generatedFilePath, codeGeneratorOutput.GeneratedCode)
 
-                        program
+                        (Some generatedFilePath, program)
 
-for filePath in filePaths do
-    program <- compileFile program filePath
+for filePath in compileOptions.FilePaths do
+    let (maybeGeneratedFilePath, newProgram) = compileFile program filePath
+
+    match maybeGeneratedFilePath with
+    | Some generatedFilePath ->
+        generatedFilePaths <- generatedFilePaths @ [generatedFilePath]
+    | None ->
+    
+    program <- newProgram
+
+if compileOptions.CompileGeneratedCSharp then
+    let runtimeCSharpFilePaths = Directory.GetFiles("../../../Presto.Runtime", "*.cs")
+    let filePathsToCompile = Set.ofList (generatedFilePaths @ (List.ofArray runtimeCSharpFilePaths))
+    compileCSharpFiles filePathsToCompile compileOptions.OutputPath

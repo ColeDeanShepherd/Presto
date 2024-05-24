@@ -7,6 +7,12 @@ using System;
     
     public static partial class PrestoProgram {
 
-public static void main(Console console) {printLine(console, "Hello, world!");}
+public static void main(Presto.Runtime.Console console) {print_line(console, "Hello, world!");}
 
-}
+public static void Main(string[] args)
+        {
+            Presto.Runtime.Console console = new();
+
+            main(console);
+        }
+        }

@@ -736,7 +736,7 @@ let getInitialScopesById =
                 )
 
                 .Add("Console", BuiltInSymbol ("Console", consoleType))
-                .Add("printLine", BuiltInSymbol ("printLine", FunctionType (System.Guid.NewGuid(), [], [consoleType; PrestoType.String], PrestoType.Nothing)));
+                .Add("print_line", BuiltInSymbol ("print_line", FunctionType (System.Guid.NewGuid(), [], [consoleType; PrestoType.String], PrestoType.Nothing)));
         ParentId = None;
         ChildIds = [textScopeId]
     }

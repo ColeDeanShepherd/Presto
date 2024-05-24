@@ -6,6 +6,7 @@
   </PropertyGroup>
 
   <ItemGroup>
+    <Compile Include="CSharpCompiler.fs" />
     <None Include="README.md" />
     <None Include="Test.pst" />
     <None Include="BootstrappedCompiler.pst" />

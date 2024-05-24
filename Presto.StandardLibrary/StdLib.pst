@@ -1,4 +1,5 @@
 no_op = fn (): nothing -> {}
+ignore = fn [t] (x: t): nothing -> {}
 identity = fn [t] (x: t): t -> x
 
 # value_equals
