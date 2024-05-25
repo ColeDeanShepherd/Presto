@@ -24,6 +24,10 @@ token_type = union
     period
     comment
     string_literal
+    plus_sign
+    hyphen
+    forward_slash
+    asterisk
 
 token = record
     _type: token_type

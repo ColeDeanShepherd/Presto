@@ -78,6 +78,7 @@ and ExpressionValue =
     | BlockExpression of Block
     | FunctionCallExpression of FunctionCall
     | MemberAccessExpression of MemberAccess
+    | AdditionExpression of AdditionOperator
     | GenericInstantiationExpression of GenericInstantiation
     | SymbolReference of token
     | NumberLiteralExpression of NumberLiteral
@@ -113,6 +114,10 @@ and GenericInstantiation = {
 and MemberAccess = {
     LeftExpression: Expression;
     RightIdentifier: token;
+}
+and AdditionOperator = {
+    LeftExpression: Expression;
+    RightExpression: Expression;
 }
 and RecordField = {
     NameToken: token
@@ -532,6 +537,24 @@ and buildMemberAccess (state: ASTBuilderState) (node: ParseNode): (Option<Member
         (Some { LeftExpression = leftExpression; RightIdentifier = rightIdentifier.Token.Value; }, state)
     | None -> (None, state)
 
+and buildAddition (state: ASTBuilderState) (node: ParseNode): (Option<AdditionOperator> * ASTBuilderState) =
+    assert (node.Type = ParseNodeType.Addition)
+
+    let expressionNodes = childrenOfType node ParseNodeType.Expression
+    let leftExpressionNode = expressionNodes[0]
+    let (optionLeftExpression, state) = buildExpression state leftExpressionNode
+
+    match optionLeftExpression with
+    | Some leftExpression ->
+        let rightExpressionNode = expressionNodes[1]
+        let (optionRightExpression, state) = buildExpression state rightExpressionNode
+
+        match optionRightExpression with
+        | Some rightExpression ->
+            (Some { LeftExpression = leftExpression; RightExpression = rightExpression; }, state)
+        | None -> (None, state)
+    | None -> (None, state)
+
 and buildGenericInstantiation (state: ASTBuilderState) (node: ParseNode): (Option<GenericInstantiation> * ASTBuilderState) =
     assert (node.Type = ParseNodeType.GenericInstantiation)
     
@@ -604,6 +627,12 @@ and buildExpression (state: ASTBuilderState) (node: ParseNode): (Option<Expressi
 
         match optionMemberAccess with
         | Some memberAccess -> (Some (newExpression (MemberAccessExpression memberAccess)), state)
+        | None -> (None, state)
+    | ParseNodeType.Addition ->
+        let (optionAddition, state) = buildAddition state child
+
+        match optionAddition with
+        | Some addition -> (Some (newExpression (AdditionExpression addition)), state)
         | None -> (None, state)
     | ParseNodeType.GenericInstantiation ->
         let (optionGenericInstantiation, state) = buildGenericInstantiation state child

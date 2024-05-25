@@ -43,6 +43,7 @@ type ParseNodeType =
     | Token
     | Whitespace
     | Comment
+    | Addition
 
 type ParseNode = {
     Type: ParseNodeType
@@ -883,6 +884,10 @@ and getPostfixLeftBindingPower (tokenType: token_type): Option<int> =
 and getInfixBindingPowers (tokenType: token_type): Option<int * int> =
     match tokenType with
     | token_type.period -> Some (13, 14)
+    | token_type.asterisk -> Some (7, 8)
+    | token_type.forward_slash -> Some (7, 8)
+    | token_type.plus_sign -> Some (5, 6)
+    | token_type.hyphen -> Some (5, 6)
     | _ -> None
 
 and tryParsePostfixAndInfixExpressions (state: ParseState) (prefixExpression: ParseNode) (minBindingPower: int): Option<ParseNode> * ParseState =
@@ -942,6 +947,36 @@ and tryParsePostfixAndInfixExpressions (state: ParseState) (prefixExpression: Pa
                         match optionMemberAccess with
                         | Some memberAccess ->
                             tryParsePostfixAndInfixExpressions state memberAccess minBindingPower
+                        | None -> (None, state)
+                    | token_type.plus_sign ->
+                        let (whitespace, state) = parseTrivia state
+                        let prefixExpression = { prefixExpression with Children = prefixExpression.Children @ whitespace }
+
+                        let (optionPlusSign, state) = parseToken state token_type.plus_sign
+
+                        match optionPlusSign with
+                        | Some plusSign ->
+                            let (whitespace1, state) = parseTrivia state
+                            let (optionRightExpression, state) = parseExpressionInternal state rightBindingPower
+
+                            match optionRightExpression with
+                            | Some rightExpression ->
+                                let accessNode =
+                                    {
+                                        Type = ParseNodeType.Addition
+                                        Children = List.concat [ [prefixExpression]; [plusSign]; whitespace1; [rightExpression]; ]
+                                        Token = None
+                                    }
+
+                                let additionExpression =
+                                    {
+                                        Type = ParseNodeType.Expression
+                                        Children = [accessNode]
+                                        Token = None
+                                    }
+                            
+                                tryParsePostfixAndInfixExpressions state additionExpression minBindingPower
+                            | None -> (None, state)
                         | None -> (None, state)
                     | _ -> failwith "Assert failed"
             | None -> (Some prefixExpression, state)

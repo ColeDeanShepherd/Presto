@@ -137,6 +137,13 @@ and generateMemberAccess (state: CodeGeneratorState) (memberAccess: MemberAccess
 
     state
 
+and generateAddition (state: CodeGeneratorState) (addition: AdditionOperator): CodeGeneratorState =
+    let state = generateExpression state addition.LeftExpression
+    let state = generateString state " + "
+    let state = generateExpression state addition.RightExpression
+
+    state
+
 and generateNumberLiteral (state: CodeGeneratorState) (numberLiteral: NumberLiteral): CodeGeneratorState =
     let state = generateString state numberLiteral.Token._text
     let state = generateString state "u"
@@ -162,6 +169,7 @@ and generateExpressionInternal (state: CodeGeneratorState) (expression: Expressi
     | FunctionCallExpression call -> generateFunctionCallInternal state call isTypeExpression
     | BlockExpression block -> generateBlock state block
     | MemberAccessExpression memberAccess -> generateMemberAccess state memberAccess
+    | AdditionExpression addition -> generateAddition state addition
     | SymbolReference symbol -> generateSymbol state symbol expression.Id
     | GenericInstantiationExpression genericInstantiation -> generateGenericInstantiation state genericInstantiation
     | NumberLiteralExpression number -> generateNumberLiteral state number

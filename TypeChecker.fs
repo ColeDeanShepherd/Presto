@@ -373,6 +373,30 @@ and checkMemberAccess (state: TypeCheckerState) (memberAccess: MemberAccess): Ty
                 )
         | None -> (state, None)
     | None -> (state, None)
+        
+and checkAddition (state: TypeCheckerState) (addition: AdditionOperator): TypeCheckerState * Option<PrestoType> =
+    let (state, optionLeftType) = checkExpression state addition.LeftExpression
+
+    match optionLeftType with
+    | Some leftType ->
+        let (state, optionRightType) = checkExpression state addition.RightExpression
+
+        match optionRightType with
+        | Some rightType ->
+            if leftType = rightType then
+                (state, Some leftType)
+            else
+                let error = compile_error(
+                    description = $"Can't add {rightType} to {leftType}.",
+                    position = text_position(file_name = "", line_index = 0u, column_index = 0u)
+                )
+
+                (
+                    { state with Errors = state.Errors @ [error]},
+                    None
+                )
+        | None -> (state, None)
+    | None -> (state, None)
 
 and checkSymbol (state: TypeCheckerState) (symbol: Symbol): TypeCheckerState * Option<PrestoType> =
     match symbol with
@@ -416,6 +440,7 @@ and checkExpression (state: TypeCheckerState) (expression: Expression): TypeChec
             | FunctionCallExpression call -> checkFunctionCall state call
             | BlockExpression block -> checkBlock state block
             | MemberAccessExpression memberAccess -> checkMemberAccess state memberAccess
+            | AdditionExpression addition -> checkAddition state addition
             | GenericInstantiationExpression genericInstantiation -> checkGenericInstantiation state genericInstantiation
             | SymbolReference token -> checkSymbolReference state token expression.Id
             | NumberLiteralExpression number -> checkNumberLiteral state number

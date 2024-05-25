@@ -306,6 +306,14 @@ let iterateTokenize (state: tokenize_state): tokenize_state =
             readSingleCharToken state token_type.colon
         else if nextChar = '.' then
             readSingleCharToken state token_type.period
+        else if nextChar = '+' then
+            readSingleCharToken state token_type.plus_sign
+        else if nextChar = '-' then
+            readSingleCharToken state token_type.hyphen
+        else if nextChar = '*' then
+            readSingleCharToken state token_type.asterisk
+        else if nextChar = '/' then
+            readSingleCharToken state token_type.forward_slash
         else if nextChar = ''' then
             let (_, state) = readExpectedChar state '\''
             let (charText, state) = takeCharsWhile state (fun x -> x <> '\'')
