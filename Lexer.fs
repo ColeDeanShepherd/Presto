@@ -87,6 +87,20 @@ let rec appendCharsWhile (state: tokenize_state) (predicate: char -> bool) (str:
 let takeCharsWhile (state: tokenize_state) (predicate: char -> bool): string * tokenize_state =
     appendCharsWhile state predicate ""
 
+let rec appendCharsWhileWithIndex (state: tokenize_state) (predicate: int -> char -> bool) (str: string) (charIndex: int): string * tokenize_state =
+    if is_done state then (str, state)
+    else
+        let nextChar = peekChar state
+
+        if predicate charIndex nextChar then
+            let (nextChar, nextState) = readChar state
+
+            appendCharsWhileWithIndex nextState predicate (str + nextChar.ToString()) (charIndex + 1)
+        else (str, state)
+
+let takeCharsWhileWithIndex (state: tokenize_state) (predicate: int -> char -> bool): string * tokenize_state =
+    appendCharsWhileWithIndex state predicate "" 0
+
 let readSingleCharToken (state: tokenize_state) (tokenType: token_type): tokenize_state =
     let startPosition = state.position
     let (nextChar, state) = readChar state
@@ -234,7 +248,7 @@ let rec readComment (state: tokenize_state): tokenize_state =
         position = state.position
     )
 
-let isIdentifierChar (c: char) = (Char.IsLetter c) || (c = '_')
+let isIdentifierChar (i: int) (c: char) = (Char.IsLetter c) || (c = '_') || ((i > 0) && Char.IsAsciiDigit c)
 
 let iterateTokenize (state: tokenize_state): tokenize_state =
     if state.text_left.Length = 0 then state
@@ -246,8 +260,8 @@ let iterateTokenize (state: tokenize_state): tokenize_state =
             readWhitespace state
         else if nextChar = '#' then
             readComment state
-        else if isIdentifierChar nextChar then
-            let (tokenText, nextState) = takeCharsWhile state isIdentifierChar
+        else if isIdentifierChar 0 nextChar then
+            let (tokenText, nextState) = takeCharsWhileWithIndex state isIdentifierChar
             let tokenType =
                 match tokenText with
                 | "fn" -> token_type.fn_keyword
