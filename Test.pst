@@ -1,9 +1,151 @@
-﻿#main = fn (console: Console): nothing -> {
+﻿# 1. Hello, World!
+#
+#main = fn (console: Console) ->
 #    print_line(console, "Hello, world!")
-#}
 
-main = fn (console: Console): nothing -> {
+# 2. Basic Arithmetic
+
+main = fn (console: Console) -> {
     a = 5
     b = 3
-    print_line(console, concatenate("Sum: ", to_string(sum(a, b))))
+    print_line(console, "Sum: " + to_string(a + b))
 }
+
+# 3. User Input
+#
+#main = fn (console: Console): nothing -> {
+#    print(console, "Enter your name: ")
+#    name = read_line(console)
+#    print_line(console, concatenate(concatenate("Hello, ", name), "!"))
+#}
+#
+# 4. Simple Calculator
+#
+#main = fn (console: Console): nothing -> {
+#    print(console, "Enter first number: ")
+#    num1 = parse_real(read_line(console))
+#
+#    print(console, "Enter second number: ")
+#    num2 = parse_real(read_line(console))
+#
+#    print(console, "Enter operation (+, -, *, /): ")
+#    operation = read_line(console)
+#
+#    if operation == '+':
+#        print_line(console, "Result: " + to_string(num1 + num2))
+#    elif operation == '-':
+#        print_line(console, "Result: " + to_string(num1 - num2))
+#    elif operation == '*':
+#        print_line(console, "Result: " + to_string(num1 * num2))
+#    elif operation == '/':
+#        print_line(console, "Result: " + to_string(num1 / num2))
+#    else:
+#        print_line(console, "Invalid operation")
+#}
+#
+# 5. Temperature Converter
+#def celsius_to_fahrenheit(celsius):
+#    return (celsius * 9/5) + 32
+#
+#def fahrenheit_to_celsius(fahrenheit):
+#    return (fahrenheit - 32) * 5/9
+#
+#temp = float(input("Enter temperature: "))
+#unit = input("Is this in Celsius or Fahrenheit (C/F)? ")
+#
+#if unit.upper() == 'C':
+#    print("Temperature in Fahrenheit:", celsius_to_fahrenheit(temp))
+#elif unit.upper() == 'F':
+#    print("Temperature in Celsius:", fahrenheit_to_celsius(temp))
+#else:
+#    print("Invalid unit")
+#
+# 6. Number Guessing Game
+#
+#import random
+#
+#def guessing_game():
+#    number = random.randint(1, 100)
+#    guess = None
+#    
+#    while guess != number:
+#        guess = int(input("Guess a number between 1 and 100: "))
+#        
+#        if guess < number:
+#            print("Too low!")
+#        elif guess > number:
+#            print("Too high!")
+#    
+#    print("Congratulations! You guessed the correct number.")
+#
+# 8. Basic To-Do List
+#def todo_list():
+#    tasks = []
+#    
+#    while True:
+#        print("\nTo-Do List:")
+#        for i, task in enumerate(tasks, 1):
+#            print(f"{i}. {task}")
+#        
+#        print("\nOptions:")
+#        print("1. Add task")
+#        print("2. Remove task")
+#        print("3. Exit")
+#        
+#        choice = input("Choose an option: ")
+#        
+#        if choice == '1':
+#            task = input("Enter a new task: ")
+#            tasks.append(task)
+#        elif choice == '2':
+#            task_num = int(input("Enter the task number to remove: "))
+#            if 1 <= task_num <= len(tasks):
+#                tasks.pop(task_num - 1)
+#            else:
+#                print("Invalid task number.")
+#        elif choice == '3':
+#            break
+#        else:
+#            print("Invalid choice. Please choose a valid option.")
+#    
+#    print("Goodbye!")
+#
+#9. Fibonacci Sequence Generator
+#def fibonacci(n):
+#    sequence = [0, 1]
+#    while len(sequence) < n:
+#        sequence.append(sequence[-1] + sequence[-2])
+#    return sequence
+#
+#num_terms = int(input("Enter the number of terms for the Fibonacci sequence: "))
+#fib_sequence = fibonacci(num_terms)
+#print("Fibonacci sequence:", fib_sequence)
+
+# 10. Basic File I/O
+#def file_io():
+#    filename = "example.txt"
+#    
+#    # Writing to a file
+#    with open(filename, 'w') as file:
+#        file.write("Hello, world!\n")
+#        file.write("This is a sample file.\n")
+#    
+#    # Reading from a file
+#    with open(filename, 'r') as file:
+#        content = file.read()
+#    
+#    print("File content:")
+#    print(content)
+
+#11. Basic Sorting Algorithm (Bubble Sort)
+#def bubble_sort(arr):
+#    n = len(arr)
+#    for i in range(n):
+#        for j in range(0, n-i-1):
+#            if arr[j] > arr[j+1]:
+#                arr[j], arr[j+1] = arr[j+1], arr[j]
+#    return arr
+#
+#numbers = [64, 34, 25, 12, 22, 11, 90]
+#sorted_numbers = bubble_sort(numbers)
+#print("Sorted list:", sorted_numbers)

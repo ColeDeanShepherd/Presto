@@ -155,6 +155,17 @@ let getUnexpectedTokenError (state: ParseState) (expectedTokenType: token_type) 
         position = currentTextPosition state
     )
 
+let tryPeekExpectedTokenAfterTrivia (state: ParseState) (expectedTokenType: token_type): Option<token> * ParseState =
+    let (optionNextToken, state) = peekTokenAfterTrivia state
+
+    match optionNextToken with
+    | Some nextToken ->
+        if nextToken._type = expectedTokenType then
+            (Some nextToken, state)
+        else
+            (None, state)
+    | None -> (None, state)
+
 let peekExpectedTokenAfterTrivia (state: ParseState) (expectedTokenType: token_type): Option<token> * ParseState =
     let (optionNextToken, state) = peekTokenAfterTrivia state
 
@@ -621,7 +632,7 @@ and parseFunction (state: ParseState): Option<ParseNode> * ParseState =
                 let (optionRightParen, state) = parseToken state token_type.right_paren
 
                 // If next token is ':', then parse it & a return type expression.
-                let (optionColonToken, state) = peekExpectedTokenAfterTrivia state token_type.colon
+                let (optionColonToken, state) = tryPeekExpectedTokenAfterTrivia state token_type.colon
                 let (returnTypeNodes, state) =
                     match optionColonToken with
                     | Some _ -> parseFunctionReturnType state

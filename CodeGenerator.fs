@@ -179,6 +179,7 @@ and generateTypeReference (state: CodeGeneratorState) (prestoType: PrestoType): 
         | Text _ -> "string"
         | Boolean -> "bool"
         | Character -> "char"
+        | String -> "string"
         | Type -> "Type"
         | RecordType (scopeId, _) ->
             let canonicalName = state.Program.TypeCanonicalNamesByScopeId[scopeId]
