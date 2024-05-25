@@ -719,6 +719,21 @@ let getInitialScopesById =
                 .Add("product", BuiltInSymbol ("product", FunctionType (System.Guid.NewGuid(), [], [PrestoType.Nat; PrestoType.Nat], PrestoType.Nat)))
                 .Add("quotient", BuiltInSymbol ("quotient", FunctionType (System.Guid.NewGuid(), [], [PrestoType.Nat; PrestoType.Nat], PrestoType.Nat)))
 
+                .Add("concatenate", BuiltInSymbol ("concatenate", FunctionType (System.Guid.NewGuid(), [], [PrestoType.String; PrestoType.String], PrestoType.String)))
+                
+                .Add(
+                    "to_string",
+                    BuiltInSymbol (
+                        "to_string",
+                        FunctionType (
+                            System.Guid.NewGuid(),
+                            ["t"],
+                            [TypeParameterType "t"],
+                            PrestoType.String
+                        )
+                    )
+                )
+
                 .Add(
                     "last_or_default",
                     BuiltInSymbol (

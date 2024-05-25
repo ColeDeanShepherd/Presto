@@ -1,3 +1,9 @@
-﻿main = fn (console: Console): nothing -> {
-    print_line(console, "Hello, world!")
+﻿#main = fn (console: Console): nothing -> {
+#    print_line(console, "Hello, world!")
+#}
+
+main = fn (console: Console): nothing -> {
+    a = 5
+    b = 3
+    print_line(console, concatenate("Sum: ", to_string(sum(a, b))))
 }

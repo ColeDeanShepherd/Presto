@@ -136,7 +136,9 @@ for filePath in compileOptions.FilePaths do
     
     program <- newProgram
 
-if compileOptions.CompileGeneratedCSharp then
+let prestoCompilerSucceeded = generatedFilePaths.Length = compileOptions.FilePaths.Length
+
+if prestoCompilerSucceeded && compileOptions.CompileGeneratedCSharp then
     let runtimeCSharpFilePaths = Directory.GetFiles("../../../Presto.Runtime", "*.cs")
     let filePathsToCompile = Set.ofList (generatedFilePaths @ (List.ofArray runtimeCSharpFilePaths))
     compileCSharpFiles filePathsToCompile compileOptions.OutputPath

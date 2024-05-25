@@ -10,6 +10,9 @@ using System;
 public static void no_op() {{
 
 };}
+public static void ignore<t>(t x) {{
+
+};}
 public static t identity<t>(t x) {return x;}
 
 }
