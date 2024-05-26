@@ -24,4 +24,5 @@ public static partial class PrestoProgram
     public static nat sum(nat a, nat b) => a + b;
     public static string to_string<T>(T x) => x.ToString();
     public static double parse_real(string s) => double.Parse(s);
+    public static string uppercase(string s) => s.ToUpperInvariant();
 }

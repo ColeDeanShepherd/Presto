@@ -48,6 +48,7 @@ type ParseNodeType =
     | Multiplication
     | Division
     | Equals
+    | ParenthesizedExpression
 
 type ParseNode = {
     Type: ParseNodeType
@@ -847,6 +848,34 @@ and parsePrefixExpression (state: ParseState): Option<ParseNode> * ParseState =
             wrapInExpressionNode (parseToken state token_type.character_literal)
         | token_type.string_literal ->
             wrapInExpressionNode (parseToken state token_type.string_literal)
+        | token_type.left_paren ->
+            let (optionLeftParen, state) = readExpectedToken state token_type.left_paren
+            let (optionInnerExpr, state) = parseExpression state
+
+
+            //let (optionResult, state) = wrapInExpressionNode (parseExpression state)
+
+            match optionInnerExpr with
+            | Some innerExpr ->
+                let (optionRightParen, state) = readExpectedToken state token_type.right_paren
+            
+                match optionRightParen with
+                | Some rightParen ->
+                    let result =
+                        {
+                            Type = ParseNodeType.ParenthesizedExpression
+                            Children = [innerExpr]
+                            Token = None
+                        }
+                    let result =
+                        {
+                            Type = ParseNodeType.Expression
+                            Children = [result]
+                            Token = None
+                        }
+                    (Some result, state)
+                | None -> (None, state)
+            | None -> (None, state)
         | _ ->
             let error = compile_error(
                 description = $"Encountered unexpected token: \"{nextToken._text}\"",
@@ -915,7 +944,13 @@ and tryParsePostfixAndInfixExpressions (state: ParseState) (prefixExpression: Pa
 
                     match optionFunctionCall with
                     | Some functionCall ->
-                        tryParsePostfixAndInfixExpressions state functionCall minBindingPower
+                        let expressionNode =
+                            {
+                                Type = ParseNodeType.Expression
+                                Children = [functionCall]
+                                Token = None
+                            }
+                        tryParsePostfixAndInfixExpressions state expressionNode minBindingPower
                     | None ->
                         (None, state)
                 else if nextToken._type = token_type.left_square_bracket then
@@ -927,7 +962,13 @@ and tryParsePostfixAndInfixExpressions (state: ParseState) (prefixExpression: Pa
 
                     match optionGenericInstantiation with
                     | Some genericInstantiation ->
-                        tryParsePostfixAndInfixExpressions state genericInstantiation minBindingPower
+                        let expressionNode =
+                            {
+                                Type = ParseNodeType.Expression
+                                Children = [genericInstantiation]
+                                Token = None
+                            }
+                        tryParsePostfixAndInfixExpressions state expressionNode minBindingPower
                     | None ->
                         (None, state)
                 else

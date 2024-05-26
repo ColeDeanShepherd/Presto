@@ -161,7 +161,12 @@ and generateBinaryOperatorType (state: CodeGeneratorState) (_type: BinaryOperato
 
 and generateNumberLiteral (state: CodeGeneratorState) (numberLiteral: NumberLiteral): CodeGeneratorState =
     let state = generateString state numberLiteral.Token._text
-    let state = generateString state "u"
+
+    let state =
+        if numberLiteral.Token._text.Contains('.') then
+            state
+        else
+            generateString state "u"
 
     state
 
@@ -172,6 +177,13 @@ and generateCharacterLiteral (state: CodeGeneratorState) (characterLiteral: Char
 
 and generateStringLiteral (state: CodeGeneratorState) (stringLiteral: StringLiteral): CodeGeneratorState =
     let state = generateString state stringLiteral.Token._text
+
+    state
+
+and generateParenthesizedExpression (state: CodeGeneratorState) (pe: ParenthesizedExpression2): CodeGeneratorState =
+    let state = generateString state "("
+    let state = generateExpression state pe.InnerExpression
+    let state = generateString state ")"
 
     state
 
@@ -190,6 +202,7 @@ and generateExpressionInternal (state: CodeGeneratorState) (expression: Expressi
     | NumberLiteralExpression number -> generateNumberLiteral state number
     | CharacterLiteralExpression character -> generateCharacterLiteral state character
     | StringLiteralExpression string -> generateStringLiteral state string
+    | ParenExpr pe -> generateParenthesizedExpression state pe
     
 and generateExpression (state: CodeGeneratorState) (expression: Expression): CodeGeneratorState =
     generateExpressionInternal state expression false

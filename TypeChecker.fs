@@ -426,7 +426,18 @@ and checkSymbolReference (state: TypeCheckerState) (token: token) (expressionId:
     | None -> (state, None)
 
 and checkNumberLiteral (state: TypeCheckerState) (numberLiteral: NumberLiteral): TypeCheckerState * Option<PrestoType> =
-    (state, Some PrestoType.Nat)
+    (
+        state,
+        Some (
+            if numberLiteral.Token._text.Contains('.') then
+                PrestoType.Real
+            else
+                PrestoType.Nat
+        )
+    )
+
+and checkParenExpr (state: TypeCheckerState) (parenExpr: ParenthesizedExpression2): TypeCheckerState * Option<PrestoType> =
+    checkExpression state parenExpr.InnerExpression
 
 and checkCharacterLiteral (state: TypeCheckerState) (characterLiteral: CharacterLiteral): TypeCheckerState * Option<PrestoType> =
     (state, Some PrestoType.Character)
@@ -455,6 +466,7 @@ and checkExpression (state: TypeCheckerState) (expression: Expression): TypeChec
             | NumberLiteralExpression number -> checkNumberLiteral state number
             | CharacterLiteralExpression characterLiteral -> checkCharacterLiteral state characterLiteral
             | StringLiteralExpression stringLiteral -> checkStringLiteral state stringLiteral
+            | ParenExpr parenthesizedExpression -> checkParenExpr state parenthesizedExpression
             | TypeClassExpression typeClass -> failwith "not implemented"
             | _ -> failwith "not implemented"
 

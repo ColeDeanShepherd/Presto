@@ -33,6 +33,15 @@ let tryPeekExpectedChar (state: tokenize_state) (expectedChar: char): Option<cha
         else None
     else None
 
+let isNextCharEqualTo (state: tokenize_state) (expectedChar: char): bool =
+    match (tryPeekExpectedChar state expectedChar) with
+    | Some _ -> true
+    | None -> false
+
+let tryPeekChar (state: tokenize_state): Option<char> =
+    if is_not_done state then Some state.text_left[0]
+    else None
+
 let peekChar (state: tokenize_state): char =
     if is_not_done state then state.text_left[0]
     else failwith "Unexpectedly reached the end of the source code."
@@ -289,6 +298,16 @@ let iterateTokenize (state: tokenize_state): tokenize_state =
             )
         else if Char.IsDigit nextChar then
             let (tokenText, nextState) = takeCharsWhile state Char.IsDigit
+
+            let (tokenText, nextState) =
+                if isNextCharEqualTo nextState '.' then
+                    let (_, nextState) = readExpectedChar nextState '.'
+                    let (tokenTextAfterDecimal, nextState) = takeCharsWhile nextState Char.IsDigit
+
+                    (tokenText + "." + tokenTextAfterDecimal, nextState)
+                else
+                    (tokenText, nextState)
+
             let tokenType = token_type.number_literal
 
             let nextToken = token(_type = tokenType, _text = tokenText, position = startPosition, was_inserted = false)

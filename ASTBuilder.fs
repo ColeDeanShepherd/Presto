@@ -85,6 +85,7 @@ and ExpressionValue =
     | NumberLiteralExpression of NumberLiteral
     | CharacterLiteralExpression of CharacterLiteral
     | StringLiteralExpression of StringLiteral
+    | ParenExpr of ParenthesizedExpression2
 and Binding = {
     NameToken: token
     Value: Expression
@@ -126,6 +127,9 @@ and BinaryOperator = {
     Type: BinaryOperatorType
     LeftExpression: Expression;
     RightExpression: Expression;
+}
+and ParenthesizedExpression2 = {
+    InnerExpression: Expression;
 }
 and RecordField = {
     NameToken: token
@@ -670,6 +674,14 @@ and buildExpression (state: ASTBuilderState) (node: ParseNode): (Option<Expressi
         match optionGenericInstantiation with
         | Some genericInstantiation -> (Some (newExpression (GenericInstantiationExpression genericInstantiation)), state)
         | None -> (None, state)
+    | ParseNodeType.ParenthesizedExpression ->
+        let (optionInnerExpr, state) = buildExpression state child.Children[0]
+
+        match optionInnerExpr with
+        | Some innerExpr ->
+            let a: ParenthesizedExpression2 = { InnerExpression = innerExpr } 
+            (Some (newExpression (ParenExpr a)), state)
+        | None -> (None, state)
     | ParseNodeType.Expression ->
         buildExpression state child
     | ParseNodeType.Token when child.Token.Value._type = token_type.identifier ->
@@ -782,6 +794,7 @@ let getInitialScopesById =
                 .Add("concatenate", BuiltInSymbol ("concatenate", FunctionType (System.Guid.NewGuid(), [], [PrestoType.String; PrestoType.String], PrestoType.String)))
 
                 .Add("parse_real", BuiltInSymbol ("parse_real", FunctionType (System.Guid.NewGuid(), [], [PrestoType.String], PrestoType.Real)))
+                .Add("uppercase", BuiltInSymbol ("uppercase", FunctionType (System.Guid.NewGuid(), [], [PrestoType.String], PrestoType.String)))
                 
                 .Add(
                     "to_string",
