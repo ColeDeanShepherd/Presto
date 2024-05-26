@@ -37,6 +37,12 @@ let peekChar (state: tokenize_state): char =
     if is_not_done state then state.text_left[0]
     else failwith "Unexpectedly reached the end of the source code."
 
+let tryLookaheadChar (state: tokenize_state) (numTokensToSkip: int): Option<char> =
+    if numTokensToSkip < state.text_left.Length then
+        Some state.text_left[numTokensToSkip]
+    else
+        None
+
 let tryReadChar (state: tokenize_state): Option<char> * tokenize_state = 
     if is_done state then (None, state)
     else
@@ -295,7 +301,18 @@ let iterateTokenize (state: tokenize_state): tokenize_state =
                 position = nextState.position
             )
         else if nextChar = '=' then
-            readSingleCharToken state token_type.equals
+            let optionNextNextChar = tryLookaheadChar state 1
+
+            match optionNextNextChar with
+            | Some nextNextChar when nextNextChar = '=' -> 
+                tokenize_state(
+                    tokens = listAppend state.tokens (token(_type = token_type.equality_operator, _text = "==", position = startPosition, was_inserted = false)),
+                    errors = state.errors,
+                    indentation_stack = state.indentation_stack,
+                    text_left = state.text_left.Substring(2),
+                    position = state.position
+                )
+            | _ -> readSingleCharToken state token_type.equals
         else if nextChar = '-' then
             readSingleCharToken state token_type.minus
         else if nextChar = '<' then
@@ -322,8 +339,6 @@ let iterateTokenize (state: tokenize_state): tokenize_state =
             readSingleCharToken state token_type.period
         else if nextChar = '+' then
             readSingleCharToken state token_type.plus_sign
-        else if nextChar = '-' then
-            readSingleCharToken state token_type.hyphen
         else if nextChar = '*' then
             readSingleCharToken state token_type.asterisk
         else if nextChar = '/' then

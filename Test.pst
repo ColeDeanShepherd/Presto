@@ -13,36 +13,36 @@
 
 # 3. User Input
 
-main = fn (console: Console): nothing -> {
-    print(console, "Enter your name: ")
-    name = read_line(console)
-    print_line(console, "Hello, " + name + "!")
-}
+#main = fn (console: Console) -> {
+#    print(console, "Enter your name: ")
+#    name = read_line(console)
+#    print_line(console, "Hello, " + name + "!")
+#}
 
 # 4. Simple Calculator
-#
-#main = fn (console: Console): nothing -> {
-#    print(console, "Enter first number: ")
-#    num1 = parse_real(read_line(console))
-#
-#    print(console, "Enter second number: ")
-#    num2 = parse_real(read_line(console))
-#
-#    print(console, "Enter operation (+, -, *, /): ")
-#    operation = read_line(console)
-#
-#    if operation == '+':
-#        print_line(console, "Result: " + to_string(num1 + num2))
-#    elif operation == '-':
-#        print_line(console, "Result: " + to_string(num1 - num2))
-#    elif operation == '*':
-#        print_line(console, "Result: " + to_string(num1 * num2))
-#    elif operation == '/':
-#        print_line(console, "Result: " + to_string(num1 / num2))
-#    else:
-#        print_line(console, "Invalid operation")
-#}
-#
+
+main = fn (console: Console) -> {
+    print(console, "Enter first number: ")
+    num1 = parse_real(read_line(console))
+
+    print(console, "Enter second number: ")
+    num2 = parse_real(read_line(console))
+
+    print(console, "Enter operation (+, -, *, /): ")
+    operation = read_line(console)
+
+    if operation == "+" then
+        print_line(console, "Result: " + to_string(num1 + num2))
+    else if operation == "-" then
+        print_line(console, "Result: " + to_string(num1 - num2))
+    else if operation == "*" then
+        print_line(console, "Result: " + to_string(num1 * num2))
+    else if operation == "/" then
+        print_line(console, "Result: " + to_string(num1 / num2))
+    else
+        print_line(console, "Invalid operation")
+}
+
 # 5. Temperature Converter
 #def celsius_to_fahrenheit(celsius):
 #    return (celsius * 9/5) + 32

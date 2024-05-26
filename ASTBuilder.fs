@@ -48,6 +48,7 @@ type PrestoType =
     | Nothing
     | Boolean
     | Nat
+    | Real
     | Character
     | String
     | Text of System.Guid
@@ -78,7 +79,7 @@ and ExpressionValue =
     | BlockExpression of Block
     | FunctionCallExpression of FunctionCall
     | MemberAccessExpression of MemberAccess
-    | AdditionExpression of AdditionOperator
+    | BinaryOperatorExpression of BinaryOperator
     | GenericInstantiationExpression of GenericInstantiation
     | SymbolReference of token
     | NumberLiteralExpression of NumberLiteral
@@ -115,7 +116,14 @@ and MemberAccess = {
     LeftExpression: Expression;
     RightIdentifier: token;
 }
-and AdditionOperator = {
+and BinaryOperatorType =
+    | Addition
+    | Subtraction
+    | Multiplication
+    | Division
+    | Equality
+and BinaryOperator = {
+    Type: BinaryOperatorType
     LeftExpression: Expression;
     RightExpression: Expression;
 }
@@ -537,9 +545,7 @@ and buildMemberAccess (state: ASTBuilderState) (node: ParseNode): (Option<Member
         (Some { LeftExpression = leftExpression; RightIdentifier = rightIdentifier.Token.Value; }, state)
     | None -> (None, state)
 
-and buildAddition (state: ASTBuilderState) (node: ParseNode): (Option<AdditionOperator> * ASTBuilderState) =
-    assert (node.Type = ParseNodeType.Addition)
-
+and buildBinaryOperator (state: ASTBuilderState) (node: ParseNode) (_type: BinaryOperatorType): (Option<BinaryOperator> * ASTBuilderState) =
     let expressionNodes = childrenOfType node ParseNodeType.Expression
     let leftExpressionNode = expressionNodes[0]
     let (optionLeftExpression, state) = buildExpression state leftExpressionNode
@@ -551,7 +557,7 @@ and buildAddition (state: ASTBuilderState) (node: ParseNode): (Option<AdditionOp
 
         match optionRightExpression with
         | Some rightExpression ->
-            (Some { LeftExpression = leftExpression; RightExpression = rightExpression; }, state)
+            (Some { Type =_type; LeftExpression = leftExpression; RightExpression = rightExpression; }, state)
         | None -> (None, state)
     | None -> (None, state)
 
@@ -629,10 +635,34 @@ and buildExpression (state: ASTBuilderState) (node: ParseNode): (Option<Expressi
         | Some memberAccess -> (Some (newExpression (MemberAccessExpression memberAccess)), state)
         | None -> (None, state)
     | ParseNodeType.Addition ->
-        let (optionAddition, state) = buildAddition state child
+        let (optionOperator, state) = buildBinaryOperator state child BinaryOperatorType.Addition
 
-        match optionAddition with
-        | Some addition -> (Some (newExpression (AdditionExpression addition)), state)
+        match optionOperator with
+        | Some operator -> (Some (newExpression (BinaryOperatorExpression operator)), state)
+        | None -> (None, state)
+    | ParseNodeType.Subtraction ->
+        let (optionOperator, state) = buildBinaryOperator state child BinaryOperatorType.Subtraction
+
+        match optionOperator with
+        | Some operator -> (Some (newExpression (BinaryOperatorExpression operator)), state)
+        | None -> (None, state)
+    | ParseNodeType.Multiplication ->
+        let (optionOperator, state) = buildBinaryOperator state child BinaryOperatorType.Multiplication
+
+        match optionOperator with
+        | Some operator -> (Some (newExpression (BinaryOperatorExpression operator)), state)
+        | None -> (None, state)
+    | ParseNodeType.Division ->
+        let (optionOperator, state) = buildBinaryOperator state child BinaryOperatorType.Division
+
+        match optionOperator with
+        | Some operator -> (Some (newExpression (BinaryOperatorExpression operator)), state)
+        | None -> (None, state)
+    | ParseNodeType.Equals ->
+        let (optionOperator, state) = buildBinaryOperator state child BinaryOperatorType.Equality
+
+        match optionOperator with
+        | Some operator -> (Some (newExpression (BinaryOperatorExpression operator)), state)
         | None -> (None, state)
     | ParseNodeType.GenericInstantiation ->
         let (optionGenericInstantiation, state) = buildGenericInstantiation state child
@@ -704,6 +734,7 @@ let getInitialScopesById =
                 .Add("true", BuiltInSymbol ("true", PrestoType.Boolean))
                 .Add("false", BuiltInSymbol ("false", PrestoType.Boolean))
                 .Add("nat", BuiltInSymbol ("nat", PrestoType.Nat))
+                .Add("real", BuiltInSymbol ("real", PrestoType.Real))
                 .Add("char", BuiltInSymbol ("char", PrestoType.Character))
                 .Add("text", BuiltInSymbol ("text", PrestoType.Text textScopeId))
 
@@ -749,6 +780,8 @@ let getInitialScopesById =
                 .Add("quotient", BuiltInSymbol ("quotient", FunctionType (System.Guid.NewGuid(), [], [PrestoType.Nat; PrestoType.Nat], PrestoType.Nat)))
 
                 .Add("concatenate", BuiltInSymbol ("concatenate", FunctionType (System.Guid.NewGuid(), [], [PrestoType.String; PrestoType.String], PrestoType.String)))
+
+                .Add("parse_real", BuiltInSymbol ("parse_real", FunctionType (System.Guid.NewGuid(), [], [PrestoType.String], PrestoType.Real)))
                 
                 .Add(
                     "to_string",

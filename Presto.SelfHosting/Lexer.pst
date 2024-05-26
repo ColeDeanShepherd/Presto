@@ -25,9 +25,9 @@ token_type = union
     comment
     string_literal
     plus_sign
-    hyphen
     forward_slash
     asterisk
+    equality_operator
 
 token = record
     _type: token_type

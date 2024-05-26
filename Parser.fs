@@ -44,6 +44,10 @@ type ParseNodeType =
     | Whitespace
     | Comment
     | Addition
+    | Subtraction
+    | Multiplication
+    | Division
+    | Equals
 
 type ParseNode = {
     Type: ParseNodeType
@@ -152,7 +156,7 @@ let getUnexpectedTokenError (state: ParseState) (expectedTokenType: token_type) 
             ""
 
     compile_error(
-        description = $"Encountered unexpected {virtualErrorDescriptionPart}token: \"{nextToken._text}\"",
+        description = $"Expected {expectedTokenType} but encountered unexpected {virtualErrorDescriptionPart}token: \"{nextToken._text}\"",
         position = currentTextPosition state
     )
 
@@ -887,7 +891,8 @@ and getInfixBindingPowers (tokenType: token_type): Option<int * int> =
     | token_type.asterisk -> Some (7, 8)
     | token_type.forward_slash -> Some (7, 8)
     | token_type.plus_sign -> Some (5, 6)
-    | token_type.hyphen -> Some (5, 6)
+    | token_type.minus -> Some (5, 6)
+    | token_type.equality_operator -> Some (3, 4)
     | _ -> None
 
 and tryParsePostfixAndInfixExpressions (state: ParseState) (prefixExpression: ParseNode) (minBindingPower: int): Option<ParseNode> * ParseState =
@@ -937,6 +942,37 @@ and tryParsePostfixAndInfixExpressions (state: ParseState) (prefixExpression: Pa
                 if leftBindingPower < minBindingPower then
                     (Some prefixExpression, state)
                 else
+                    let parseSingleTokenBinaryOperator (tokenType: token_type) (parseNodeType: ParseNodeType) =
+                        let (whitespace, state) = parseTrivia state
+                        let prefixExpression = { prefixExpression with Children = prefixExpression.Children @ whitespace }
+
+                        let (optionBinOpToken, state) = parseToken state tokenType
+
+                        match optionBinOpToken with
+                        | Some binOpToken ->
+                            let (whitespace1, state) = parseTrivia state
+                            let (optionRightExpression, state) = parseExpressionInternal state rightBindingPower
+
+                            match optionRightExpression with
+                            | Some rightExpression ->
+                                let accessNode =
+                                    {
+                                        Type = parseNodeType
+                                        Children = List.concat [ [prefixExpression]; [binOpToken]; whitespace1; [rightExpression]; ]
+                                        Token = None
+                                    }
+
+                                let expressionNode =
+                                    {
+                                        Type = ParseNodeType.Expression
+                                        Children = [accessNode]
+                                        Token = None
+                                    }
+                            
+                                tryParsePostfixAndInfixExpressions state expressionNode minBindingPower
+                            | None -> (None, state)
+                        | None -> (None, state)
+
                     match nextToken._type with
                     | token_type.period ->
                         let (whitespace, state) = parseTrivia state
@@ -949,35 +985,15 @@ and tryParsePostfixAndInfixExpressions (state: ParseState) (prefixExpression: Pa
                             tryParsePostfixAndInfixExpressions state memberAccess minBindingPower
                         | None -> (None, state)
                     | token_type.plus_sign ->
-                        let (whitespace, state) = parseTrivia state
-                        let prefixExpression = { prefixExpression with Children = prefixExpression.Children @ whitespace }
-
-                        let (optionPlusSign, state) = parseToken state token_type.plus_sign
-
-                        match optionPlusSign with
-                        | Some plusSign ->
-                            let (whitespace1, state) = parseTrivia state
-                            let (optionRightExpression, state) = parseExpressionInternal state rightBindingPower
-
-                            match optionRightExpression with
-                            | Some rightExpression ->
-                                let accessNode =
-                                    {
-                                        Type = ParseNodeType.Addition
-                                        Children = List.concat [ [prefixExpression]; [plusSign]; whitespace1; [rightExpression]; ]
-                                        Token = None
-                                    }
-
-                                let additionExpression =
-                                    {
-                                        Type = ParseNodeType.Expression
-                                        Children = [accessNode]
-                                        Token = None
-                                    }
-                            
-                                tryParsePostfixAndInfixExpressions state additionExpression minBindingPower
-                            | None -> (None, state)
-                        | None -> (None, state)
+                        parseSingleTokenBinaryOperator token_type.plus_sign ParseNodeType.Addition
+                    | token_type.minus ->
+                        parseSingleTokenBinaryOperator token_type.minus ParseNodeType.Subtraction
+                    | token_type.asterisk ->
+                        parseSingleTokenBinaryOperator token_type.asterisk ParseNodeType.Multiplication
+                    | token_type.forward_slash ->
+                        parseSingleTokenBinaryOperator token_type.forward_slash ParseNodeType.Division
+                    | token_type.equality_operator ->
+                        parseSingleTokenBinaryOperator token_type.equality_operator ParseNodeType.Equals
                     | _ -> failwith "Assert failed"
             | None -> (Some prefixExpression, state)
     | None -> (Some prefixExpression, state)

@@ -114,6 +114,11 @@ and generateBlockChild (state: CodeGeneratorState) (blockChild: BlockChild): Cod
     | BlockChildBinding binding ->
         generateBinding state binding
     | BlockChildExpression expression ->
+        let state =
+            match expression.Value with
+            | BlockExpression block -> state
+            | _ -> generateString state "_ = "
+                    
         generateExpression state expression
 
 and generateBlock (state: CodeGeneratorState) (block: Block): CodeGeneratorState =
@@ -137,12 +142,22 @@ and generateMemberAccess (state: CodeGeneratorState) (memberAccess: MemberAccess
 
     state
 
-and generateAddition (state: CodeGeneratorState) (addition: AdditionOperator): CodeGeneratorState =
-    let state = generateExpression state addition.LeftExpression
-    let state = generateString state " + "
-    let state = generateExpression state addition.RightExpression
+and generateBinaryOperator (state: CodeGeneratorState) (binaryOperator: BinaryOperator): CodeGeneratorState =
+    let state = generateExpression state binaryOperator.LeftExpression
+    let state = generateString state " "
+    let state = generateBinaryOperatorType state binaryOperator.Type
+    let state = generateString state " "
+    let state = generateExpression state binaryOperator.RightExpression
 
     state
+
+and generateBinaryOperatorType (state: CodeGeneratorState) (_type: BinaryOperatorType): CodeGeneratorState =
+    match _type with
+    | BinaryOperatorType.Addition -> generateString state "+"
+    | BinaryOperatorType.Subtraction -> generateString state "-"
+    | BinaryOperatorType.Multiplication -> generateString state "*"
+    | BinaryOperatorType.Division -> generateString state "/"
+    | BinaryOperatorType.Equality -> generateString state "=="
 
 and generateNumberLiteral (state: CodeGeneratorState) (numberLiteral: NumberLiteral): CodeGeneratorState =
     let state = generateString state numberLiteral.Token._text
@@ -169,7 +184,7 @@ and generateExpressionInternal (state: CodeGeneratorState) (expression: Expressi
     | FunctionCallExpression call -> generateFunctionCallInternal state call isTypeExpression
     | BlockExpression block -> generateBlock state block
     | MemberAccessExpression memberAccess -> generateMemberAccess state memberAccess
-    | AdditionExpression addition -> generateAddition state addition
+    | BinaryOperatorExpression binaryOperator -> generateBinaryOperator state binaryOperator
     | SymbolReference symbol -> generateSymbol state symbol expression.Id
     | GenericInstantiationExpression genericInstantiation -> generateGenericInstantiation state genericInstantiation
     | NumberLiteralExpression number -> generateNumberLiteral state number
@@ -184,6 +199,7 @@ and generateTypeReference (state: CodeGeneratorState) (prestoType: PrestoType): 
         match prestoType with
         | Nothing -> "void"
         | Nat -> "nat"
+        | Real -> "real"
         | Text _ -> "string"
         | Boolean -> "bool"
         | Character -> "char"
@@ -326,6 +342,7 @@ let generatedCodeHeader =
     using System.Collections.Generic;
     
     using nat = System.UInt32;
+    using real = System.Double;
     
     using static Presto.Runtime.PrestoProgram;
     

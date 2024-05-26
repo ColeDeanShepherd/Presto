@@ -374,20 +374,29 @@ and checkMemberAccess (state: TypeCheckerState) (memberAccess: MemberAccess): Ty
         | None -> (state, None)
     | None -> (state, None)
         
-and checkAddition (state: TypeCheckerState) (addition: AdditionOperator): TypeCheckerState * Option<PrestoType> =
-    let (state, optionLeftType) = checkExpression state addition.LeftExpression
+and checkBinaryOperator (state: TypeCheckerState) (binaryOperator: BinaryOperator): TypeCheckerState * Option<PrestoType> =
+    let (state, optionLeftType) = checkExpression state binaryOperator.LeftExpression
 
     match optionLeftType with
     | Some leftType ->
-        let (state, optionRightType) = checkExpression state addition.RightExpression
+        let (state, optionRightType) = checkExpression state binaryOperator.RightExpression
 
         match optionRightType with
         | Some rightType ->
             if leftType = rightType then
-                (state, Some leftType)
+                let resultType =
+                    match binaryOperator.Type with
+                    | BinaryOperatorType.Addition -> leftType
+                    | BinaryOperatorType.Subtraction -> leftType
+                    | BinaryOperatorType.Multiplication -> leftType
+                    | BinaryOperatorType.Division -> leftType
+                    | BinaryOperatorType.Equality -> PrestoType.Boolean
+                    | _ -> failwith "Unknown binary operator type"
+
+                (state, Some resultType)
             else
                 let error = compile_error(
-                    description = $"Can't add {rightType} to {leftType}.",
+                    description = $"Left side ({leftType}) and right side ({rightType}) of binary operator ({binaryOperator.Type}) don't match.",
                     position = text_position(file_name = "", line_index = 0u, column_index = 0u)
                 )
 
@@ -440,7 +449,7 @@ and checkExpression (state: TypeCheckerState) (expression: Expression): TypeChec
             | FunctionCallExpression call -> checkFunctionCall state call
             | BlockExpression block -> checkBlock state block
             | MemberAccessExpression memberAccess -> checkMemberAccess state memberAccess
-            | AdditionExpression addition -> checkAddition state addition
+            | BinaryOperatorExpression binaryOperator -> checkBinaryOperator state binaryOperator
             | GenericInstantiationExpression genericInstantiation -> checkGenericInstantiation state genericInstantiation
             | SymbolReference token -> checkSymbolReference state token expression.Id
             | NumberLiteralExpression number -> checkNumberLiteral state number
