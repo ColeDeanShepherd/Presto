@@ -647,28 +647,23 @@ and parseFunction (state: ParseState): Option<ParseNode> * ParseState =
                 match optionRightParen with
                 | Some rightParen ->
                     let (whitespace6, state) = parseTrivia state
-                    let (optionMinus, state) = parseToken state token_type.minus
+                    let (optionRightArrow, state) = parseToken state token_type.right_arrow
 
-                    match optionMinus with
-                    | Some minus ->
-                        let (optionGreaterThan, state) = parseToken state token_type.greater_than
+                    match optionRightArrow with
+                    | Some rightArrow ->
+                        let (whitespace7, state) = parseTrivia state
+                        let (optionResult, state) = parseExpression state
 
-                        match optionGreaterThan with
-                        | Some greaterThan ->
-                            let (whitespace7, state) = parseTrivia state
-                            let (optionResult, state) = parseExpression state
-
-                            match optionResult with
-                            | Some result ->
-                                (
-                                    Some {
-                                        Type = ParseNodeType.Function
-                                        Children = List.concat [ [fnToken]; whitespace1; typeParametersNodes; [leftParen]; whitespace4; parameters; whitespace5; [rightParen]; returnTypeNodes; whitespace6; [minus]; [greaterThan]; whitespace7; [result] ]
-                                        Token = None
-                                    },
-                                    state
-                                )
-                            | None -> (None, state)
+                        match optionResult with
+                        | Some result ->
+                            (
+                                Some {
+                                    Type = ParseNodeType.Function
+                                    Children = List.concat [ [fnToken]; whitespace1; typeParametersNodes; [leftParen]; whitespace4; parameters; whitespace5; [rightParen]; returnTypeNodes; whitespace6; [rightArrow]; whitespace7; [result] ]
+                                    Token = None
+                                },
+                                state
+                            )
                         | None -> (None, state)
                     | None -> (None, state)
                 | None -> (None, state)
