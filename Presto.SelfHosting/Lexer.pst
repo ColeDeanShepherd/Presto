@@ -29,6 +29,7 @@ token_type = union
     asterisk
     equality_operator
     right_arrow
+    question_mark
 
 token = record
     _type: token_type

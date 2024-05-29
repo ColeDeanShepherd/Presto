@@ -19,7 +19,7 @@ let getTypeScopeId (state: TypeCheckerState) (prestoType: PrestoType): (Option<S
     match prestoType with
     | Text scopeId -> (Some scopeId, state)
     | RecordType (scopeId, _) -> (Some scopeId, state)
-    | UnionType scopeId -> (Some scopeId, state)
+    | UnionType (scopeId, typeParameters, constructors) -> (Some scopeId, state)
     | _ ->
         let error = compile_error(
             description = $"Couldn't access members of type: {prestoType}",
@@ -28,17 +28,17 @@ let getTypeScopeId (state: TypeCheckerState) (prestoType: PrestoType): (Option<S
 
         (None, { state with Errors = state.Errors @ [error] })
 
-let rec resolveSymbolInternal (state: TypeCheckerState) (scope: Scope) (nameToken: token): (Option<Symbol> * TypeCheckerState) =
-    if scope.SymbolsByName.ContainsKey nameToken._text then
-        (Some scope.SymbolsByName.[nameToken._text], state)
+let rec resolveSymbolInternal (state: TypeCheckerState) (scope: Scope) (name: string) (nameTokenPosition: text_position): (Option<Symbol> * TypeCheckerState) =
+    if scope.SymbolsByName.ContainsKey name then
+        (Some scope.SymbolsByName.[name], state)
     else if scope.ParentId.IsSome then
         let parentScope = state.ScopesById[scope.ParentId.Value]
 
-        resolveSymbolInternal state parentScope nameToken
+        resolveSymbolInternal state parentScope name nameTokenPosition
     else
         let error = compile_error(
-            description = $"Unknown name: {nameToken._text}",
-            position = nameToken.position
+            description = $"Unknown name: {name}",
+            position = nameTokenPosition
         )
         let errors = List.append state.Errors [error]
         (None, { state with Errors = errors })
@@ -46,7 +46,7 @@ let rec resolveSymbolInternal (state: TypeCheckerState) (scope: Scope) (nameToke
 let resolveSymbol (state: TypeCheckerState) (nameToken: token): (Option<Symbol> * TypeCheckerState) =
     let currentScope = state.ScopesById[state.CurrentScopeId]
 
-    resolveSymbolInternal state currentScope nameToken
+    resolveSymbolInternal state currentScope nameToken._text nameToken.position
 
 let pushScope (state: TypeCheckerState) (scopeId: System.Guid): TypeCheckerState =
     let parentScopeId = state.CurrentScopeId
@@ -64,10 +64,10 @@ let popScope (state: TypeCheckerState): TypeCheckerState =
     
 let rec checkMany
     (state: TypeCheckerState)
-    (checkFn: (TypeCheckerState -> 'a -> TypeCheckerState * Option<PrestoType>))
+    (checkFn: (TypeCheckerState -> 'a -> TypeCheckerState * Option<'b>))
     (nodes: List<'a>)
-    (accumulator: List<Option<PrestoType>>):
-    TypeCheckerState * List<Option<PrestoType>> =
+    (accumulator: List<Option<'b>>):
+    TypeCheckerState * List<Option<'b>> =
         if nodes.IsEmpty then
             (state, accumulator)
         else
@@ -77,7 +77,48 @@ let rec checkMany
 
 and checkUnion (state: TypeCheckerState) (union: Union): TypeCheckerState * Option<PrestoType> =
     let state = pushScope state union.ScopeId
-    (popScope state, Some (UnionType union.ScopeId))
+
+    let (state, optionTypeParameterTypes) = checkMany state checkTypeParameter union.TypeParameters []
+    let successfullyCheckedTypeParameterTypes = not (List.exists<Option<PrestoType>> (fun x -> x.IsNone) optionTypeParameterTypes)
+    
+    if successfullyCheckedTypeParameterTypes then
+        let typeParameterNames =
+            List.map<Option<PrestoType>, string>
+                (fun x ->
+                    match x.Value with
+                    | TypeParameterType name -> name
+                    | _ -> failwith "Unexpected failure")
+                optionTypeParameterTypes
+
+        let (state, optionUnionTypeConstructors) = checkMany state checkUnionCase union.Cases []
+        let successfullyCheckedUnionTypeConstructors = not (List.exists<Option<UnionTypeConstructor>> (fun x -> x.IsNone) optionUnionTypeConstructors)
+    
+        if successfullyCheckedUnionTypeConstructors then
+            let constructors =
+                List.map<Option<UnionTypeConstructor>, UnionTypeConstructor>
+                    (fun x -> x.Value)
+                    optionUnionTypeConstructors
+
+            (popScope state, Some (UnionType (union.ScopeId, typeParameterNames, constructors)))
+        else
+            (popScope state, None)
+    else
+        (popScope state, None)
+
+and checkUnionCase (state: TypeCheckerState) (unionCase: UnionCase): TypeCheckerState * Option<UnionTypeConstructor> =
+    let (state, optionParameterTypes) = checkMany state checkParameter unionCase.Parameters []
+    let successfullyCheckedParameterTypes = not (List.exists<Option<'a>> (fun x -> x.IsNone) optionParameterTypes)
+
+    if successfullyCheckedParameterTypes then
+        let parameterNames = List.map<Parameter, string> (fun x -> x.NameToken._text) unionCase.Parameters
+        let parameterTypes =
+            List.map<Option<PrestoType>, PrestoType>
+                (fun x -> x.Value)
+                optionParameterTypes
+
+        (state, Some { Name = unionCase.NameToken._text; Parameters = List.zip parameterNames parameterTypes})
+    else
+        (state, None)
 
 and checkRecordField (state: TypeCheckerState) (recordField: RecordField): TypeCheckerState * Option<PrestoType> =
     checkExpression state recordField.TypeExpression
@@ -438,6 +479,26 @@ and checkNumberLiteral (state: TypeCheckerState) (numberLiteral: NumberLiteral):
 
 and checkParenExpr (state: TypeCheckerState) (parenExpr: ParenthesizedExpression2): TypeCheckerState * Option<PrestoType> =
     checkExpression state parenExpr.InnerExpression
+    
+and checkErrorPropagationExpression (state: TypeCheckerState) (errorPropagationExpression: ErrorPropagationOperatorExpression): TypeCheckerState * Option<PrestoType> =
+    let (state, optionInnerExpressionType) = checkExpression state errorPropagationExpression.InnerExpression
+
+    match optionInnerExpressionType with
+    | Some innerExpressionType ->
+        match innerExpressionType with
+        | UnionInstanceType (scopeId, typeParameters) when scopeId = resultScopeId ->
+            (state, Some typeParameters[0])
+        | _ ->
+            let error = compile_error(
+                description = $"{innerExpressionType} is not a Result[T, E]",
+                position = text_position(file_name = "", line_index = 0u, column_index = 0u)
+            )
+
+            (
+                { state with Errors = state.Errors @ [error]},
+                None
+            )
+    | None -> (state, None)
 
 and checkCharacterLiteral (state: TypeCheckerState) (characterLiteral: CharacterLiteral): TypeCheckerState * Option<PrestoType> =
     (state, Some PrestoType.Character)
@@ -467,6 +528,7 @@ and checkExpression (state: TypeCheckerState) (expression: Expression): TypeChec
             | CharacterLiteralExpression characterLiteral -> checkCharacterLiteral state characterLiteral
             | StringLiteralExpression stringLiteral -> checkStringLiteral state stringLiteral
             | ParenExpr parenthesizedExpression -> checkParenExpr state parenthesizedExpression
+            | ErrorPropagationExpression e -> checkErrorPropagationExpression state e
             | TypeClassExpression typeClass -> failwith "not implemented"
             | _ -> failwith "not implemented"
 

@@ -187,6 +187,17 @@ and generateParenthesizedExpression (state: CodeGeneratorState) (pe: Parenthesiz
 
     state
 
+and generateErrorPropagationExpression (state: CodeGeneratorState) (e: ErrorPropagationOperatorExpression): CodeGeneratorState =
+    let state = generateString state "var ___result = "
+    let state = generateExpression state e.InnerExpression
+    let state = generateString state ";"
+    
+    let state = generateString state (System.Environment.NewLine)
+
+    let state = generateString state "if (___result.Err) { return ___result.Err }"
+
+    state
+
 and generateExpressionInternal (state: CodeGeneratorState) (expression: Expression) (isTypeExpression: bool): CodeGeneratorState =
     match expression.Value with
     | RecordExpression record -> failwith "Not implemented"
@@ -203,6 +214,7 @@ and generateExpressionInternal (state: CodeGeneratorState) (expression: Expressi
     | CharacterLiteralExpression character -> generateCharacterLiteral state character
     | StringLiteralExpression string -> generateStringLiteral state string
     | ParenExpr pe -> generateParenthesizedExpression state pe
+    | ErrorPropagationExpression e -> generateErrorPropagationExpression state e
     
 and generateExpression (state: CodeGeneratorState) (expression: Expression): CodeGeneratorState =
     generateExpressionInternal state expression false
@@ -224,7 +236,7 @@ and generateTypeReference (state: CodeGeneratorState) (prestoType: PrestoType): 
             match canonicalName with
             | "Console" -> "Presto.Runtime.Console"
             | _ -> canonicalName
-        | UnionType scopeId -> state.Program.TypeCanonicalNamesByScopeId[scopeId]
+        | UnionType (scopeId, typeParamNames, constructors) -> state.Program.TypeCanonicalNamesByScopeId[scopeId]
         | FunctionType (scopeId, _, _, _) -> state.Program.TypeCanonicalNamesByScopeId[scopeId]
         | TypeParameterType typeParameter -> typeParameter
 

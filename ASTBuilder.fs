@@ -52,13 +52,18 @@ type PrestoType =
     | Character
     | String
     | Text of System.Guid
-    | RecordType of System.Guid * List<PrestoType>
-    | UnionType of System.Guid
+    | RecordType of System.Guid * List<PrestoType> (* scope ID, field types *)
+    | UnionType of System.Guid * List<string> * List<UnionTypeConstructor> (* scope ID, type param names, constructors *)
     | FunctionType of System.Guid * List<string> * List<PrestoType> * PrestoType (* scope ID, type param names, param types, return type *)
     | TypeParameterType of string (* name of type parameter *)
     | TypeClassType of System.Guid * List<PrestoType> (* type class id, type arguments *)
     | TypeClassInstanceType of System.Guid * List<PrestoType> (* type class id, type arguments *)
+    | UnionInstanceType of System.Guid * List<PrestoType> (* type class id, type arguments *)
     | Type
+and UnionTypeConstructor = {
+    Name: string
+    Parameters: List<string * PrestoType>
+}
 and Symbol =
     | BindingSymbol of Binding
     | TypeParameterSymbol of TypeParameter
@@ -86,6 +91,7 @@ and ExpressionValue =
     | CharacterLiteralExpression of CharacterLiteral
     | StringLiteralExpression of StringLiteral
     | ParenExpr of ParenthesizedExpression2
+    | ErrorPropagationExpression of ErrorPropagationOperatorExpression
 and Binding = {
     NameToken: token
     Value: Expression
@@ -131,6 +137,9 @@ and BinaryOperator = {
 and ParenthesizedExpression2 = {
     InnerExpression: Expression;
 }
+and ErrorPropagationOperatorExpression = {
+    InnerExpression: Expression;
+}
 and RecordField = {
     NameToken: token
     TypeExpression: Expression
@@ -141,8 +150,10 @@ and Record = {
 }
 and UnionCase = {
     NameToken: token
+    Parameters: List<Parameter>
 }
 and Union = {
+    TypeParameters: List<TypeParameter>
     Cases: List<UnionCase>
     ScopeId: System.Guid
 }
@@ -426,7 +437,7 @@ and buildUnionCase (state: ASTBuilderState) (node: ParseNode): (Option<UnionCase
     let nameToken = identifierNode.Token.Value;
     let name = nameToken._text
 
-    let case = { NameToken = nameToken; }
+    let case = { NameToken = nameToken; Parameters = [] }
     let (success, state) = addSymbol state name (UnionCaseSymbol case)
 
     if success then (Some case, state)
@@ -443,7 +454,7 @@ and buildUnion (state: ASTBuilderState) (node: ParseNode): (Option<Union> * ASTB
     match optionCases with
     | Some cases ->
         (
-            Some { Cases = cases; ScopeId = state.CurrentScopeId },
+            Some { TypeParameters = []; Cases = cases; ScopeId = state.CurrentScopeId },
             popScope state
         )
     | None -> (None, popScope state)
@@ -682,6 +693,14 @@ and buildExpression (state: ASTBuilderState) (node: ParseNode): (Option<Expressi
             let a: ParenthesizedExpression2 = { InnerExpression = innerExpr } 
             (Some (newExpression (ParenExpr a)), state)
         | None -> (None, state)
+    | ParseNodeType.ErrorPropagationOperator ->
+        let (optionInnerExpr, state) = buildExpression state child.Children[0]
+
+        match optionInnerExpr with
+        | Some innerExpr ->
+            let a: ErrorPropagationOperatorExpression = { InnerExpression = innerExpr } 
+            (Some (newExpression (ErrorPropagationExpression a)), state)
+        | None -> (None, state)
     | ParseNodeType.Expression ->
         buildExpression state child
     | ParseNodeType.Token when child.Token.Value._type = token_type.identifier ->
@@ -720,6 +739,9 @@ and buildBinding (state: ASTBuilderState) (node: ParseNode): (Option<Binding> * 
         if success then (Some binding, state)
         else (None, state)
     | None -> (None, state)
+    
+
+let resultScopeId = System.Guid.NewGuid()
 
 let getInitialScopesById =
     let scopesById: Map<System.Guid, Scope> = Map.empty
@@ -738,6 +760,8 @@ let getInitialScopesById =
     let seqScopeId = System.Guid.NewGuid()
     let consoleType = RecordType (System.Guid.NewGuid(), [])
 
+    let ioErrorType = PrestoType.String
+
     let scope = {
         SymbolsByName =
             Map.empty
@@ -755,6 +779,20 @@ let getInitialScopesById =
                     BuiltInSymbol (
                         "seq",
                         TypeClassType (seqScopeId, [PrestoType.TypeParameterType "t"])
+                    )
+                )
+                .Add(
+                    "Result",
+                    BuiltInSymbol (
+                        "Result",
+                        UnionType (
+                            resultScopeId,
+                            ["T"; "E"],
+                            [
+                                { Name = "Ok"; Parameters = [("value", TypeParameterType "T")] };
+                                { Name = "Err"; Parameters = [("error", TypeParameterType "E")] }
+                            ]
+                        )
                     )
                 )
 
@@ -826,9 +864,42 @@ let getInitialScopesById =
                 )
 
                 .Add("Console", BuiltInSymbol ("Console", consoleType))
-                .Add("print", BuiltInSymbol ("print", FunctionType (System.Guid.NewGuid(), [], [consoleType; PrestoType.String], PrestoType.Nothing)))
-                .Add("print_line", BuiltInSymbol ("print_line", FunctionType (System.Guid.NewGuid(), [], [consoleType; PrestoType.String], PrestoType.Nothing)))
-                .Add("read_line", BuiltInSymbol ("read_line", FunctionType (System.Guid.NewGuid(), [], [consoleType], PrestoType.String)));
+                .Add(
+                    "print",
+                    BuiltInSymbol (
+                        "print",
+                        FunctionType (
+                            System.Guid.NewGuid(),
+                            [],
+                            [consoleType; PrestoType.String],
+                            PrestoType.UnionInstanceType (resultScopeId, [PrestoType.Nothing; ioErrorType])
+                        )
+                    )
+                )
+                .Add(
+                    "print_line",
+                    BuiltInSymbol (
+                        "print_line",
+                        FunctionType (
+                            System.Guid.NewGuid(),
+                            [],
+                            [consoleType; PrestoType.String],
+                            PrestoType.UnionInstanceType (resultScopeId, [PrestoType.Nothing; ioErrorType])
+                        )
+                    )
+                )
+                .Add(
+                    "read_line",
+                    BuiltInSymbol (
+                        "read_line",
+                        FunctionType (
+                            System.Guid.NewGuid(),
+                            [],
+                            [consoleType],
+                            PrestoType.UnionInstanceType (resultScopeId, [PrestoType.String; ioErrorType])
+                        )
+                    )
+                );
         ParentId = None;
         ChildIds = [textScopeId]
     }

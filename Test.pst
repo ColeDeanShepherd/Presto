@@ -1,7 +1,7 @@
 ﻿# 1. Hello, World!
 
 main = fn (console: Console) ->
-    print_line(console, "Hello, world!")
+    print_line(console, "Hello, world!")?
 
 # 2. Basic Arithmetic
 

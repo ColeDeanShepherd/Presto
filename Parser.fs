@@ -49,6 +49,7 @@ type ParseNodeType =
     | Division
     | Equals
     | ParenthesizedExpression
+    | ErrorPropagationOperator
 
 type ParseNode = {
     Type: ParseNodeType
@@ -207,6 +208,19 @@ let peekToken (state: ParseState): Option<token> * ParseState =
             optionNextToken,
             { state with Errors = List.append state.Errors [error] }
         )
+        
+let peekExpectedToken (state: ParseState) (expectedTokenType: token_type): Option<token> * ParseState =
+    let (optionNextToken, state) = peekToken state
+
+    match optionNextToken with
+    | Some nextToken ->
+        if nextToken._type = expectedTokenType then
+            (Some nextToken, state)
+        else
+            let error = getUnexpectedTokenError state expectedTokenType nextToken
+
+            (None, { state with Errors = state.Errors @ [error] })
+    | None -> (None, state)
 
 let readToken (state: ParseState): Option<token> * ParseState =
     let (optionNextToken, state) = peekToken state
@@ -770,6 +784,23 @@ and parseGenericInstantiation (state: ParseState) (prefixExpression: ParseNode):
             | _ -> (None, state)
         | None -> (None, state)
 
+and parseErrorPropagationExpression (state: ParseState) (prefixExpression: ParseNode): Option<ParseNode> * ParseState =
+    let (optionQuestionMark, state) = parseToken state token_type.question_mark
+
+    match optionQuestionMark with
+        | Some questionMark ->
+            let innerNode = {
+                Type = ParseNodeType.ErrorPropagationOperator
+                Children = List.concat [ [prefixExpression]; [questionMark] ]
+                Token = None
+            }
+                        
+            (
+                Some innerNode,
+                state
+            )
+        | None -> (None, state)
+
 and parseMemberAccess (state: ParseState) (prefixExpression: ParseNode) (rightBindingPower: int): Option<ParseNode> * ParseState =
     let (optionPeriod, state) = parseToken state token_type.period
 
@@ -907,6 +938,7 @@ and getPostfixLeftBindingPower (tokenType: token_type): Option<int> =
     match tokenType with
     | token_type.left_paren -> Some 12
     | token_type.left_square_bracket -> Some 12
+    | token_type.question_mark -> Some 11
     | _ -> None
 
 and getInfixBindingPowers (tokenType: token_type): Option<int * int> =
@@ -961,6 +993,23 @@ and tryParsePostfixAndInfixExpressions (state: ParseState) (prefixExpression: Pa
                             {
                                 Type = ParseNodeType.Expression
                                 Children = [genericInstantiation]
+                                Token = None
+                            }
+                        tryParsePostfixAndInfixExpressions state expressionNode minBindingPower
+                    | None ->
+                        (None, state)
+                else if nextToken._type = token_type.question_mark then
+                    let (whitespace, state) = parseTrivia state
+                    let prefixExpression = { prefixExpression with Children = prefixExpression.Children @ whitespace }
+
+                    let (optionErrorPropagationExpression, state) = parseErrorPropagationExpression state prefixExpression
+
+                    match optionErrorPropagationExpression with
+                    | Some errorPropagationExpression ->
+                        let expressionNode =
+                            {
+                                Type = ParseNodeType.Expression
+                                Children = [errorPropagationExpression]
                                 Token = None
                             }
                         tryParsePostfixAndInfixExpressions state expressionNode minBindingPower

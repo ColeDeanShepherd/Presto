@@ -371,6 +371,8 @@ let iterateTokenize (state: tokenize_state): tokenize_state =
             readSingleCharToken state token_type.plus_sign
         else if nextChar = '*' then
             readSingleCharToken state token_type.asterisk
+        else if nextChar = '?' then
+            readSingleCharToken state token_type.question_mark
         else if nextChar = '/' then
             readSingleCharToken state token_type.forward_slash
         else if nextChar = ''' then
