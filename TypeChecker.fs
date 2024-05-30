@@ -567,6 +567,8 @@ let checkTypes (program: Program): Program * List<compile_error> =
         TypeCanonicalNamesByScopeId = program.TypeCanonicalNamesByScopeId
         Errors = []
     }
+
+    let state = trySetTypesCanonicalName state resultScopeId "Result"
     
     let (state, _) = checkMany state checkBinding program.Bindings []
 

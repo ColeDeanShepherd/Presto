@@ -116,7 +116,8 @@ and generateBlockChild (state: CodeGeneratorState) (blockChild: BlockChild): Cod
     | BlockChildExpression expression ->
         let state =
             match expression.Value with
-            | BlockExpression block -> state
+            | BlockExpression _ -> state
+            | ErrorPropagationExpression _ -> state
             | _ -> generateString state "_ = "
                     
         generateExpression state expression
@@ -194,7 +195,7 @@ and generateErrorPropagationExpression (state: CodeGeneratorState) (e: ErrorProp
     
     let state = generateString state (System.Environment.NewLine)
 
-    let state = generateString state "if (___result.Err) { return ___result.Err }"
+    let state = generateString state "if (___result.IsErr) { return ___result.Error; }"
 
     state
 
@@ -220,27 +221,38 @@ and generateExpression (state: CodeGeneratorState) (expression: Expression): Cod
     generateExpressionInternal state expression false
 
 and generateTypeReference (state: CodeGeneratorState) (prestoType: PrestoType): CodeGeneratorState =
-    let typeReferenceString =
-        match prestoType with
-        | Nothing -> "void"
-        | Nat -> "nat"
-        | Real -> "real"
-        | Text _ -> "string"
-        | Boolean -> "bool"
-        | Character -> "char"
-        | String -> "string"
-        | Type -> "Type"
-        | RecordType (scopeId, _) ->
-            let canonicalName = state.Program.TypeCanonicalNamesByScopeId[scopeId]
+    match prestoType with
+    | Nothing -> generateString state "Unit"
+    | Nat -> generateString state "nat"
+    | Real -> generateString state "real"
+    | Text _ -> generateString state "string"
+    | Boolean -> generateString state "bool"
+    | Character -> generateString state "char"
+    | String -> generateString state "string"
+    | Type -> generateString state "Type"
+    | RecordType (scopeId, _) ->
+        let canonicalName = state.Program.TypeCanonicalNamesByScopeId[scopeId]
 
-            match canonicalName with
-            | "Console" -> "Presto.Runtime.Console"
-            | _ -> canonicalName
-        | UnionType (scopeId, typeParamNames, constructors) -> state.Program.TypeCanonicalNamesByScopeId[scopeId]
-        | FunctionType (scopeId, _, _, _) -> state.Program.TypeCanonicalNamesByScopeId[scopeId]
-        | TypeParameterType typeParameter -> typeParameter
+        match canonicalName with
+        | "Console" -> generateString state "Presto.Runtime.Console"
+        | _ -> generateString state canonicalName
+    | UnionType (scopeId, typeParamNames, constructors) -> generateString state state.Program.TypeCanonicalNamesByScopeId[scopeId]
+    | FunctionType (scopeId, _, _, _) -> generateString state state.Program.TypeCanonicalNamesByScopeId[scopeId]
+    | TypeParameterType typeParameter -> generateString state typeParameter
+    | UnionInstanceType (scopeId, typeParameters) ->
+        let canonicalName = state.Program.TypeCanonicalNamesByScopeId[scopeId]
+        let state = generateString state canonicalName
 
-    generateString state typeReferenceString
+        let state =
+            if typeParameters.IsEmpty then
+                state
+            else
+                let state = generateString state "<"
+                let state = generateManyWithSeparator state typeParameters generateTypeReference ", " true
+                let state = generateString state ">"
+                state
+
+        state
 
 and generateTypeExpression (state: CodeGeneratorState) (expression: Expression): CodeGeneratorState =
     generateExpressionInternal state expression true
@@ -258,11 +270,14 @@ and generateTypeParameter (state: CodeGeneratorState) (typeParameter: TypeParame
     state
 
 and generateTypeParameters (state: CodeGeneratorState) (typeParameters: List<TypeParameter>): CodeGeneratorState =
-    let state = generateString state "<"
-    let state = generateManyWithSeparator state typeParameters generateTypeParameter ", " true
-    let state = generateString state ">"
+    if typeParameters.IsEmpty then
+        state
+    else
+        let state = generateString state "<"
+        let state = generateManyWithSeparator state typeParameters generateTypeParameter ", " true
+        let state = generateString state ">"
     
-    state
+        state
 
 and generateFunction (state: CodeGeneratorState) (name: string) (fn: Function): CodeGeneratorState =
     let state = generateString state "public"
@@ -369,6 +384,7 @@ let generatedCodeHeader =
     using nat = System.UInt32;
     using real = System.Double;
     
+    using Presto.Runtime;
     using static Presto.Runtime.PrestoProgram;
     
     public static partial class PrestoProgram {"
