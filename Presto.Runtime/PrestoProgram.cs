@@ -25,6 +25,8 @@ public static class Result
 
 public static partial class PrestoProgram
 {
+    public static TOut __exec<TOut>(Func<TOut> func) => func();
+
     public static bool eq<T>(T a, T b) => (a != null) ? a.Equals(b) : (b == null);
     public static bool not(bool x) => !x;
     public static uint length(string x) => (uint)x.Length;

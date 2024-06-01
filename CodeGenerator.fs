@@ -123,18 +123,31 @@ and generateBlockChild (state: CodeGeneratorState) (blockChild: BlockChild): Cod
         generateExpression state expression
 
 and generateBlock (state: CodeGeneratorState) (block: Block): CodeGeneratorState =
-    if block.Children.Length <> 1 then
-        let state = generateString state "{"
-        let state = generateString state System.Environment.NewLine
-        let state = generateManyWithDelimiter state block.Children generateBlockChild (";" + System.Environment.NewLine) true
-        let state = generateString state System.Environment.NewLine
-        let state = generateString state "}"
+    let state = generateString state "__exec("
 
-        state
-    else
-        let state = generateBlockChild state block.Children.Head
+    let state = generateString state "() => {"
+    let state = generateString state System.Environment.NewLine
 
-        state
+    let childrenExceptLast = List.take (block.Children.Length - 1) block.Children
+    let state = generateManyWithDelimiter state childrenExceptLast generateBlockChild (";" + System.Environment.NewLine) true
+
+    let state =
+        if not block.Children.IsEmpty then
+            let lastChild = List.last block.Children
+            let state = generateString state "return "
+            let state = generateBlockChild state lastChild
+            let state = generateString state ";"
+
+            state
+        else
+            state
+
+    let state = generateString state System.Environment.NewLine
+    let state = generateString state "}"
+    
+    let state = generateString state ")"
+
+    state
 
 and generateMemberAccess (state: CodeGeneratorState) (memberAccess: MemberAccess): CodeGeneratorState =
     let state = generateExpression state memberAccess.LeftExpression
