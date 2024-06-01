@@ -27,7 +27,7 @@ let runProcess (exePath: string) (args: string) =
     if proc.ExitCode <> 0 then
         failwithf "Process exited with code %d" proc.ExitCode
 
-let compileCSharpFiles (csharpFilePaths: string Set) (outputDir: string) =
+let compileCSharpFiles (csharpFilePaths: string Set) (outputDir: string): string =
     let csProjName = Path.GetRandomFileName()
 
     // Create temporary directory to hold the C# project.
@@ -53,3 +53,5 @@ let compileCSharpFiles (csharpFilePaths: string Set) (outputDir: string) =
 
     // Delete the temporary directory.
     Directory.Delete(tempDirPath, recursive = true)
+
+    csProjName

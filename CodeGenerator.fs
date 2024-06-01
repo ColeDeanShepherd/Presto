@@ -118,7 +118,7 @@ and generateBlockChild (state: CodeGeneratorState) (blockChild: BlockChild): Cod
             match expression.Value with
             | BlockExpression _ -> state
             | ErrorPropagationExpression _ -> state
-            | _ -> generateString state "_ = "
+            | _ -> state //generateString state "_ = "
                     
         generateExpression state expression
 

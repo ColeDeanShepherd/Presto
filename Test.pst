@@ -1,15 +1,15 @@
 ﻿# 1. Hello, World!
 
-#main = fn (console: Console) ->
-#    print_line(console, "Hello, world!")
+main = fn (console: Console) ->
+    print_line(console, "Hello, world!")
 
 # 2. Basic Arithmetic
 
-main = fn (console: Console) -> {
-    a = 5
-    b = 3
-    print_line(console, "Sum: " + to_string(a + b))
-}
+#main = fn (console: Console) -> {
+#    a = 5
+#    b = 3
+#    print_line(console, "Sum: " + to_string(a + b))
+#}
 
 # 3. User Input
 

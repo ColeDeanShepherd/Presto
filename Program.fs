@@ -10,6 +10,7 @@ type CompileOptions = {
     FilePaths: string list
     OutputPath: string
     CompileGeneratedCSharp: bool
+    RunExe: bool
 }
 
 let rec parseCommandLineArgsHelper (args: string array) (options: CompileOptions): string array * CompileOptions =
@@ -22,6 +23,12 @@ let rec parseCommandLineArgsHelper (args: string array) (options: CompileOptions
                 failwith "No value was specified for option \"--compile-generated-csharp\""
             else
                 parseCommandLineArgsHelper args[2..] { options with CompileGeneratedCSharp = (args[1] = "true") }
+        | "--run-exe" ->
+            if args.Length = 0 then
+                failwith "No value was specified for option \"--run-exe\""
+            else
+                let value = args[1] = "true"
+                parseCommandLineArgsHelper args[2..] { options with RunExe = value; CompileGeneratedCSharp = value || options.CompileGeneratedCSharp }
         | "--output-dir" ->
             if args.Length = 0 then
                 failwith "No value was specified for option \"--output-dir\""
@@ -34,6 +41,7 @@ let parseCommandLineArgs (args: string array): CompileOptions =
         FilePaths = []
         OutputPath = System.Environment.CurrentDirectory
         CompileGeneratedCSharp = false
+        RunExe = false
     }
 
     let (args, compileOptions) = parseCommandLineArgsHelper (Array.skip 1 args) compileOptions
@@ -141,4 +149,6 @@ let prestoCompilerSucceeded = generatedFilePaths.Length = compileOptions.FilePat
 if prestoCompilerSucceeded && compileOptions.CompileGeneratedCSharp then
     let runtimeCSharpFilePaths = Directory.GetFiles("../../../Presto.Runtime", "*.cs")
     let filePathsToCompile = Set.ofList (generatedFilePaths @ (List.ofArray runtimeCSharpFilePaths))
-    compileCSharpFiles filePathsToCompile compileOptions.OutputPath
+    let csProjName = compileCSharpFiles filePathsToCompile compileOptions.OutputPath
+
+    runProcess (Path.Combine(compileOptions.OutputPath, csProjName + ".exe")) ""
