@@ -312,6 +312,21 @@ and checkGenericInstantiation (state: TypeCheckerState) (genericInstantiation: G
                     let state = { state with Errors = state.Errors @ [error]}
 
                     (state, Some expressionType) // Why are we returning expression type?
+            | UnionType (scopeId, typeParameterNames, constructors) ->
+                let typeParameterNameCount = typeParameterNames.Length
+                let typeArgumentCount = typeArgumentTypes.Length
+
+                if typeParameterNameCount = typeArgumentCount then
+                    let expressionType = UnionInstanceType (scopeId, typeArgumentTypes)
+                    (state, Some expressionType)
+                else
+                    let error = compile_error(
+                        description = $"Expected {typeParameterNameCount} type arguments, got {typeArgumentCount}",
+                        position = text_position(file_name = "", line_index = 0u, column_index = 0u)
+                    )
+                    let state = { state with Errors = state.Errors @ [error]}
+
+                    (state, Some expressionType) // Why are we returning expression type?
             | FunctionType (scopeId, typeParameterNames, parameterTypes, returnType) ->
                 let typeParameterNameCount = typeParameterNames.Length
                 let typeArgumentCount = typeArgumentTypes.Length
@@ -504,7 +519,7 @@ and checkCharacterLiteral (state: TypeCheckerState) (characterLiteral: Character
     (state, Some PrestoType.Character)
 
 and checkStringLiteral (state: TypeCheckerState) (stringLiteral: StringLiteral): TypeCheckerState * Option<PrestoType> =
-    (state, Some PrestoType.String)
+    (state, Some textType)
 
 and checkExpression (state: TypeCheckerState) (expression: Expression): TypeCheckerState * Option<PrestoType> =
     if state.TypesByExpressionId.ContainsKey expression.Id then

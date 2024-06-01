@@ -50,7 +50,6 @@ type PrestoType =
     | Nat
     | Real
     | Character
-    | String
     | Text of System.Guid
     | RecordType of System.Guid * List<PrestoType> (* scope ID, field types *)
     | UnionType of System.Guid * List<string> * List<UnionTypeConstructor> (* scope ID, type param names, constructors *)
@@ -742,13 +741,14 @@ and buildBinding (state: ASTBuilderState) (node: ParseNode): (Option<Binding> * 
     
 
 let resultScopeId = System.Guid.NewGuid()
+let textScopeId = System.Guid.NewGuid()
+let textType = PrestoType.Text textScopeId
 
 let getInitialScopesById =
     let scopesById: Map<System.Guid, Scope> = Map.empty
 
     let scopeId = System.Guid.NewGuid()
 
-    let textScopeId = System.Guid.NewGuid()
     let textScope = {
         SymbolsByName =
             Map.empty;
@@ -760,7 +760,7 @@ let getInitialScopesById =
     let seqScopeId = System.Guid.NewGuid()
     let consoleType = RecordType (System.Guid.NewGuid(), [])
 
-    let ioErrorType = PrestoType.String
+    let ioErrorType = textType
 
     let scope = {
         SymbolsByName =
@@ -772,7 +772,7 @@ let getInitialScopesById =
                 .Add("nat", BuiltInSymbol ("nat", PrestoType.Nat))
                 .Add("real", BuiltInSymbol ("real", PrestoType.Real))
                 .Add("char", BuiltInSymbol ("char", PrestoType.Character))
-                .Add("text", BuiltInSymbol ("text", PrestoType.Text textScopeId))
+                .Add("text", BuiltInSymbol ("text", textType))
 
                 .Add(
                     "seq",
@@ -824,15 +824,15 @@ let getInitialScopesById =
                 .Add("not", BuiltInSymbol ("not", FunctionType (System.Guid.NewGuid(), [], [PrestoType.Boolean], PrestoType.Boolean)))
 
                 .Add("sum", BuiltInSymbol ("sum", FunctionType (System.Guid.NewGuid(), [], [PrestoType.Nat; PrestoType.Nat], PrestoType.Nat)))
-                .Add("length", BuiltInSymbol ("length", FunctionType (System.Guid.NewGuid(), [], [PrestoType.Text textScopeId], PrestoType.Nat)))
+                .Add("length", BuiltInSymbol ("length", FunctionType (System.Guid.NewGuid(), [], [textType], PrestoType.Nat)))
                 .Add("difference", BuiltInSymbol ("difference", FunctionType (System.Guid.NewGuid(), [], [PrestoType.Nat; PrestoType.Nat], PrestoType.Nat)))
                 .Add("product", BuiltInSymbol ("product", FunctionType (System.Guid.NewGuid(), [], [PrestoType.Nat; PrestoType.Nat], PrestoType.Nat)))
                 .Add("quotient", BuiltInSymbol ("quotient", FunctionType (System.Guid.NewGuid(), [], [PrestoType.Nat; PrestoType.Nat], PrestoType.Nat)))
 
-                .Add("concatenate", BuiltInSymbol ("concatenate", FunctionType (System.Guid.NewGuid(), [], [PrestoType.String; PrestoType.String], PrestoType.String)))
+                .Add("concatenate", BuiltInSymbol ("concatenate", FunctionType (System.Guid.NewGuid(), [], [textType; textType], textType)))
 
-                .Add("parse_real", BuiltInSymbol ("parse_real", FunctionType (System.Guid.NewGuid(), [], [PrestoType.String], PrestoType.Real)))
-                .Add("uppercase", BuiltInSymbol ("uppercase", FunctionType (System.Guid.NewGuid(), [], [PrestoType.String], PrestoType.String)))
+                .Add("parse_real", BuiltInSymbol ("parse_real", FunctionType (System.Guid.NewGuid(), [], [textType], PrestoType.Real)))
+                .Add("uppercase", BuiltInSymbol ("uppercase", FunctionType (System.Guid.NewGuid(), [], [textType], textType)))
                 
                 .Add(
                     "to_string",
@@ -842,7 +842,7 @@ let getInitialScopesById =
                             System.Guid.NewGuid(),
                             ["t"],
                             [TypeParameterType "t"],
-                            PrestoType.String
+                            textType
                         )
                     )
                 )
@@ -871,7 +871,7 @@ let getInitialScopesById =
                         FunctionType (
                             System.Guid.NewGuid(),
                             [],
-                            [consoleType; PrestoType.String],
+                            [consoleType; textType],
                             PrestoType.UnionInstanceType (resultScopeId, [PrestoType.Nothing; ioErrorType])
                         )
                     )
@@ -883,7 +883,7 @@ let getInitialScopesById =
                         FunctionType (
                             System.Guid.NewGuid(),
                             [],
-                            [consoleType; PrestoType.String],
+                            [consoleType; textType],
                             PrestoType.UnionInstanceType (resultScopeId, [PrestoType.Nothing; ioErrorType])
                         )
                     )
@@ -896,7 +896,7 @@ let getInitialScopesById =
                             System.Guid.NewGuid(),
                             [],
                             [consoleType],
-                            PrestoType.UnionInstanceType (resultScopeId, [PrestoType.String; ioErrorType])
+                            PrestoType.UnionInstanceType (resultScopeId, [textType; ioErrorType])
                         )
                     )
                 );
