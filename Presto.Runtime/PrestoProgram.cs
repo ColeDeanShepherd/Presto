@@ -1,5 +1,6 @@
 ﻿namespace Presto.Runtime;
 
+using System.Runtime.CompilerServices;
 using static System.Net.Mime.MediaTypeNames;
 using nat = System.UInt32;
 
@@ -15,12 +16,16 @@ public class Console
 public record Result<T, E>(bool IsOk, T? Value, E? Error)
 {
     public bool IsErr => !IsOk;
+
+    public static implicit operator Result<T, E>(Result<Unit, E> r) =>
+        new Result<T, E>(r.IsOk, default, r.Error);
 }
 
 public static class Result
 {
     public static Result<T, E> Ok<T, E>(T value) => new Result<T, E>(true, value, default);
     public static Result<T, E> Err<T, E>(E error) => new Result<T, E>(false, default, error);
+    public static Result<Unit, E> ErrUnit<E>(E error) => new Result<Unit, E>(false, Unit.Instance, error);
 }
 
 public static partial class PrestoProgram

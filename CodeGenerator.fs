@@ -9,6 +9,7 @@ type CodeGeneratorState = {
     Program: Program
     GeneratedCode: string
     Errors: List<compile_error>
+    NextResultId: int
 }
 
 type CodeGeneratorOutput = {
@@ -122,10 +123,14 @@ and generateBlockChild (state: CodeGeneratorState) (blockChild: BlockChild): Cod
                     
         generateExpression state expression
 
-and generateBlock (state: CodeGeneratorState) (block: Block): CodeGeneratorState =
-    let state = generateString state "__exec("
+and generateBlock (state: CodeGeneratorState) (expression: Expression) (block: Block): CodeGeneratorState =
+    let resultType = state.Program.TypesByExpressionId[expression.Id]
 
-    let state = generateString state "() => {"
+    let state = generateString state "__exec<"
+    let state = generateTypeReference state resultType
+    let state = generateString state ">(() => "
+
+    let state = generateString state "{"
     let state = generateString state System.Environment.NewLine
 
     let childrenExceptLast = List.take (block.Children.Length - 1) block.Children
@@ -201,14 +206,23 @@ and generateParenthesizedExpression (state: CodeGeneratorState) (pe: Parenthesiz
 
     state
 
+and generateResultId (state: CodeGeneratorState): int * CodeGeneratorState =
+    (state.NextResultId, { state with NextResultId = state.NextResultId + 1 })
+
+and generateResultName (id: int): string =
+    "___result" + id.ToString()
+
 and generateErrorPropagationExpression (state: CodeGeneratorState) (e: ErrorPropagationOperatorExpression): CodeGeneratorState =
-    let state = generateString state "var ___result = "
+    let (resultId, state) = generateResultId state
+    let resultName = generateResultName resultId
+
+    let state = generateString state ("var " + resultName + " = ")
     let state = generateExpression state e.InnerExpression
     let state = generateString state ";"
     
     let state = generateString state (System.Environment.NewLine)
 
-    let state = generateString state "if (___result.IsErr) { return ___result.Error; }"
+    let state = generateString state ("if (" + resultName + ".IsErr) { return Result.ErrUnit(" + resultName + ".Error); }")
 
     state
 
@@ -219,7 +233,7 @@ and generateExpressionInternal (state: CodeGeneratorState) (expression: Expressi
     | FunctionExpression fn -> failwith "Not implemented"
     | IfThenElseExpression ifThenElse -> generateIfThenElse state ifThenElse
     | FunctionCallExpression call -> generateFunctionCallInternal state call isTypeExpression
-    | BlockExpression block -> generateBlock state block
+    | BlockExpression block -> generateBlock state expression block
     | MemberAccessExpression memberAccess -> generateMemberAccess state memberAccess
     | BinaryOperatorExpression binaryOperator -> generateBinaryOperator state binaryOperator
     | SymbolReference symbol -> generateSymbol state symbol expression.Id
@@ -375,13 +389,29 @@ and generateBinding (state: CodeGeneratorState) (binding: Binding): CodeGenerato
         | _ ->
             let valueType = state.Program.TypesByExpressionId[binding.Value.Id]
 
-            let state = generateTypeReference state valueType
-            let state = generateString state " "
-            let state = generateString state binding.NameToken._text
-            let state = generateString state " = "
-            let state = generateExpression state binding.Value
+            match binding.Value.Value with
+            | ErrorPropagationExpression e -> 
+                let nextResultName = generateResultName state.NextResultId
+                let state = generateExpression state binding.Value
+                let state = generateString state System.Environment.NewLine
 
-            state
+                let state = generateTypeReference state valueType
+                let state = generateString state " "
+                let state = generateString state binding.NameToken._text
+                let state = generateString state " = "
+                let state = generateString state nextResultName
+                let state = generateString state ".Value"
+
+                state
+            | _ ->
+
+                let state = generateTypeReference state valueType
+                let state = generateString state " "
+                let state = generateString state binding.NameToken._text
+                let state = generateString state " = "
+                let state = generateExpression state binding.Value
+
+                state
     let state =
         if shouldTerminateWithSemicolon binding then
             generateString state ";"
@@ -414,7 +444,7 @@ let generatedCodeFooter (compileGeneratedCSharpCode: bool) =
         "}"
 
 let generateCode (program: Program) (compileGeneratedCSharpCode: bool): CodeGeneratorOutput =
-    let state = { Program = program; GeneratedCode = ""; Errors = [] }
+    let state = { Program = program; GeneratedCode = ""; Errors = []; NextResultId = 0 }
 
     let state = generateString state generatedCodeHeader
     let state = generateString state (System.Environment.NewLine + System.Environment.NewLine)
