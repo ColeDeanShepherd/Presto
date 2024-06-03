@@ -10,6 +10,7 @@ type CompileOptions = {
     FilePaths: string list
     OutputPath: string
     CompileGeneratedCSharp: bool
+    CompileLibrary: bool
     RunExe: bool
 }
 
@@ -23,6 +24,11 @@ let rec parseCommandLineArgsHelper (args: string array) (options: CompileOptions
                 failwith "No value was specified for option \"--compile-generated-csharp\""
             else
                 parseCommandLineArgsHelper args[2..] { options with CompileGeneratedCSharp = (args[1] = "true") }
+        | "--compile-library" ->
+            if args.Length = 0 then
+                failwith "No value was specified for option \"--compile-library\""
+            else
+                parseCommandLineArgsHelper args[2..] { options with CompileLibrary = (args[1] = "true") }
         | "--run-exe" ->
             if args.Length = 0 then
                 failwith "No value was specified for option \"--run-exe\""
@@ -41,6 +47,7 @@ let parseCommandLineArgs (args: string array): CompileOptions =
         FilePaths = []
         OutputPath = System.Environment.CurrentDirectory
         CompileGeneratedCSharp = false
+        CompileLibrary = false
         RunExe = false
     }
 
@@ -117,7 +124,7 @@ let compileFile (program: Program) (filePath: string): string option * Program =
                     printfn "Done type checking!"
 
                     // generate code
-                    let codeGeneratorOutput = generateCode program compileOptions.CompileGeneratedCSharp
+                    let codeGeneratorOutput = generateCode program compileOptions.CompileLibrary
 
                     if not codeGeneratorOutput.Errors.IsEmpty then
                         for error in codeGeneratorOutput.Errors do

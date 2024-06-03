@@ -2,20 +2,21 @@ no_op = fn (): nothing -> {}
 ignore = fn [t] (x: t): nothing -> {}
 identity = fn [t] (x: t): t -> x
 
-# value_equals
-# value_not_equals
+# eq = fn [t] (a: t, b: t): bool -> BUILT_IN
+not_eq = fn [t] (a: t, b: t): bool -> not(eq(a, b))
 
 ##### Boolean #####
-# is_true
-# is_false
-# not
-# logical_and
-# logical_or
-# logical_xor
-# logical_nand
-# logical_nor
-# logical_not
-# logical_xnor
+is_true = fn (x: bool): bool -> x == true
+is_false = fn (x: bool): bool -> x == false
+not = fn (x: bool): bool -> if x then false else true
+
+# logical_and = fn (a: bool, b: bool): bool = BUILT_IN
+# logical_or = fn (a: bool, b: bool): bool = BUILT_IN
+# logical_xor = fn (a: bool, b: bool): bool = BUILT_IN
+# logical_nand = fn (a: bool, b: bool): bool = BUILT_IN
+# logical_nor = fn (a: bool, b: bool): bool = BUILT_IN
+# logical_not = fn (a: bool, b: bool): bool = BUILT_IN
+# logical_xnor = fn (a: bool, b: bool): bool = BUILT_IN
 
 ##### Arithmetic #####
 # add
@@ -73,7 +74,7 @@ identity = fn [t] (x: t): t -> x
 
 ##### String #####
 # length
-# concat
+concatenate = fn (a: text, b: text): text -> a + b
 # contains
 # starts_with
 # ends_with

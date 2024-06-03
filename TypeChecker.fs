@@ -7,7 +7,7 @@ open Lexer
 open type PrestoProgram
 
 type TypeCheckerState = {
-    CurrentScopeId: System.Guid
+    ScopeIdStack: System.Guid list
     ScopesById: Map<System.Guid, Scope>
     TypesByExpressionId: Map<System.Guid, PrestoType>
     ResolvedSymbolsByExpressionId: Map<System.Guid, Symbol>
@@ -44,23 +44,23 @@ let rec resolveSymbolInternal (state: TypeCheckerState) (scope: Scope) (name: st
         (None, { state with Errors = errors })
 
 let resolveSymbol (state: TypeCheckerState) (nameToken: token): (Option<Symbol> * TypeCheckerState) =
-    let currentScope = state.ScopesById[state.CurrentScopeId]
+    let currentScope = state.ScopesById[List.last state.ScopeIdStack]
 
     resolveSymbolInternal state currentScope nameToken._text nameToken.position
 
 let pushScope (state: TypeCheckerState) (scopeId: System.Guid): TypeCheckerState =
-    let parentScopeId = state.CurrentScopeId
+    let parentScopeId = List.last state.ScopeIdStack
     let parentScope = state.ScopesById[parentScopeId]
 
     //if not (List.contains scopeId parentScope.ChildIds) then
     //    failwith $"Incorrectly pushed scope {scopeId}"
     //else
-    { state with CurrentScopeId = scopeId }
+    { state with ScopeIdStack = state.ScopeIdStack @ [scopeId] }
 
 let popScope (state: TypeCheckerState): TypeCheckerState =
-    let scope = state.ScopesById[state.CurrentScopeId]
+    let scope = state.ScopesById[List.last state.ScopeIdStack]
 
-    { state with CurrentScopeId = scope.ParentId.Value }
+    { state with ScopeIdStack = (List.take (state.ScopeIdStack.Length - 1) state.ScopeIdStack) }
     
 let rec checkMany
     (state: TypeCheckerState)
@@ -575,7 +575,7 @@ and checkBinding (state: TypeCheckerState) (binding: Binding): TypeCheckerState 
 
 let checkTypes (program: Program): Program * List<compile_error> =
     let state = {
-        CurrentScopeId = program.ScopeId
+        ScopeIdStack = [program.ScopeId]
         ScopesById = program.ScopesById
         TypesByExpressionId = program.TypesByExpressionId
         ResolvedSymbolsByExpressionId = program.ResolvedSymbolsByExpressionId

@@ -1,0 +1,2 @@
+main = fn (console: Console) ->
+    print_line(console, "Hello, world!")

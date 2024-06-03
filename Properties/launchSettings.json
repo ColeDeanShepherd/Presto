@@ -2,7 +2,7 @@
   "profiles": {
     "Presto": {
       "commandName": "Project",
-      "commandLineArgs": "../../../Test.pst --output-dir ./ --compile-generated-csharp true --run-exe true"
+      "commandLineArgs": "../../../Examples/Test.pst --output-dir ./ --compile-generated-csharp true --compile-library false --run-exe true"
     }
   }
 }

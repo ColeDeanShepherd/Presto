@@ -808,28 +808,12 @@ let getInitialScopesById =
                         )
                     )
                 )
-                .Add(
-                    "not_eq",
-                    BuiltInSymbol (
-                        "not_eq",
-                        FunctionType (
-                            System.Guid.NewGuid(),
-                            ["t"],
-                            [TypeParameterType "t"; TypeParameterType "t"],
-                            PrestoType.Boolean
-                        )
-                    )
-                )
-
-                .Add("not", BuiltInSymbol ("not", FunctionType (System.Guid.NewGuid(), [], [PrestoType.Boolean], PrestoType.Boolean)))
 
                 .Add("sum", BuiltInSymbol ("sum", FunctionType (System.Guid.NewGuid(), [], [PrestoType.Nat; PrestoType.Nat], PrestoType.Nat)))
                 .Add("length", BuiltInSymbol ("length", FunctionType (System.Guid.NewGuid(), [], [textType], PrestoType.Nat)))
                 .Add("difference", BuiltInSymbol ("difference", FunctionType (System.Guid.NewGuid(), [], [PrestoType.Nat; PrestoType.Nat], PrestoType.Nat)))
                 .Add("product", BuiltInSymbol ("product", FunctionType (System.Guid.NewGuid(), [], [PrestoType.Nat; PrestoType.Nat], PrestoType.Nat)))
                 .Add("quotient", BuiltInSymbol ("quotient", FunctionType (System.Guid.NewGuid(), [], [PrestoType.Nat; PrestoType.Nat], PrestoType.Nat)))
-
-                .Add("concatenate", BuiltInSymbol ("concatenate", FunctionType (System.Guid.NewGuid(), [], [textType; textType], textType)))
 
                 .Add("parse_real", BuiltInSymbol ("parse_real", FunctionType (System.Guid.NewGuid(), [], [textType], PrestoType.Real)))
                 .Add("uppercase", BuiltInSymbol ("uppercase", FunctionType (System.Guid.NewGuid(), [], [textType], textType)))

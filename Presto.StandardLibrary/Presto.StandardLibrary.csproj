@@ -7,7 +7,7 @@
   </PropertyGroup>
 
   <Target Name="PreBuild" BeforeTargets="PreBuildEvent">
-    <Exec Command="&quot;../bin/Debug/net8.0/Presto.exe&quot; StdLib.pst" />
+    <Exec Command="&quot;../bin/Debug/net8.0/Presto.exe&quot; --compile-library true StdLib.pst" />
   </Target>
 
   <ItemGroup>

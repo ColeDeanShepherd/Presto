@@ -133,11 +133,11 @@ and generateBlock (state: CodeGeneratorState) (expression: Expression) (block: B
     let state = generateString state "{"
     let state = generateString state System.Environment.NewLine
 
-    let childrenExceptLast = List.take (block.Children.Length - 1) block.Children
-    let state = generateManyWithDelimiter state childrenExceptLast generateBlockChild (";" + System.Environment.NewLine) true
-
     let state =
         if not block.Children.IsEmpty then
+            let childrenExceptLast = List.take (block.Children.Length - 1) block.Children
+            let state = generateManyWithDelimiter state childrenExceptLast generateBlockChild (";" + System.Environment.NewLine) true
+
             let lastChild = List.last block.Children
             let state = generateString state "return "
             let state = generateBlockChild state lastChild
@@ -145,6 +145,8 @@ and generateBlock (state: CodeGeneratorState) (expression: Expression) (block: B
 
             state
         else
+            let state = generateString state "return Unit.Instance;"
+
             state
 
     let state = generateString state System.Environment.NewLine
@@ -329,17 +331,10 @@ and generateFunction (state: CodeGeneratorState) (name: string) (fn: Function): 
     let state = generateString state " "
     let state = generateString state "{"
 
-    let state =
-        if returnType <> PrestoType.Nothing then
-            let state = generateString state "return"
-            let state = generateString state " "
-            let state = generateExpression state fn.Value
-            let state = generateString state ";"
-            state
-        else
-            let state = generateExpression state fn.Value
-            let state = generateString state ";"
-            state
+    let state = generateString state "return"
+    let state = generateString state " "
+    let state = generateExpression state fn.Value
+    let state = generateString state ";"
 
     let state = generateString state "}"
 
@@ -431,8 +426,8 @@ let generatedCodeHeader =
     
     public static partial class PrestoProgram {"
 
-let generatedCodeFooter (compileGeneratedCSharpCode: bool) =
-    if compileGeneratedCSharpCode then
+let generatedCodeFooter (compileLibrary: bool) =
+    if not compileLibrary then
         "public static void Main(string[] args)
         {
             Presto.Runtime.Console console = new();
@@ -443,13 +438,13 @@ let generatedCodeFooter (compileGeneratedCSharpCode: bool) =
     else
         "}"
 
-let generateCode (program: Program) (compileGeneratedCSharpCode: bool): CodeGeneratorOutput =
+let generateCode (program: Program) (compileLibrary: bool): CodeGeneratorOutput =
     let state = { Program = program; GeneratedCode = ""; Errors = []; NextResultId = 0 }
 
     let state = generateString state generatedCodeHeader
     let state = generateString state (System.Environment.NewLine + System.Environment.NewLine)
     let state = generateManyWithSeparator state program.Bindings generateBinding System.Environment.NewLine true
     let state = generateString state (System.Environment.NewLine + System.Environment.NewLine)
-    let state = generateString state (generatedCodeFooter compileGeneratedCSharpCode)
+    let state = generateString state (generatedCodeFooter compileLibrary)
 
     { GeneratedCode = state.GeneratedCode; Errors = state.Errors }
