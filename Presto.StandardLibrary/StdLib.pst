@@ -91,3 +91,8 @@ concatenate = fn (a: text, b: text): text -> a + b
 # trim
 # trim_start
 # trim_end
+
+##### List #####
+# head
+# tail
+# last

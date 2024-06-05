@@ -5,6 +5,8 @@ open CompilerCore
 
 open type PrestoProgram
 
+let autoInsertCurlyBraces = false
+
 let isTriviaToken (tokenType: token_type): bool =
     (tokenType = token_type.whitespace) || (tokenType = token_type.comment)
 
@@ -192,7 +194,11 @@ let readWhitespaceTokens (state: tokenize_state): List<token> * tokenize_state =
 
             if indentationIncreased then
                 (
-                    tokens @ [token(_type = token_type.left_curly_bracket, _text = "{", position = state.position, was_inserted = true)],
+                    if autoInsertCurlyBraces then
+                        tokens @ [token(_type = token_type.left_curly_bracket, _text = "{", position = state.position, was_inserted = true)]
+                    else
+                        tokens
+                    ,
                     tokenize_state(
                         tokens = state.tokens,
                         errors = state.errors,
@@ -203,7 +209,11 @@ let readWhitespaceTokens (state: tokenize_state): List<token> * tokenize_state =
                 )
             else if indentationDecreased then
                 let (tokens, state) = (
-                    tokens @ [token(_type = token_type.right_curly_bracket, _text = "}", position = state.position, was_inserted = true)],
+                    if autoInsertCurlyBraces then
+                        tokens @ [token(_type = token_type.right_curly_bracket, _text = "}", position = state.position, was_inserted = true)]
+                    else
+                        tokens
+                    ,
                     tokenize_state(
                         tokens = state.tokens,
                         errors = state.errors,
@@ -215,7 +225,11 @@ let readWhitespaceTokens (state: tokenize_state): List<token> * tokenize_state =
 
                 if newIndentation > (get_current_indentation state) then
                     (
-                        tokens @ [token(_type = token_type.left_curly_bracket, _text = "{", position = state.position, was_inserted = true)],
+                        if autoInsertCurlyBraces then
+                            tokens @ [token(_type = token_type.left_curly_bracket, _text = "{", position = state.position, was_inserted = true)]
+                        else
+                            tokens
+                        ,
                         tokenize_state(
                             tokens = state.tokens,
                             errors = state.errors,
@@ -425,7 +439,7 @@ let tokenize (fileName: string) (sourceCode: string): tokenize_output =
     let finalState = applyWhile iterateTokenize is_not_done seedState
 
     let finalState =
-        if finalState.indentation_stack.Count > 0
+        if autoInsertCurlyBraces && finalState.indentation_stack.Count > 0
         then
             let token = token(_type = token_type.right_curly_bracket, _text = "}", position = finalState.position, was_inserted = true)
 

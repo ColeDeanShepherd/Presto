@@ -4,6 +4,7 @@ using System;
     using nat = System.UInt32;
     using real = System.Double;
     
+    using Presto.Runtime;
     using static Presto.Runtime.PrestoProgram;
     
     public static partial class PrestoProgram {

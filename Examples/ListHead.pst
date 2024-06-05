@@ -1,2 +1,0 @@
-head = fn (list: Console) ->
-    print_line(console, "Hello, world!")

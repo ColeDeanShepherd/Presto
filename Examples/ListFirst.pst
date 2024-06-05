@@ -1,0 +1,5 @@
+first = fn [t] (s: seq[t]): t 
+    requires not_empty(s)
+    ensures returnValue == list[0]
+    ->
+    #print_line(console, "Hello, world!")
