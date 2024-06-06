@@ -815,7 +815,18 @@ let getInitialScopesById =
                 .Add("product", BuiltInSymbol ("product", FunctionType (System.Guid.NewGuid(), [], [PrestoType.Nat; PrestoType.Nat], PrestoType.Nat)))
                 .Add("quotient", BuiltInSymbol ("quotient", FunctionType (System.Guid.NewGuid(), [], [PrestoType.Nat; PrestoType.Nat], PrestoType.Nat)))
 
-                .Add("parse_real", BuiltInSymbol ("parse_real", FunctionType (System.Guid.NewGuid(), [], [textType], PrestoType.Real)))
+                .Add(
+                    "parse_real",
+                    BuiltInSymbol (
+                        "parse_real",
+                        FunctionType (
+                            System.Guid.NewGuid(),
+                            [],
+                            [textType],
+                            PrestoType.UnionInstanceType (resultScopeId, [PrestoType.Real; ioErrorType])
+                        )
+                    )
+                )
                 .Add("uppercase", BuiltInSymbol ("uppercase", FunctionType (System.Guid.NewGuid(), [], [textType], textType)))
                 
                 .Add(

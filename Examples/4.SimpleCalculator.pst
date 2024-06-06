@@ -1,0 +1,23 @@
+main = fn (console: Console) -> {
+    print(console, "Enter first number: ")?
+    num_1_str = read_line(console)?
+    num_1 = parse_real(num_1_str)?
+
+    print(console, "Enter second number: ")?
+    num_2_str = read_line(console)?
+    num_2 = parse_real(num_2_str)?
+
+    print(console, "Enter operation (+, -, *, /): ")?
+    operation = read_line(console)?
+
+    if operation == "+" then
+        print_line(console, "Result: " + to_string(num_1 + num_2))
+    else if operation == "-" then
+        print_line(console, "Result: " + to_string(num_1 - num_2))
+    else if operation == "*" then
+        print_line(console, "Result: " + to_string(num_1 * num_2))
+    else if operation == "/" then
+        print_line(console, "Result: " + to_string(num_1 / num_2))
+    else
+        print_line(console, "Invalid operation")
+}

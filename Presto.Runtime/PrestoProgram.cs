@@ -3,6 +3,7 @@
 using System.Runtime.CompilerServices;
 using static System.Net.Mime.MediaTypeNames;
 using nat = System.UInt32;
+using real = System.Double;
 
 public class Unit
 {
@@ -79,7 +80,17 @@ public static partial class PrestoProgram
 
     public static string concatenate(string a, string b ) => a + b;
     public static nat sum(nat a, nat b) => a + b;
-    public static string to_string<T>(T x) => x.ToString();
-    public static double parse_real(string s) => double.Parse(s);
+    public static string to_string<T>(T x) => x.ToString()!;
+    public static Result<double, string> parse_real(string s)
+    {
+        try
+        {
+            return Result.Ok<double, string>(double.Parse(s));
+        }
+        catch (Exception ex)
+        {
+            return Result.Err<double, string>(ex.ToString());
+        }
+    }
     public static string uppercase(string s) => s.ToUpperInvariant();
 }
