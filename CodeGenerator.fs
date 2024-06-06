@@ -185,7 +185,7 @@ and generateNumberLiteral (state: CodeGeneratorState) (numberLiteral: NumberLite
 
     let state =
         if numberLiteral.Token._text.Contains('.') then
-            state
+            generateString state "m"
         else
             generateString state "u"
 
@@ -419,7 +419,7 @@ let generatedCodeHeader =
     using System.Collections.Generic;
     
     using nat = System.UInt32;
-    using real = System.Double;
+    using real = System.Decimal;
     
     using Presto.Runtime;
     using static Presto.Runtime.PrestoProgram;

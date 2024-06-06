@@ -2,7 +2,7 @@ using System;
     using System.Collections.Generic;
     
     using nat = System.UInt32;
-    using real = System.Double;
+    using real = System.Decimal;
     
     using Presto.Runtime;
     using static Presto.Runtime.PrestoProgram;
