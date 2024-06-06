@@ -1,4 +1,4 @@
-token_type = union
+token_type = union {
     identifier
     number_literal
     fn_keyword
@@ -30,29 +30,34 @@ token_type = union
     equality_operator
     right_arrow
     question_mark
+}
 
-token = record
+token = record {
     _type: token_type
     _text: text
     position: text_position
     was_inserted: bool
+}
 
-tokenize_output = record
+tokenize_output = record {
     tokens: seq[token]
     errors: seq[compile_error]
+}
 
-tokenize_state = record
+tokenize_state = record {
     text_left: text
     position: text_position
     indentation_stack: seq[nat]
     tokens: seq[token]
     errors: seq[compile_error]
+}
 
 is_done = fn (state: tokenize_state): bool -> length(state.text_left) == 0
 is_not_done = fn (state: tokenize_state): bool -> not(is_done(state))
 get_current_indentation = fn (state: tokenize_state): nat -> last_or_default[nat](state.indentation_stack, 0)
-#advance_text_position = fn (position: text_position, read_char: char): text_position ->
+#advance_text_position = fn (position: text_position, read_char: char): text_position -> {
 #    if not_eq(read_char, '\n') then
 #        new_text_position(position.line_index, sum(position.column_index, 1))
 #    else
 #        new_text_position(sum(position.line_index, 1), 0)
+#}

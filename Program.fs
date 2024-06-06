@@ -158,4 +158,4 @@ if prestoCompilerSucceeded && compileOptions.CompileGeneratedCSharp then
     let filePathsToCompile = Set.ofList (generatedFilePaths @ (List.ofArray runtimeCSharpFilePaths))
     let csProjName = compileCSharpFiles filePathsToCompile compileOptions.OutputPath
 
-    runProcess (Path.Combine(compileOptions.OutputPath, csProjName + ".exe")) ""
+    runCommandInNewWindow (Path.Combine(compileOptions.OutputPath, csProjName + ".exe"))

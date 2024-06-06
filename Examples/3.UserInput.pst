@@ -1,0 +1,5 @@
+main = fn (console: Console) -> {
+    print(console, "Enter your name: ")?
+    name = read_line(console)?
+    print_line(console, "Hello, " + name + "!")
+}

@@ -1,8 +1,10 @@
-﻿text_position = record
+﻿text_position = record {
     file_name: text
     line_index: nat
     column_index: nat
+}
 
-compile_error = record
+compile_error = record {
     description: text
     position: text_position
+}

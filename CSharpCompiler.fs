@@ -9,6 +9,7 @@ let runProcess (exePath: string) (args: string) =
     startInfo.Arguments <- args
     startInfo.RedirectStandardOutput <- true
     startInfo.RedirectStandardError <- true
+    startInfo.RedirectStandardInput <- true
     startInfo.UseShellExecute <- false
     startInfo.CreateNoWindow <- true
         
@@ -26,6 +27,21 @@ let runProcess (exePath: string) (args: string) =
 
     if proc.ExitCode <> 0 then
         failwithf "Process exited with code %d" proc.ExitCode
+
+let runCommandInNewWindow (commandPath: string) =
+    let startInfo = new ProcessStartInfo()
+    startInfo.FileName <- "cmd.exe"
+    startInfo.Arguments <- "/k \"" + commandPath.Replace("/", "\\") + "\""
+    startInfo.UseShellExecute <- true
+    startInfo.CreateNoWindow <- false
+        
+    use proc = new Process()
+    proc.StartInfo <- startInfo
+
+    proc.OutputDataReceived.Add(fun args -> printfn "%s" args.Data)
+    proc.ErrorDataReceived.Add(fun args -> printfn "ERROR: %s" args.Data)
+
+    proc.Start() |> ignore
 
 let compileCSharpFiles (csharpFilePaths: string Set) (outputDir: string): string =
     let csProjName = Path.GetRandomFileName()

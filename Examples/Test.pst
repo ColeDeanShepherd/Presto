@@ -1,16 +1,5 @@
-﻿# 2. Basic Arithmetic
+﻿# 3. User Input
 
-#main = fn (console: Console) ->
-#    a = 5
-#    b = 3
-#    print_line(console, "Sum: " + to_string(a + b))
-
-# 3. User Input
-
-main = fn (console: Console) ->
-    print(console, "Enter your name: ")?
-    name = read_line(console)?
-    print_line(console, "Hello, " + name + "!")
 
 
 # 4. Simple Calculator

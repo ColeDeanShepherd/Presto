@@ -6,6 +6,8 @@
   </PropertyGroup>
 
   <ItemGroup>
+    <None Include="examples\3.UserInput.pst" />
+    <None Include="examples\2.BasicArithmetic.pst" />
     <None Include="examples\ListFirst.pst" />
     <None Include="examples\1.HelloWorld.pst" />
     <None Include="Examples\Test.pst" />
