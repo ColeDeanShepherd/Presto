@@ -1,11 +1,14 @@
+read_real = fn (console: Console) -> {
+    str = read_line(console)?
+    parse_real(str)
+}
+
 main = fn (console: Console) -> {
     print(console, "Enter first number: ")?
-    num_1_str = read_line(console)?
-    num_1 = parse_real(num_1_str)?
+    num_1 = read_real(console)?
 
     print(console, "Enter second number: ")?
-    num_2_str = read_line(console)?
-    num_2 = parse_real(num_2_str)?
+    num_2 = read_real(console)?
 
     print(console, "Enter operation (+, -, *, /): ")?
     operation = read_line(console)?
