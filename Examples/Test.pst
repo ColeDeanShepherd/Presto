@@ -1,30 +1,4 @@
-﻿# 4. Simple Calculator
-
-
-
-# 5. Temperature Converter
-#celsius_to_fahrenheit = fn (celsius: real) ->
-#    (celsius * 9.0/5.0) + 32.0
-#
-#fahrenheit_to_celsius = fn (fahrenheit: real) ->
-#    (fahrenheit - 32.0) * 5.0/9.0
-#
-#main = fn (console: Console) -> {
-#    print_line(console, "Enter temperature: ")
-#    temp = parse_real(read_line(console))
-#
-#    print_line(console, "Is this in Celsius or Fahrenheit (C/F)? ")
-#    unit = read_line(console)
-#
-#    if uppercase(unit) == "C" then
-#        print_line(console, "Temperature in Fahrenheit:" + to_string(celsius_to_fahrenheit(temp)))
-#    else if uppercase(unit) == "F" then
-#        print_line(console, "Temperature in Celsius:" + to_string(fahrenheit_to_celsius(temp)))
-#    else
-#        print_line(console, "Invalid unit")
-#}
-
-# 6. Number Guessing Game
+﻿# 6. Number Guessing Game
 
 #main = fn (console: Console, rand: Rand) -> {
 #    num = randInt(rand)
