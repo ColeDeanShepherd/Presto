@@ -827,6 +827,18 @@ let getInitialScopesById =
                         )
                     )
                 )
+                .Add(
+                    "read_real",
+                    BuiltInSymbol (
+                        "read_real",
+                        FunctionType (
+                            System.Guid.NewGuid(),
+                            [],
+                            [consoleType],
+                            PrestoType.UnionInstanceType (resultScopeId, [PrestoType.Real; ioErrorType])
+                        )
+                    )
+                )
                 .Add("uppercase", BuiltInSymbol ("uppercase", FunctionType (System.Guid.NewGuid(), [], [textType], textType)))
                 
                 .Add(

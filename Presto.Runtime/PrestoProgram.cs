@@ -92,5 +92,19 @@ public static partial class PrestoProgram
             return Result.Err<real, string>(ex.ToString());
         }
     }
+
+    public static Result<real, string> read_real(Console console)
+    {
+        var readResult = read_line(console);
+        if (readResult.IsErr)
+        {
+            return Result.ErrUnit(readResult.Error!);
+        }
+
+        string str = readResult.Value!;
+
+        return parse_real(str);
+    }
+
     public static string uppercase(string s) => s.ToUpperInvariant();
 }

@@ -1,8 +1,3 @@
-read_real = fn (console: Console) -> {
-    str = read_line(console)?
-    parse_real(str)
-}
-
 main = fn (console: Console) -> {
     print(console, "Enter first number: ")?
     num_1 = read_real(console)?
