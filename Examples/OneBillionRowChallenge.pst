@@ -1,0 +1,25 @@
+main = fn (console: Console, fileSystem: FileSystem) -> {
+    file_name = "asdf.txt"
+    file_contents = read_text_file(fileSystem, file_name)
+    lines = get_lines(file_contents)
+    split_lines = map(fn (line: text) -> split_by(line, ";"), lines)
+    parsed_split_lines = map(fn (x: seq[text]) -> (_1st(x), (_2nd >> parse_real >> unwrap)(x)), split_lines)
+    grouped_split_lines = group_by(_1st, parsed_split_lines)
+    weather_station_and_stats = map(fn (g: _) -> (key(g), round(min(values(g)), 1), round(mean(values(g)), 1), round(max(value(g)), 1)))
+    sorted_weather_station_and_stats = sort_by(_1st, weather_station_and_stats)
+
+    print("{")?
+    for_each(sorted_weather_station_and_stats, print_weather_station >> unwrap)
+    print("}")?
+}
+
+print_weather_station = fn (x: _) -> {
+    print(_1st(x))?
+    print("=")?
+    print(_2nd(x))?
+    print("/")?
+    print(_3rd(x))?
+    print("/")?
+    print(_4th(x))?
+    print(", ")?
+}
