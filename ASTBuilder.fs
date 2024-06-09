@@ -91,6 +91,7 @@ and ExpressionValue =
     | StringLiteralExpression of StringLiteral
     | ParenExpr of ParenthesizedExpression2
     | ErrorPropagationExpression of ErrorPropagationOperatorExpression
+    | TupleExpr of TupleExpression
 and Binding = {
     NameToken: token
     Value: Expression
@@ -128,6 +129,7 @@ and BinaryOperatorType =
     | Multiplication
     | Division
     | Equality
+    | ReverseFunctionComposition
 and BinaryOperator = {
     Type: BinaryOperatorType
     LeftExpression: Expression;
@@ -135,6 +137,9 @@ and BinaryOperator = {
 }
 and ParenthesizedExpression2 = {
     InnerExpression: Expression;
+}
+and TupleExpression = {
+    Values: List<Expression>
 }
 and ErrorPropagationOperatorExpression = {
     InnerExpression: Expression;
@@ -678,6 +683,12 @@ and buildExpression (state: ASTBuilderState) (node: ParseNode): (Option<Expressi
         match optionOperator with
         | Some operator -> (Some (newExpression (BinaryOperatorExpression operator)), state)
         | None -> (None, state)
+    | ParseNodeType.ReverseFunctionComposition ->
+        let (optionOperator, state) = buildBinaryOperator state child BinaryOperatorType.ReverseFunctionComposition
+
+        match optionOperator with
+        | Some operator -> (Some (newExpression (BinaryOperatorExpression operator)), state)
+        | None -> (None, state)
     | ParseNodeType.GenericInstantiation ->
         let (optionGenericInstantiation, state) = buildGenericInstantiation state child
 
@@ -691,6 +702,16 @@ and buildExpression (state: ASTBuilderState) (node: ParseNode): (Option<Expressi
         | Some innerExpr ->
             let a: ParenthesizedExpression2 = { InnerExpression = innerExpr } 
             (Some (newExpression (ParenExpr a)), state)
+        | None -> (None, state)
+    | ParseNodeType.TupleExpression ->
+        let expressionNodes = childrenOfType node ParseNodeType.Expression
+        
+        let (optionExpressions, state) = buildAllOrNone state expressionNodes buildExpression
+
+        match optionExpressions with
+        | Some expressions ->
+            let a: TupleExpression = { Values = expressions }
+            (Some (newExpression (TupleExpr a)), state)
         | None -> (None, state)
     | ParseNodeType.ErrorPropagationOperator ->
         let (optionInnerExpr, state) = buildExpression state child.Children[0]
