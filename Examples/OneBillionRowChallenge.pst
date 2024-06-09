@@ -1,15 +1,49 @@
-main = fn (console: Console, fileSystem: FileSystem) -> {
-    file_name = "asdf.txt"
-    file_contents = read_text_file(fileSystem, file_name)
-    lines = get_lines(file_contents)
-    split_lines = map(fn (line: text) -> split_by(line, ";"), lines)
-    parsed_split_lines = map(fn (x: seq[text]) -> (_1st(x), (_2nd >> parse_real >> unwrap)(x)), split_lines)
-    grouped_split_lines = group_by(_1st, parsed_split_lines)
-    weather_station_and_stats = map(fn (g: _) -> (key(g), round(min(values(g)), 1), round(mean(values(g)), 1), round(max(value(g)), 1)))
-    sorted_weather_station_and_stats = sort_by(_1st, weather_station_and_stats)
+main = run1
 
+run1 = fn (console: Console, fileSystem: FileSystem) -> {
+    file_name = "asdf.txt"
+
+    file_contents = read_text_file(file_name, fileSystem)
+    lines = get_lines(file_contents)
+    split_lines = map(lines, fn (line: text) -> split_by(line, ";"))
+    parsed_split_lines = map(
+        split_lines,
+        fn (x: seq[text]) -> (_1st(x), (_2nd >> parse_real >> unwrap)(x))
+    )
+    grouped_split_lines = group_by(parsed_split_lines, _1st)
+    weather_station_and_stats = map(
+        parsed_split_lines,
+        fn (g: _) -> (key(g), round(min(values(g)), 1), round(mean(values(g)), 1), round(max(value(g)), 1))
+    )
+    sorted_weather_station_and_stats = sort_by(weather_station_and_stats, _1st)
+
+    print_weather_stations(sorted_weather_station_and_stats)
+}
+
+#run2 =
+#    read_text_file(fileSystem, _) >>
+#    get_lines >>
+#    map(split_by(_, ";"), _) >>
+#    map(fn (x: _) -> (_1st(x), (_2nd >> parse_real >> unwrap)(x)), _) >>
+#    group_by(_1st, _) >>
+#    map(fn (g: _) -> (key(g), round(min(values(g)), 1), round(mean(values(g)), 1), round(max(value(g)), 1)), _) >>
+#    sort_by(_1st, _) >>
+#    print_weather_stations
+#
+#run4 = fn (console: Console, fileSystem: FileSystem, file_name: text) -> {
+#    read_text_file(fileSystem, file_name)
+#    .get_lines()
+#    .map(split_by(_, ";"), _)
+#    .map(fn (x: _) -> (_1st(x), (_2nd >> parse_real >> unwrap)(x)), _)
+#    .group_by(_1st, _)
+#    .map(fn (g: _) -> (key(g), round(min(values(g)), 1), round(mean(values(g)), 1), round(max(value(g)), 1)), _)
+#    .sort_by(_1st, _)
+#    .print_weather_stations()
+#}
+
+print_weather_stations = fn (x: _) -> {
     print("{")?
-    for_each(sorted_weather_station_and_stats, print_weather_station >> unwrap)
+    for_each(x, print_weather_station >> unwrap)
     print("}")?
 }
 

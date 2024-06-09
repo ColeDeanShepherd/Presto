@@ -362,7 +362,18 @@ let iterateTokenize (state: tokenize_state): tokenize_state =
         else if nextChar = '<' then
             readSingleCharToken state token_type.less_than
         else if nextChar = '>' then
-            readSingleCharToken state token_type.greater_than
+            let optionNextNextChar = tryLookaheadChar state 1
+
+            match optionNextNextChar with
+            | Some nextNextChar when nextNextChar = '>' -> 
+                tokenize_state(
+                    tokens = listAppend state.tokens (token(_type = token_type.double_greater_than, _text = ">>", position = startPosition, was_inserted = false)),
+                    errors = state.errors,
+                    indentation_stack = state.indentation_stack,
+                    text_left = state.text_left.Substring(2),
+                    position = state.position
+                )
+            | _ -> readSingleCharToken state token_type.greater_than
         else if nextChar = '(' then
             readSingleCharToken state token_type.left_paren
         else if nextChar = ')' then

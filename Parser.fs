@@ -50,6 +50,8 @@ type ParseNodeType =
     | Equals
     | ParenthesizedExpression
     | ErrorPropagationOperator
+    | TupleExpression
+    | ReverseFunctionComposition
 
 type ParseNode = {
     Type: ParseNodeType
@@ -594,6 +596,49 @@ and parseBlock (state: ParseState): Option<ParseNode> * ParseState =
         | None -> (None, state)
     | None -> (None, state)
 
+and parseParenthesizedExpressionOrTuple (state: ParseState): Option<ParseNode> * ParseState =
+    let (optionLeftParen, state) = parseToken state token_type.left_paren
+    
+    match optionLeftParen with
+    | Some leftParen ->
+        let (whitespace1, state) = parseTrivia state
+        let (innerNodes, state) = parseSeparatedByToken state parseExpression token_type.comma (Some token_type.right_paren) []
+        let (whitespace2, state) = parseTrivia state
+        let (optionRightParen, state) = parseToken state token_type.right_paren
+
+        match optionRightParen with
+        | Some rightParen ->
+            let expressionNodes = List.filter (fun c -> c.Type = ParseNodeType.Expression) innerNodes
+
+            match expressionNodes.Length with
+            | 0 ->
+                let error = compile_error(
+                    description = "Empty tuples are not allowed",
+                    position = currentTextPosition state
+                )
+
+                (None, { state with Errors = List.append state.Errors [error] })
+            | 1 ->
+                (
+                    Some {
+                        Type = ParseNodeType.ParenthesizedExpression
+                        Children = List.concat [[leftParen]; whitespace1; innerNodes; whitespace2; [rightParen]]
+                        Token = None
+                    },
+                    state
+                )
+            | _ ->
+                (
+                    Some {
+                        Type = ParseNodeType.TupleExpression
+                        Children = List.concat [[leftParen]; whitespace1; innerNodes; whitespace2; [rightParen]]
+                        Token = None
+                    },
+                    state
+                )
+        | None -> (None, state)
+    | None -> (None, state)
+
 and parseFunctionReturnType (state: ParseState): List<ParseNode> * ParseState =
     // read whitespace, then the colon, then more whitespace, then parse an expression
     let (whitespace1, state) = parseTrivia state
@@ -875,33 +920,7 @@ and parsePrefixExpression (state: ParseState): Option<ParseNode> * ParseState =
         | token_type.string_literal ->
             wrapInExpressionNode (parseToken state token_type.string_literal)
         | token_type.left_paren ->
-            let (optionLeftParen, state) = readExpectedToken state token_type.left_paren
-            let (optionInnerExpr, state) = parseExpression state
-
-
-            //let (optionResult, state) = wrapInExpressionNode (parseExpression state)
-
-            match optionInnerExpr with
-            | Some innerExpr ->
-                let (optionRightParen, state) = readExpectedToken state token_type.right_paren
-            
-                match optionRightParen with
-                | Some rightParen ->
-                    let result =
-                        {
-                            Type = ParseNodeType.ParenthesizedExpression
-                            Children = [innerExpr]
-                            Token = None
-                        }
-                    let result =
-                        {
-                            Type = ParseNodeType.Expression
-                            Children = [result]
-                            Token = None
-                        }
-                    (Some result, state)
-                | None -> (None, state)
-            | None -> (None, state)
+            wrapInExpressionNode (parseParenthesizedExpressionOrTuple state)
         | _ ->
             let error = compile_error(
                 description = $"Encountered unexpected token: \"{nextToken._text}\"",
@@ -944,6 +963,7 @@ and getPostfixLeftBindingPower (tokenType: token_type): Option<int> =
 and getInfixBindingPowers (tokenType: token_type): Option<int * int> =
     match tokenType with
     | token_type.period -> Some (13, 14)
+    | token_type.double_greater_than -> Some (10, 9)
     | token_type.asterisk -> Some (7, 8)
     | token_type.forward_slash -> Some (7, 8)
     | token_type.plus_sign -> Some (5, 6)
@@ -1079,6 +1099,8 @@ and tryParsePostfixAndInfixExpressions (state: ParseState) (prefixExpression: Pa
                         parseSingleTokenBinaryOperator token_type.forward_slash ParseNodeType.Division
                     | token_type.equality_operator ->
                         parseSingleTokenBinaryOperator token_type.equality_operator ParseNodeType.Equals
+                    | token_type.double_greater_than ->
+                        parseSingleTokenBinaryOperator token_type.double_greater_than ParseNodeType.ReverseFunctionComposition
                     | _ -> failwith "Assert failed"
             | None -> (Some prefixExpression, state)
     | None -> (Some prefixExpression, state)

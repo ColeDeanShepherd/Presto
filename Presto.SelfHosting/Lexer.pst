@@ -30,6 +30,7 @@ token_type = union {
     equality_operator
     right_arrow
     question_mark
+    double_greater_than
 }
 
 token = record {
