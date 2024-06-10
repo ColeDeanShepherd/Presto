@@ -14,6 +14,8 @@ public class Console
 {
 }
 
+public class FileSystem { }
+
 public record Result<T, E>(bool IsOk, T? Value, E? Error)
 {
     public bool IsErr => !IsOk;
@@ -107,4 +109,57 @@ public static partial class PrestoProgram
     }
 
     public static string uppercase(string s) => s.ToUpperInvariant();
+
+    public static Result<IEnumerable<char>, string> read_text_file(FileSystem fs, string fileName)
+    {
+        try
+        {
+            return Result.Ok<IEnumerable<char>, string>(File.ReadAllText(fileName));
+        }
+        catch (Exception e)
+        {
+            return Result.Err<IEnumerable<char>, string>(e.ToString());
+        }
+    }
+
+    public static IEnumerable<string> get_lines(IEnumerable<char> textStream) =>
+        new string(textStream.ToArray()).Split(new[] { "\r\n", "\r", "\n" }, StringSplitOptions.None);
+
+    public static IEnumerable<TResult> map<TSource, TResult>(
+        IEnumerable<TSource> source,
+        Func<TSource, TResult> selector
+    ) =>
+        source.Select(selector);
+
+    public static IEnumerable<IGrouping<TKey, TSource>> group_by<TSource, TKey>(
+        IEnumerable<TSource> source,
+        Func<TSource, TKey> keySelector
+    ) =>
+        source.GroupBy(keySelector);
+
+    public static IOrderedEnumerable<TSource> sort_by<TSource, TKey>(
+        IEnumerable<TSource> source,
+        Func<TSource, TKey> keySelector
+    ) =>
+        source.OrderBy(keySelector);
+
+    public static Func<T, TResult> ReverseCompose<T, TIntermediate, TResult>(
+        Func<T, TIntermediate> f,
+        Func<TIntermediate, TResult> g)
+    {
+        return x => g(f(x));
+    }
+
+    public static IEnumerable<string> split_by(string str, string separator) =>
+        str.Split(separator);
+
+    public static T1 t4_1st<T1, T2, T3, T4>(Tuple<T1, T2, T3, T4> t) => t.Item1;
+    public static T2 t4_2nd<T1, T2, T3, T4>(Tuple<T1, T2, T3, T4> t) => t.Item2;
+    public static T3 t4_3rd<T1, T2, T3, T4>(Tuple<T1, T2, T3, T4> t) => t.Item3;
+    public static T4 t4_4th<T1, T2, T3, T4>(Tuple<T1, T2, T3, T4> t) => t.Item4;
+
+    public static T unwrap<T, E>(Result<T, E> result) =>
+        result.IsOk
+            ? result.Value!
+            : throw new Exception($"Failed to unwrap result error: {result.Error}");
 }

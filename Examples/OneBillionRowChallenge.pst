@@ -1,9 +1,7 @@
-main = run1
-
-run1 = fn (console: Console, fileSystem: FileSystem) -> {
+main = fn (console: Console, fileSystem: FileSystem) -> {
     file_name = "asdf.txt"
 
-    file_contents = read_text_file(fileSystem, file_name)
+    file_contents = read_text_file(fileSystem, file_name)?
     lines = get_lines(file_contents)
     split_lines = map(lines, fn (line: text) -> split_by(line, ";"))
     parsed_split_lines = map(
@@ -17,7 +15,7 @@ run1 = fn (console: Console, fileSystem: FileSystem) -> {
     )
     sorted_weather_station_and_stats = sort_by(weather_station_and_stats, _1st)
 
-    print_weather_stations(sorted_weather_station_and_stats)
+    print_weather_stations(console, sorted_weather_station_and_stats)
 }
 
 #run2 =
@@ -41,19 +39,21 @@ run1 = fn (console: Console, fileSystem: FileSystem) -> {
 #    .print_weather_stations()
 #}
 
-print_weather_stations = fn (x: (text, real, real, real)) -> {
-    print("{")?
-    map(x, print_weather_station >> unwrap)
-    print("}")
+print_weather_stations = fn (console: Console, x: seq[(text, real, real, real)]) -> {
+    p2 = fn (x: (text, real, real, real)) -> print_weather_station(console, x)
+
+    print(console, "{")?
+    map(x, p2 >> unwrap)
+    print(console, "}")
 }
 
-print_weather_station = fn (x: (text, real, real, real)) -> {
-    print(t4_1st(x))?
-    print("=")?
-    print((t4_2nd >> to_string)(x))?
-    print("/")?
-    print((t4_3rd >> to_string)(x))?
-    print("/")?
-    print((t4_4th >> to_string)(x))?
-    print(", ")
+print_weather_station = fn (console: Console, x: (text, real, real, real)) -> {
+    print(console, t4_1st(x))?
+    print(console, "=")?
+    print(console, (t4_2nd >> to_string)(x))?
+    print(console, "/")?
+    print(console, (t4_3rd >> to_string)(x))?
+    print(console, "/")?
+    print(console, (t4_4th >> to_string)(x))?
+    print(console, ", ")
 }

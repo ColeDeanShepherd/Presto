@@ -707,7 +707,7 @@ and buildExpression (state: ASTBuilderState) (node: ParseNode): (Option<Expressi
             (Some (newExpression (ParenExpr a)), state)
         | None -> (None, state)
     | ParseNodeType.TupleExpression ->
-        let expressionNodes = childrenOfType node ParseNodeType.Expression
+        let expressionNodes = childrenOfType child ParseNodeType.Expression
         
         let (optionExpressions, state) = buildAllOrNone state expressionNodes buildExpression
 
@@ -765,8 +765,10 @@ and buildBinding (state: ASTBuilderState) (node: ParseNode): (Option<Binding> * 
     
 
 let resultScopeId = System.Guid.NewGuid()
+let seqScopeId = System.Guid.NewGuid()
 let textScopeId = System.Guid.NewGuid()
 let textType = PrestoType.Text textScopeId
+let groupingScopeId = System.Guid.NewGuid()
 
 let getInitialScopesById =
     let scopesById: Map<System.Guid, Scope> = Map.empty
@@ -781,10 +783,7 @@ let getInitialScopesById =
     }
     let scopesById = scopesById.Add(textScopeId, textScope)
 
-    let seqScopeId = System.Guid.NewGuid()
-
-    let groupingScopeId = System.Guid.NewGuid()
-    let groupingType = RecordType (groupingScopeId, ["T"; "TKey"], [])
+    let groupingType = RecordType (groupingScopeId, ["t"; "TKey"], [])
 
     let consoleType = RecordType (System.Guid.NewGuid(), [], [])
     
@@ -817,9 +816,9 @@ let getInitialScopesById =
                         "Result",
                         UnionType (
                             resultScopeId,
-                            ["T"; "E"],
+                            ["t"; "E"],
                             [
-                                { Name = "Ok"; Parameters = [("value", TypeParameterType "T")] };
+                                { Name = "Ok"; Parameters = [("value", TypeParameterType "t")] };
                                 { Name = "Err"; Parameters = [("error", TypeParameterType "E")] }
                             ]
                         )
@@ -963,17 +962,17 @@ let getInitialScopesById =
                         "unwrap",
                         FunctionType (
                             System.Guid.NewGuid(),
-                            ["T"; "E"],
+                            ["t"; "E"],
                             [
                                 PrestoType.UnionInstanceType (
                                     resultScopeId,
                                     [
-                                        TypeParameterType "T"
+                                        TypeParameterType "t"
                                         TypeParameterType "E"
                                     ]
                                 )
                             ],
-                            TypeParameterType "T"
+                            TypeParameterType "t"
                         )
                     )
                 )
@@ -1046,6 +1045,35 @@ let getInitialScopesById =
                     )
                 )
                 
+                .Add(
+                    "list_1st",
+                    BuiltInSymbol (
+                        "list_1st",
+                        FunctionType (
+                            System.Guid.NewGuid(),
+                            ["t"],
+                            [
+                                TypeClassInstanceType (seqScopeId, [TypeParameterType "t"])
+                            ],
+                            TypeParameterType "t"
+                        )
+                    )
+                )
+                .Add(
+                    "list_2nd",
+                    BuiltInSymbol (
+                        "list_2nd",
+                        FunctionType (
+                            System.Guid.NewGuid(),
+                            ["t"],
+                            [
+                                TypeClassInstanceType (seqScopeId, [TypeParameterType "t"])
+                            ],
+                            TypeParameterType "t"
+                        )
+                    )
+                )
+
                 .Add(
                     "_1st",
                     BuiltInSymbol (
@@ -1140,21 +1168,49 @@ let getInitialScopesById =
                         "group_by",
                         FunctionType (
                             System.Guid.NewGuid(),
-                            ["ti"; "tk"],
+                            ["t"; "TKey"],
                             [
-                                TypeClassInstanceType (seqScopeId, [TypeParameterType "ti"])
+                                TypeClassInstanceType (seqScopeId, [TypeParameterType "t"])
                                 FunctionType (
                                     System.Guid.NewGuid(),
                                     [],
-                                    [TypeParameterType "ti"],
-                                    TypeParameterType "tk"
+                                    [TypeParameterType "t"],
+                                    TypeParameterType "TKey"
                                 )
                             ],
 
                             RecordInstanceType (groupingScopeId, [
-                                TypeClassInstanceType (seqScopeId, [TypeParameterType "ti"])
-                                TypeParameterType "tk"
+                                TypeClassInstanceType (seqScopeId, [TypeParameterType "t"])
+                                TypeParameterType "TKey"
                             ])
+                        )
+                    )
+                )
+                .Add(
+                    "key",
+                    BuiltInSymbol (
+                        "key",
+                        FunctionType (
+                            System.Guid.NewGuid(),
+                            ["t"; "TKey"],
+                            [
+                                RecordInstanceType (groupingScopeId, [TypeParameterType "t"; TypeParameterType "TKey"])
+                            ],
+                            TypeParameterType "TKey"
+                        )
+                    )
+                )
+                .Add(
+                    "values",
+                    BuiltInSymbol (
+                        "values",
+                        FunctionType (
+                            System.Guid.NewGuid(),
+                            ["t"; "TKey"],
+                            [
+                                RecordInstanceType (groupingScopeId, [TypeParameterType "t"; TypeParameterType "TKey"])
+                            ],
+                            TypeClassInstanceType (seqScopeId, [TypeParameterType "t"])
                         )
                     )
                 );

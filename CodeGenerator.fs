@@ -164,13 +164,23 @@ and generateMemberAccess (state: CodeGeneratorState) (memberAccess: MemberAccess
     state
 
 and generateBinaryOperator (state: CodeGeneratorState) (binaryOperator: BinaryOperator): CodeGeneratorState =
-    let state = generateExpression state binaryOperator.LeftExpression
-    let state = generateString state " "
-    let state = generateBinaryOperatorType state binaryOperator.Type
-    let state = generateString state " "
-    let state = generateExpression state binaryOperator.RightExpression
+    match binaryOperator.Type with
+    | BinaryOperatorType.ReverseFunctionComposition ->
+        let state = generateString state "ReverseCompose("
+        let state = generateExpression state binaryOperator.LeftExpression
+        let state = generateString state ", "
+        let state = generateExpression state binaryOperator.RightExpression
+        let state = generateString state ")"
+        
+        state
+    | _ ->
+        let state = generateExpression state binaryOperator.LeftExpression
+        let state = generateString state " "
+        let state = generateBinaryOperatorType state binaryOperator.Type
+        let state = generateString state " "
+        let state = generateExpression state binaryOperator.RightExpression
 
-    state
+        state
 
 and generateBinaryOperatorType (state: CodeGeneratorState) (_type: BinaryOperatorType): CodeGeneratorState =
     match _type with
@@ -208,6 +218,13 @@ and generateParenthesizedExpression (state: CodeGeneratorState) (pe: Parenthesiz
 
     state
 
+and generateTupleExpression (state: CodeGeneratorState) (pe: TupleExpression): CodeGeneratorState =
+    let state = generateString state "("
+    let state = generateManyWithSeparator state pe.Values generateExpression ", " true
+    let state = generateString state ")"
+
+    state
+
 and generateResultId (state: CodeGeneratorState): int * CodeGeneratorState =
     (state.NextResultId, { state with NextResultId = state.NextResultId + 1 })
 
@@ -232,7 +249,7 @@ and generateExpressionInternal (state: CodeGeneratorState) (expression: Expressi
     match expression.Value with
     | RecordExpression record -> failwith "Not implemented"
     | UnionExpression union -> failwith "Not implemented"
-    | FunctionExpression fn -> failwith "Not implemented"
+    | FunctionExpression fn -> generateLambdaExpression state fn
     | IfThenElseExpression ifThenElse -> generateIfThenElse state ifThenElse
     | FunctionCallExpression call -> generateFunctionCallInternal state call isTypeExpression
     | BlockExpression block -> generateBlock state expression block
@@ -244,10 +261,17 @@ and generateExpressionInternal (state: CodeGeneratorState) (expression: Expressi
     | CharacterLiteralExpression character -> generateCharacterLiteral state character
     | StringLiteralExpression string -> generateStringLiteral state string
     | ParenExpr pe -> generateParenthesizedExpression state pe
+    | TupleExpr te -> generateTupleExpression state te
     | ErrorPropagationExpression e -> generateErrorPropagationExpression state e
     
 and generateExpression (state: CodeGeneratorState) (expression: Expression): CodeGeneratorState =
     generateExpressionInternal state expression false
+
+and generateTypeName (state: CodeGeneratorState) (prestoType: PrestoType) (name: string): CodeGeneratorState =
+    match name with
+    | "seq" -> generateString state "IEnumerable"
+    | "Grouping" -> generateString state "IGrouping"
+    | _ -> generateString state name
 
 and generateTypeReference (state: CodeGeneratorState) (prestoType: PrestoType): CodeGeneratorState =
     match prestoType with
@@ -270,6 +294,34 @@ and generateTypeReference (state: CodeGeneratorState) (prestoType: PrestoType): 
     | UnionInstanceType (scopeId, typeParameters) ->
         let canonicalName = state.Program.TypeCanonicalNamesByScopeId[scopeId]
         let state = generateString state canonicalName
+
+        let state =
+            if typeParameters.IsEmpty then
+                state
+            else
+                let state = generateString state "<"
+                let state = generateManyWithSeparator state typeParameters generateTypeReference ", " true
+                let state = generateString state ">"
+                state
+
+        state
+    | TypeClassInstanceType (scopeId, typeParameters) ->
+        let canonicalName = state.Program.TypeCanonicalNamesByScopeId[scopeId]
+        let state = generateTypeName state prestoType canonicalName
+
+        let state =
+            if typeParameters.IsEmpty then
+                state
+            else
+                let state = generateString state "<"
+                let state = generateManyWithSeparator state typeParameters generateTypeReference ", " true
+                let state = generateString state ">"
+                state
+
+        state
+    | RecordInstanceType (scopeId, typeParameters) ->
+        let canonicalName = state.Program.TypeCanonicalNamesByScopeId[scopeId]
+        let state = generateTypeName state prestoType canonicalName
 
         let state =
             if typeParameters.IsEmpty then
@@ -329,6 +381,22 @@ and generateFunction (state: CodeGeneratorState) (name: string) (fn: Function): 
     let state = generateManyWithSeparator state fn.Parameters generateParameter ", " true
     let state = generateString state ")"
     let state = generateString state " "
+    let state = generateString state "{"
+
+    let state = generateString state "return"
+    let state = generateString state " "
+    let state = generateExpression state fn.Value
+    let state = generateString state ";"
+
+    let state = generateString state "}"
+
+    state
+
+and generateLambdaExpression (state: CodeGeneratorState) (fn: Function): CodeGeneratorState =
+    let state = generateString state "("
+    let state = generateManyWithSeparator state fn.Parameters generateParameter ", " true
+    let state = generateString state ")"
+    let state = generateString state " => "
     let state = generateString state "{"
 
     let state = generateString state "return"
