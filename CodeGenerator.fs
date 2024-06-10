@@ -258,7 +258,7 @@ and generateTypeReference (state: CodeGeneratorState) (prestoType: PrestoType): 
     | Boolean -> generateString state "bool"
     | Character -> generateString state "char"
     | Type -> generateString state "Type"
-    | RecordType (scopeId, _) ->
+    | RecordType (scopeId, _, _) ->
         let canonicalName = state.Program.TypeCanonicalNamesByScopeId[scopeId]
 
         match canonicalName with

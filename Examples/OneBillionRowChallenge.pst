@@ -3,17 +3,17 @@ main = run1
 run1 = fn (console: Console, fileSystem: FileSystem) -> {
     file_name = "asdf.txt"
 
-    file_contents = read_text_file(file_name, fileSystem)
+    file_contents = read_text_file(fileSystem, file_name)
     lines = get_lines(file_contents)
     split_lines = map(lines, fn (line: text) -> split_by(line, ";"))
     parsed_split_lines = map(
         split_lines,
-        fn (x: seq[text]) -> (_1st(x), (_2nd >> parse_real >> unwrap)(x))
+        fn (x: seq[text]) -> (list_1st(x), (list_2nd >> parse_real >> unwrap)(x))
     )
     grouped_split_lines = group_by(parsed_split_lines, _1st)
     weather_station_and_stats = map(
-        parsed_split_lines,
-        fn (g: _) -> (key(g), round(min(values(g)), 1), round(mean(values(g)), 1), round(max(value(g)), 1))
+        grouped_split_lines,
+        fn (g: Grouping[(text, real), text]) -> (key(g), round(min(values(g)), 1), round(mean(values(g)), 1), round(max(value(g)), 1))
     )
     sorted_weather_station_and_stats = sort_by(weather_station_and_stats, _1st)
 
@@ -41,19 +41,19 @@ run1 = fn (console: Console, fileSystem: FileSystem) -> {
 #    .print_weather_stations()
 #}
 
-print_weather_stations = fn (x: _) -> {
+print_weather_stations = fn (x: (text, real, real, real)) -> {
     print("{")?
-    for_each(x, print_weather_station >> unwrap)
-    print("}")?
+    map(x, print_weather_station >> unwrap)
+    print("}")
 }
 
-print_weather_station = fn (x: _) -> {
-    print(_1st(x))?
+print_weather_station = fn (x: (text, real, real, real)) -> {
+    print(t4_1st(x))?
     print("=")?
-    print(_2nd(x))?
+    print((t4_2nd >> to_string)(x))?
     print("/")?
-    print(_3rd(x))?
+    print((t4_3rd >> to_string)(x))?
     print("/")?
-    print(_4th(x))?
-    print(", ")?
+    print((t4_4th >> to_string)(x))?
+    print(", ")
 }

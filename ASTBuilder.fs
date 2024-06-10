@@ -51,13 +51,15 @@ type PrestoType =
     | Real
     | Character
     | Text of System.Guid
-    | RecordType of System.Guid * List<PrestoType> (* scope ID, field types *)
+    | RecordType of System.Guid * List<string> * List<PrestoType> (* scope ID, type param names, field types *)
     | UnionType of System.Guid * List<string> * List<UnionTypeConstructor> (* scope ID, type param names, constructors *)
     | FunctionType of System.Guid * List<string> * List<PrestoType> * PrestoType (* scope ID, type param names, param types, return type *)
     | TypeParameterType of string (* name of type parameter *)
     | TypeClassType of System.Guid * List<PrestoType> (* type class id, type arguments *)
     | TypeClassInstanceType of System.Guid * List<PrestoType> (* type class id, type arguments *)
     | UnionInstanceType of System.Guid * List<PrestoType> (* type class id, type arguments *)
+    | TupleType of List<PrestoType> (* value types *)
+    | RecordInstanceType of System.Guid * List<PrestoType> (* record ID, type arguments *)
     | Type
 and UnionTypeConstructor = {
     Name: string
@@ -696,7 +698,8 @@ and buildExpression (state: ASTBuilderState) (node: ParseNode): (Option<Expressi
         | Some genericInstantiation -> (Some (newExpression (GenericInstantiationExpression genericInstantiation)), state)
         | None -> (None, state)
     | ParseNodeType.ParenthesizedExpression ->
-        let (optionInnerExpr, state) = buildExpression state child.Children[0]
+        let expressionNodes = childrenOfType child ParseNodeType.Expression
+        let (optionInnerExpr, state) = buildExpression state expressionNodes[0]
 
         match optionInnerExpr with
         | Some innerExpr ->
@@ -779,7 +782,13 @@ let getInitialScopesById =
     let scopesById = scopesById.Add(textScopeId, textScope)
 
     let seqScopeId = System.Guid.NewGuid()
-    let consoleType = RecordType (System.Guid.NewGuid(), [])
+
+    let groupingScopeId = System.Guid.NewGuid()
+    let groupingType = RecordType (groupingScopeId, ["T"; "TKey"], [])
+
+    let consoleType = RecordType (System.Guid.NewGuid(), [], [])
+    
+    let fileSystemType = RecordType (System.Guid.NewGuid(), [], [])
 
     let ioErrorType = textType
 
@@ -892,6 +901,7 @@ let getInitialScopesById =
                 )
 
                 .Add("Console", BuiltInSymbol ("Console", consoleType))
+                .Add("FileSystem", BuiltInSymbol ("FileSystem", fileSystemType))
                 .Add(
                     "print",
                     BuiltInSymbol (
@@ -927,7 +937,236 @@ let getInitialScopesById =
                             PrestoType.UnionInstanceType (resultScopeId, [textType; ioErrorType])
                         )
                     )
+                )
+                
+                .Add(
+                    "read_text_file",
+                    BuiltInSymbol (
+                        "read_text_file",
+                        FunctionType (
+                            System.Guid.NewGuid(),
+                            [],
+                            [fileSystemType; textType], // TODO: path type?
+                            PrestoType.UnionInstanceType (
+                                resultScopeId,
+                                [
+                                    TypeClassInstanceType (seqScopeId, [PrestoType.Character])
+                                    ioErrorType
+                                ])
+                        )
+                    )
+                )
+                
+                .Add(
+                    "unwrap",
+                    BuiltInSymbol (
+                        "unwrap",
+                        FunctionType (
+                            System.Guid.NewGuid(),
+                            ["T"; "E"],
+                            [
+                                PrestoType.UnionInstanceType (
+                                    resultScopeId,
+                                    [
+                                        TypeParameterType "T"
+                                        TypeParameterType "E"
+                                    ]
+                                )
+                            ],
+                            TypeParameterType "T"
+                        )
+                    )
+                )
+
+                .Add(
+                    "get_lines",
+                    BuiltInSymbol (
+                        "get_lines",
+                        FunctionType (
+                            System.Guid.NewGuid(),
+                            [],
+                            [TypeClassInstanceType (seqScopeId, [PrestoType.Character])],
+                            TypeClassInstanceType (seqScopeId, [PrestoType.Text textScopeId])
+                        )
+                    )
+                )
+
+                .Add(
+                    "split_by",
+                    BuiltInSymbol (
+                        "split_by",
+                        FunctionType (
+                            System.Guid.NewGuid(),
+                            [],
+                            [(PrestoType.Text textScopeId); (PrestoType.Text textScopeId)],
+                            TypeClassInstanceType (seqScopeId, [PrestoType.Text textScopeId])
+                        )
+                    )
+                )
+
+                .Add(
+                    "map",
+                    BuiltInSymbol (
+                        "map",
+                        FunctionType (
+                            System.Guid.NewGuid(),
+                            ["ti"; "to"],
+                            [
+                                TypeClassInstanceType (seqScopeId, [TypeParameterType "ti"])
+                                FunctionType (
+                                    System.Guid.NewGuid(),
+                                    [],
+                                    [TypeParameterType "ti"],
+                                    TypeParameterType "to"
+                                )
+                            ],
+                            TypeClassInstanceType (seqScopeId, [TypeParameterType "to"])
+                        )
+                    )
+                )
+
+                .Add(
+                    "sort_by",
+                    BuiltInSymbol (
+                        "sort_by",
+                        FunctionType (
+                            System.Guid.NewGuid(),
+                            ["t"; "ts"],
+                            [
+                                TypeClassInstanceType (seqScopeId, [TypeParameterType "t"])
+                                FunctionType (
+                                    System.Guid.NewGuid(),
+                                    [],
+                                    [TypeParameterType "t"],
+                                    TypeParameterType "ts"
+                                )
+                            ],
+                            TypeClassInstanceType (seqScopeId, [TypeParameterType "t"])
+                        )
+                    )
+                )
+                
+                .Add(
+                    "_1st",
+                    BuiltInSymbol (
+                        "_1st",
+                        FunctionType (
+                            System.Guid.NewGuid(),
+                            ["t1"; "t2"],
+                            [
+                                TupleType [TypeParameterType "t1"; TypeParameterType "t2"]
+                            ],
+                            TypeParameterType "t1"
+                        )
+                    )
+                )
+                .Add(
+                    "_2nd",
+                    BuiltInSymbol (
+                        "_2nd",
+                        FunctionType (
+                            System.Guid.NewGuid(),
+                            ["t1"; "t2"],
+                            [
+                                TupleType [TypeParameterType "t1"; TypeParameterType "t2"]
+                            ],
+                            TypeParameterType "t2"
+                        )
+                    )
+                )
+
+                
+                .Add(
+                    "t4_1st",
+                    BuiltInSymbol (
+                        "t4_1st",
+                        FunctionType (
+                            System.Guid.NewGuid(),
+                            ["t1"; "t2"; "t3"; "t4"],
+                            [
+                                TupleType [TypeParameterType "t1"; TypeParameterType "t2"; TypeParameterType "t3"; TypeParameterType "t4"]
+                            ],
+                            TypeParameterType "t1"
+                        )
+                    )
+                )
+                .Add(
+                    "t4_2nd",
+                    BuiltInSymbol (
+                        "t4_2nd",
+                        FunctionType (
+                            System.Guid.NewGuid(),
+                            ["t1"; "t2"; "t3"; "t4"],
+                            [
+                                TupleType [TypeParameterType "t1"; TypeParameterType "t2"; TypeParameterType "t3"; TypeParameterType "t4"]
+                            ],
+                            TypeParameterType "t2"
+                        )
+                    )
+                )
+                .Add(
+                    "t4_3rd",
+                    BuiltInSymbol (
+                        "t4_3rd",
+                        FunctionType (
+                            System.Guid.NewGuid(),
+                            ["t1"; "t2"; "t3"; "t4"],
+                            [
+                                TupleType [TypeParameterType "t1"; TypeParameterType "t2"; TypeParameterType "t3"; TypeParameterType "t4"]
+                            ],
+                            TypeParameterType "t3"
+                        )
+                    )
+                )
+                .Add(
+                    "t4_4th",
+                    BuiltInSymbol (
+                        "t4_4th",
+                        FunctionType (
+                            System.Guid.NewGuid(),
+                            ["t1"; "t2"; "t3"; "t4"],
+                            [
+                                TupleType [TypeParameterType "t1"; TypeParameterType "t2"; TypeParameterType "t3"; TypeParameterType "t4"]
+                            ],
+                            TypeParameterType "t4"
+                        )
+                    )
+                )
+                
+                .Add("Grouping", BuiltInSymbol ("Grouping", groupingType))
+                .Add(
+                    "group_by",
+                    BuiltInSymbol (
+                        "group_by",
+                        FunctionType (
+                            System.Guid.NewGuid(),
+                            ["ti"; "tk"],
+                            [
+                                TypeClassInstanceType (seqScopeId, [TypeParameterType "ti"])
+                                FunctionType (
+                                    System.Guid.NewGuid(),
+                                    [],
+                                    [TypeParameterType "ti"],
+                                    TypeParameterType "tk"
+                                )
+                            ],
+
+                            RecordInstanceType (groupingScopeId, [
+                                TypeClassInstanceType (seqScopeId, [TypeParameterType "ti"])
+                                TypeParameterType "tk"
+                            ])
+                        )
+                    )
                 );
+                (*
+                
+                ["t"],
+                            [
+                                TypeClassInstanceType (seqScopeId, [TypeParameterType "t"])
+                                TypeParameterType "t"
+                            ],
+                            (PrestoType.TypeParameterType "t")
+                *)
         ParentId = None;
         ChildIds = [textScopeId]
     }

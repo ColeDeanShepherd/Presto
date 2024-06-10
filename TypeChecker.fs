@@ -18,7 +18,7 @@ type TypeCheckerState = {
 let getTypeScopeId (state: TypeCheckerState) (prestoType: PrestoType): (Option<System.Guid> * TypeCheckerState) =
     match prestoType with
     | Text scopeId -> (Some scopeId, state)
-    | RecordType (scopeId, _) -> (Some scopeId, state)
+    | RecordType (scopeId, _, _) -> (Some scopeId, state)
     | UnionType (scopeId, typeParameters, constructors) -> (Some scopeId, state)
     | _ ->
         let error = compile_error(
@@ -134,7 +134,7 @@ and checkRecord (state: TypeCheckerState) (record: Record): TypeCheckerState * O
     let succeededCheckingFields = fieldTypes.Length = optionFieldTypes.Length
 
     if succeededCheckingFields then
-        let prestoType = RecordType (record.ScopeId, fieldTypes)
+        let prestoType = RecordType (record.ScopeId, [], fieldTypes)
 
         (popScope state, Some prestoType)
     else
@@ -327,6 +327,21 @@ and checkGenericInstantiation (state: TypeCheckerState) (genericInstantiation: G
                     let state = { state with Errors = state.Errors @ [error]}
 
                     (state, Some expressionType) // Why are we returning expression type?
+            | RecordType (scopeId, typeParameterNames, fieldTypes) ->
+                let typeParameterNameCount = typeParameterNames.Length
+                let typeArgumentCount = typeArgumentTypes.Length
+
+                if typeParameterNameCount = typeArgumentCount then
+                    let expressionType = RecordInstanceType (scopeId, typeArgumentTypes)
+                    (state, Some expressionType)
+                else
+                    let error = compile_error(
+                        description = $"Expected {typeParameterNameCount} type arguments, got {typeArgumentCount}",
+                        position = text_position(file_name = "", line_index = 0u, column_index = 0u)
+                    )
+                    let state = { state with Errors = state.Errors @ [error]}
+
+                    (state, Some expressionType) // Why are we returning expression type?
             | FunctionType (scopeId, typeParameterNames, parameterTypes, returnType) ->
                 let typeParameterNameCount = typeParameterNames.Length
                 let typeArgumentCount = typeArgumentTypes.Length
@@ -429,6 +444,22 @@ and checkMemberAccess (state: TypeCheckerState) (memberAccess: MemberAccess): Ty
                 )
         | None -> (state, None)
     | None -> (state, None)
+
+and isTypeParameterType (x: PrestoType): bool =
+    match x with
+    | TypeParameterType _ -> true
+    | _ -> false
+
+and canTypesBeTheSame (a: PrestoType) (b: PrestoType): bool =
+    (a = b) ||
+    (isTypeParameterType a) ||
+    (isTypeParameterType b) ||
+    match a, b with
+    | UnionInstanceType (_, aTypeArgs), UnionInstanceType (_, bTypeArgs) ->
+        (aTypeArgs.Length = bTypeArgs.Length) &&
+        List.forall (fun (a, b) -> canTypesBeTheSame a b) (List.zip aTypeArgs bTypeArgs)
+    //| RecordType (_, _, )
+    | _ -> false
         
 and checkBinaryOperator (state: TypeCheckerState) (binaryOperator: BinaryOperator): TypeCheckerState * Option<PrestoType> =
     let (state, optionLeftType) = checkExpression state binaryOperator.LeftExpression
@@ -439,27 +470,76 @@ and checkBinaryOperator (state: TypeCheckerState) (binaryOperator: BinaryOperato
 
         match optionRightType with
         | Some rightType ->
-            if leftType = rightType then
-                let resultType =
-                    match binaryOperator.Type with
-                    | BinaryOperatorType.Addition -> leftType
-                    | BinaryOperatorType.Subtraction -> leftType
-                    | BinaryOperatorType.Multiplication -> leftType
-                    | BinaryOperatorType.Division -> leftType
-                    | BinaryOperatorType.Equality -> PrestoType.Boolean
-                    | _ -> failwith "Unknown binary operator type"
+            match binaryOperator.Type with
+            | BinaryOperatorType.ReverseFunctionComposition ->
+                match leftType with
+                | FunctionType (_, lTypeParameterNames, lParameterTypes, lReturnType) ->
+                    match rightType with
+                    | FunctionType (_, _, rParameterTypes, rReturnType) when rParameterTypes.Length = 1 ->
+                        if canTypesBeTheSame lReturnType rParameterTypes[0] then
+                            let resultType = FunctionType (
+                                System.Guid.NewGuid(),
+                                lTypeParameterNames,
+                                lParameterTypes,
+                                rReturnType
+                            )
 
-                (state, Some resultType)
-            else
-                let error = compile_error(
-                    description = $"Left side ({leftType}) and right side ({rightType}) of binary operator ({binaryOperator.Type}) don't match.",
-                    position = text_position(file_name = "", line_index = 0u, column_index = 0u)
-                )
+                            (state, Some resultType)
+                        else
+                            let error = compile_error(
+                                description = $"Return type of left side ({lReturnType}) of reverse function composition operator is not compatible with type of right side's parameter ({rParameterTypes[0]}).",
+                                position = text_position(file_name = "", line_index = 0u, column_index = 0u)
+                            )
 
-                (
-                    { state with Errors = state.Errors @ [error]},
-                    None
-                )
+                            (
+                                { state with Errors = state.Errors @ [error]},
+                                None
+                            )
+                    | _ ->
+                        let error = compile_error(
+                            description = $"Right side ({rightType}) of reverse function composition operator should be a function with one parameter.",
+                            position = text_position(file_name = "", line_index = 0u, column_index = 0u)
+                        )
+
+                        (
+                            { state with Errors = state.Errors @ [error]},
+                            None
+                        )
+                | _ ->
+                    let error = compile_error(
+                        description = $"Left side ({leftType}) of reverse function composition operator should be a function.",
+                        position = text_position(file_name = "", line_index = 0u, column_index = 0u)
+                    )
+
+                    (
+                        { state with Errors = state.Errors @ [error]},
+                        None
+                    )
+                // Ensure left type is function type
+                // Ensure right type is function type
+                // Ensure that the return type of L works with the only argument of R
+            | _ -> 
+                if leftType = rightType then
+                    let resultType =
+                        match binaryOperator.Type with
+                        | BinaryOperatorType.Addition -> leftType
+                        | BinaryOperatorType.Subtraction -> leftType
+                        | BinaryOperatorType.Multiplication -> leftType
+                        | BinaryOperatorType.Division -> leftType
+                        | BinaryOperatorType.Equality -> PrestoType.Boolean
+                        | _ -> failwith "Unknown binary operator type"
+
+                    (state, Some resultType)
+                else
+                    let error = compile_error(
+                        description = $"Left side ({leftType}) and right side ({rightType}) of binary operator ({binaryOperator.Type}) don't match.",
+                        position = text_position(file_name = "", line_index = 0u, column_index = 0u)
+                    )
+
+                    (
+                        { state with Errors = state.Errors @ [error]},
+                        None
+                    )
         | None -> (state, None)
     | None -> (state, None)
 
@@ -494,6 +574,16 @@ and checkNumberLiteral (state: TypeCheckerState) (numberLiteral: NumberLiteral):
 
 and checkParenExpr (state: TypeCheckerState) (parenExpr: ParenthesizedExpression2): TypeCheckerState * Option<PrestoType> =
     checkExpression state parenExpr.InnerExpression
+
+and checkTupleExpr (state: TypeCheckerState) (tupleExpression: TupleExpression): TypeCheckerState * Option<PrestoType> =
+    let (state, optionValueTypes) = checkMany state checkExpression tupleExpression.Values []
+    let valueTypes = List.filter<Option<PrestoType>> (fun x -> x.IsSome) optionValueTypes |> List.map (fun x -> x.Value)
+    let succeededCheckingValues = valueTypes.Length = optionValueTypes.Length
+
+    if succeededCheckingValues then
+        (state, Some (TupleType valueTypes))
+    else
+        (state, None)
     
 and checkErrorPropagationExpression (state: TypeCheckerState) (errorPropagationExpression: ErrorPropagationOperatorExpression): TypeCheckerState * Option<PrestoType> =
     let (state, optionInnerExpressionType) = checkExpression state errorPropagationExpression.InnerExpression
@@ -543,6 +633,7 @@ and checkExpression (state: TypeCheckerState) (expression: Expression): TypeChec
             | CharacterLiteralExpression characterLiteral -> checkCharacterLiteral state characterLiteral
             | StringLiteralExpression stringLiteral -> checkStringLiteral state stringLiteral
             | ParenExpr parenthesizedExpression -> checkParenExpr state parenthesizedExpression
+            | TupleExpr tupleExpression -> checkTupleExpr state tupleExpression
             | ErrorPropagationExpression e -> checkErrorPropagationExpression state e
             | TypeClassExpression typeClass -> failwith "not implemented"
             | _ -> failwith "not implemented"
