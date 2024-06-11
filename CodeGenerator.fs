@@ -359,38 +359,50 @@ and generateTypeParameters (state: CodeGeneratorState) (typeParameters: List<Typ
     
         state
 
+and isImplInCSharpFunction (functionExpression: Expression): bool =
+    match functionExpression.Value with
+    | GenericInstantiationExpression gi ->
+        match gi.Expression.Value with
+        | SymbolReference token when token._text = "impl_in_CSharp" -> true
+        | _ -> false
+    | _ -> false
+
 and generateFunction (state: CodeGeneratorState) (name: string) (fn: Function): CodeGeneratorState =
-    let state = generateString state "public"
-    let state = generateString state " "
-    let state = generateString state "static"
-    let state = generateString state " "
+    match fn.Value.Value with
+    | FunctionCallExpression functionCall when isImplInCSharpFunction functionCall.FunctionExpression ->
+        state
+    | _ -> 
+        let state = generateString state "public"
+        let state = generateString state " "
+        let state = generateString state "static"
+        let state = generateString state " "
 
-    let returnType = state.Program.TypesByExpressionId[fn.Value.Id]
-    let state = generateTypeReference state returnType
+        let returnType = state.Program.TypesByExpressionId[fn.Value.Id]
+        let state = generateTypeReference state returnType
 
-    let state = generateString state " "
-    let state = generateString state name
+        let state = generateString state " "
+        let state = generateString state name
 
-    let state =
-        if fn.TypeParameters.Length > 0 then
-            generateTypeParameters state fn.TypeParameters
-        else
-            state
+        let state =
+            if fn.TypeParameters.Length > 0 then
+                generateTypeParameters state fn.TypeParameters
+            else
+                state
 
-    let state = generateString state "("
-    let state = generateManyWithSeparator state fn.Parameters generateParameter ", " true
-    let state = generateString state ")"
-    let state = generateString state " "
-    let state = generateString state "{"
+        let state = generateString state "("
+        let state = generateManyWithSeparator state fn.Parameters generateParameter ", " true
+        let state = generateString state ")"
+        let state = generateString state " "
+        let state = generateString state "{"
 
-    let state = generateString state "return"
-    let state = generateString state " "
-    let state = generateExpression state fn.Value
-    let state = generateString state ";"
+        let state = generateString state "return"
+        let state = generateString state " "
+        let state = generateExpression state fn.Value
+        let state = generateString state ";"
 
-    let state = generateString state "}"
+        let state = generateString state "}"
 
-    state
+        state
 
 and generateLambdaExpression (state: CodeGeneratorState) (fn: Function): CodeGeneratorState =
     let state = generateString state "("

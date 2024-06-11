@@ -1,22 +1,68 @@
-main = fn (console: Console, fileSystem: FileSystem) -> {
-    file_name = "asdf.txt"
+eq = fn [t] (a: t, b: t): bool -> impl_in_CSharp[bool]()
 
-    file_contents = read_text_file(fileSystem, file_name)?
-    lines = get_lines(file_contents)
-    split_lines = map(lines, fn (line: text) -> split_by(line, ";"))
-    parsed_split_lines = map(
-        split_lines,
-        fn (x: seq[text]) -> (list_1st(x), (list_2nd >> parse_real >> unwrap)(x))
-    )
-    grouped_split_lines = group_by(parsed_split_lines, _1st)
-    weather_station_and_stats = map(
-        grouped_split_lines,
-        fn (g: Grouping[(text, real), text]) -> (key(g), round(min(values(g)), 1), round(mean(values(g)), 1), round(max(value(g)), 1))
-    )
-    sorted_weather_station_and_stats = sort_by(weather_station_and_stats, _1st)
+sum = fn (a: nat, b: nat): nat -> impl_in_CSharp[nat]()
+difference = fn (a: nat, b: nat): nat -> impl_in_CSharp[nat]()
+product = fn (a: nat, b: nat): nat -> impl_in_CSharp[nat]()
+quotient = fn (a: nat, b: nat): nat -> impl_in_CSharp[nat]()
 
-    print_weather_stations(console, sorted_weather_station_and_stats)
-}
+length = fn (x: text): nat -> impl_in_CSharp[nat]()
+uppercase = fn (x: text): text -> impl_in_CSharp[text]()
+to_text = fn [t] (x: t): text -> impl_in_CSharp[text]()
+
+parse_real = fn (x: text): Result[real, text] -> impl_in_CSharp[Result[real, text]]()
+
+read_real = fn (console: Console): Result[real, text] -> impl_in_CSharp[Result[real, text]]()
+read_line = fn (console: Console): Result[text, text] -> impl_in_CSharp[Result[text, text]]()
+
+print = fn (console: Console): Result[nothing, text] -> impl_in_CSharp[Result[nothing, text]]()
+print_line = fn (console: Console): Result[nothing, text] -> impl_in_CSharp[Result[nothing, text]]()
+
+read_text_file = fn (file_system: FileSystem, file_path: text): seq[char] -> impl_in_CSharp[seq[char]]()
+
+#unwrap = fn [t, e] (x: Result[t, e]): t -> impl_in_CSharp[t]()
+
+get_lines = fn (x: seq[char]): seq[text] -> impl_in_CSharp[seq[text]]()
+split_by = fn (x: text, separator: text): seq[text] -> impl_in_CSharp[seq[text]]()
+
+#map = fn [ti, to] (x: seq[ti], f: fn (x: ti): to): seq[to] -> impl_in_CSharp[seq[to]]()
+#sort_by = fn [t, ts] (x: seq[t], f: fn (x: t): ts): seq[t] -> impl_in_CSharp[seq[t]]()
+#group_by = fn [t, tkey] (x: seq[t], f: fn (x: t): tkey): Grouping[t, tkey] -> impl_in_CSharp[Grouping[t, tkey]]()
+
+#list_1st = fn [t] (x: seq[t]): t -> impl_in_CSharp[t]()
+#list_2nd = fn [t] (x: seq[t]): t -> impl_in_CSharp[t]()
+#last_or_default = fn [t] (x: seq[t], default: t): t -> impl_in_CSharp[t]()
+
+#_1st = fn [t1, t2] (x: (t1, t2)): t1 -> impl_in_CSharp[t1]()
+#_2nd = fn [t1, t2] (x: (t1, t2)): t2 -> impl_in_CSharp[t2]()
+#t4_1st = fn [t1, t2, t3, t4] (x: (t1, t2, t3, t4)): t1 -> impl_in_CSharp[t1]()
+#t4_2nd = fn [t1, t2, t3, t4] (x: (t1, t2, t3, t4)): t2 -> impl_in_CSharp[t2]()
+#t4_3rd = fn [t1, t2, t3, t4] (x: (t1, t2, t3, t4)): t3 -> impl_in_CSharp[t3]()
+#t4_4th = fn [t1, t2, t3, t4] (x: (t1, t2, t3, t4)): t4 -> impl_in_CSharp[t4]()
+
+#key = fn [t, tkey] (x: Grouping[t, tkey]): tkey -> impl_in_CSharp[tkey]()
+#values = fn [t, tkey] (x: Grouping[t, tkey]): t -> impl_in_CSharp[t]()
+
+main = fn (console: Console) -> {}
+
+#main = fn (console: Console, fileSystem: FileSystem) -> {
+#    file_name = "asdf.txt"
+#
+#    file_contents = read_text_file(fileSystem, file_name)?
+#    lines = get_lines(file_contents)
+#    split_lines = map(lines, fn (line: text) -> split_by(line, ";"))
+#    parsed_split_lines = map(
+#        split_lines,
+#        fn (x: seq[text]) -> (list_1st(x), (list_2nd >> parse_real >> unwrap)(x))
+#    )
+#    grouped_split_lines = group_by(parsed_split_lines, _1st)
+#    weather_station_and_stats = map(
+#        grouped_split_lines,
+#        fn (g: Grouping[(text, real), text]) -> (key(g), round(min(values(g)), 1), round(mean(values(g)), 1), round(max(value(g)), 1))
+#    )
+#    sorted_weather_station_and_stats = sort_by(weather_station_and_stats, _1st)
+#
+#    print_weather_stations(console, sorted_weather_station_and_stats)
+#}
 
 #run2 =
 #    read_text_file(fileSystem, _) >>
@@ -39,21 +85,21 @@ main = fn (console: Console, fileSystem: FileSystem) -> {
 #    .print_weather_stations()
 #}
 
-print_weather_stations = fn (console: Console, x: seq[(text, real, real, real)]) -> {
-    p2 = fn (x: (text, real, real, real)) -> print_weather_station(console, x)
-
-    print(console, "{")?
-    map(x, p2 >> unwrap)
-    print(console, "}")
-}
-
-print_weather_station = fn (console: Console, x: (text, real, real, real)) -> {
-    print(console, t4_1st(x))?
-    print(console, "=")?
-    print(console, (t4_2nd >> to_string)(x))?
-    print(console, "/")?
-    print(console, (t4_3rd >> to_string)(x))?
-    print(console, "/")?
-    print(console, (t4_4th >> to_string)(x))?
-    print(console, ", ")
-}
+#print_weather_stations = fn (console: Console, x: seq[(text, real, real, real)]) -> {
+#    p2 = fn (x: (text, real, real, real)) -> print_weather_station(console, x)
+#
+#    print(console, "{")?
+#    map(x, p2 >> unwrap)
+#    print(console, "}")
+#}
+#
+#print_weather_station = fn (console: Console, x: (text, real, real, real)) -> {
+#    print(console, t4_1st(x))?
+#    print(console, "=")?
+#    print(console, (t4_2nd >> to_text)(x))?
+#    print(console, "/")?
+#    print(console, (t4_3rd >> to_text)(x))?
+#    print(console, "/")?
+#    print(console, (t4_4th >> to_text)(x))?
+#    print(console, ", ")
+#}

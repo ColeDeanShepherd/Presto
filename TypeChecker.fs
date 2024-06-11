@@ -352,7 +352,6 @@ and checkFunctionCall (state: TypeCheckerState) (functionCall: FunctionCall): Ty
                     // TODO: handle inference diff than specified
 
                     let typeArgsByName = inferFunctionCallTypeArgs paramTypes argumentTypes
-
                     let reifiedReturnType = _reifyType returnType typeArgsByName
                     (state, Some reifiedReturnType)
                 | _ ->
