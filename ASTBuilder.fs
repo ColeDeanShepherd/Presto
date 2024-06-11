@@ -1180,7 +1180,7 @@ let getInitialScopesById =
                             ],
 
                             RecordInstanceType (groupingScopeId, [
-                                TypeClassInstanceType (seqScopeId, [TypeParameterType "t"])
+                                TypeParameterType "t"
                                 TypeParameterType "TKey"
                             ])
                         )

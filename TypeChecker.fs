@@ -248,57 +248,74 @@ and checkIfThenElse (state: TypeCheckerState) (ifThenElse: IfThenElse): TypeChec
             (state, None) // TODO: error
     | None -> (state, None)
 
-and inferFunctionCallTypeArgs (typeArgsByName: Map<string, PrestoType>) (paramTypes: List<PrestoType>) (returnType: PrestoType) (argTypes: List<PrestoType>): Map<string, PrestoType> =
-    inferHelper typeArgsByName paramTypes argTypes
+and inferFunctionCallTypeArgs (paramTypes: List<PrestoType>) (argTypes: List<PrestoType>): Map<string, PrestoType> =
+    Map.empty
 
-and inferHelper (typeArgsByName: Map<string, PrestoType>) (genericTypes: List<PrestoType>) (concreteTypes: List<PrestoType>): Map<string, PrestoType> =
-    if genericTypes.IsEmpty then
-        typeArgsByName
-    else
-        let typeArgsByName = asdfasdf genericTypes[0] concreteTypes[0] typeArgsByName
-        inferHelper typeArgsByName genericTypes.Tail concreteTypes.Tail
+//    let equalities = List.zip paramTypes argTypes
+//    typeInferenceHandleEqualities typeArgsByName equalities
 
-and asdfasdf (genericType: PrestoType) (concreteType: PrestoType) (typeArgsByName: Map<string, PrestoType>): Map<string, PrestoType> = 
-    match genericType with
-    | Nothing -> typeArgsByName
-    | Nat -> typeArgsByName
-    | Real -> typeArgsByName
-    | Text _ -> typeArgsByName
-    | Boolean -> typeArgsByName
-    | Character -> typeArgsByName
-    | Type -> typeArgsByName
-    | RecordType (scopeId, typeParamNames, fieldTypes) -> failwith "TODO"
-    | UnionType (scopeId, typeParamNames, constructors) -> failwith "TODO"
-    | TypeParameterType typeParameter ->
-        if not (typeArgsByName.ContainsKey typeParameter) then
-            Map.add typeParameter concreteType typeArgsByName
-        else
-            if typeArgsByName[typeParameter] = concreteType then
-                typeArgsByName
-            else
-                failwith ""
-    | FunctionType (scopeId, typeParamNames, argTypes, returnType) ->
-        match concreteType with
-        | FunctionType (cScopeId, cTypeParamNames, cArgTypes, cReturnType) ->
-            let typeArgsByName = inferHelper typeArgsByName argTypes cArgTypes
-            asdfasdf returnType cReturnType typeArgsByName
-        | _ -> failwith ""
-    | UnionInstanceType (scopeId, typeParameters) -> failwith "TODO"
-    | TypeClassInstanceType (scopeId, typeParameters) ->
-        match concreteType with
-        | TypeClassInstanceType (cScopeId, cTypeParameters) ->
-            if scopeId = cScopeId then
-                inferHelper typeArgsByName typeParameters cTypeParameters
-            else
-                failwith ""
-        | _ -> failwith ""
-    | RecordInstanceType (scopeId, typeParameters) -> failwith "TODO"
-    | TupleType elementTypes ->
-        match concreteType with
-        | TupleType (cElementTypes) ->
-            inferHelper typeArgsByName elementTypes cElementTypes
-        | _ -> failwith ""
-    | TypeClassType (scopeId, typeArguments) -> failwith "TODO"
+//and typeInferenceHandleEqualities (typeArgsByTypeVarId: Map<int, PrestoType>) (equalities: List<PrestoType * PrestoType>): Map<string, PrestoType> =
+//    if equalities.IsEmpty then
+//        typeArgsByTypeVarId
+//    else
+//        let (type1, type2) = equalities.Head
+//        let typeArgsByName = typeInferenceHandleEquality type1 type2 typeArgsByTypeVarId
+//        typeInferenceHandleEqualities typeArgsByName equalities.Tail
+
+//and typeInferenceHandleEquality (type1: PrestoType) (type2: PrestoType) (typeArgsByName: Map<string, PrestoType>): Map<string, PrestoType> = 
+//    let (genericType, concreteType) =
+//        if isTypeParameterType type2 then
+//            (type2, type1)
+//        else
+//            (type1, type2)
+
+//    match genericType with
+//    | Nothing -> typeArgsByName
+//    | Nat -> typeArgsByName
+//    | Real -> typeArgsByName
+//    | Text _ -> typeArgsByName
+//    | Boolean -> typeArgsByName
+//    | Character -> typeArgsByName
+//    | Type -> typeArgsByName
+//    | RecordType (scopeId, typeParamNames, fieldTypes) -> failwith "TODO"
+//    | UnionType (scopeId, typeParamNames, constructors) -> failwith "TODO"
+//    | TypeParameterType typeParameter ->
+//        if not (typeArgsByName.ContainsKey typeParameter) then
+//            Map.add typeParameter concreteType typeArgsByName
+//        else
+//            if typeArgsByName[typeParameter] = concreteType then
+//                typeArgsByName
+//            else
+//                failwith ""
+//    | FunctionType (scopeId, typeParamNames, argTypes, returnType) ->
+//        match concreteType with
+//        | FunctionType (cScopeId, cTypeParamNames, cArgTypes, cReturnType) ->
+//            let typeArgsByName = typeInferenceHandleEqualities typeArgsByName argTypes cArgTypes
+//            typeInferenceHandleEquality returnType cReturnType typeArgsByName
+//        | _ -> failwith ""
+//    | UnionInstanceType (scopeId, typeParameters) ->
+//        match concreteType with
+//        | UnionInstanceType (cScopeId, cTypeParameters) ->
+//            if scopeId = cScopeId then
+//                typeInferenceHandleEqualities typeArgsByName typeParameters cTypeParameters
+//            else
+//                failwith ""
+//        | _ -> failwith ""
+//    | TypeClassInstanceType (scopeId, typeParameters) ->
+//        match concreteType with
+//        | TypeClassInstanceType (cScopeId, cTypeParameters) ->
+//            if scopeId = cScopeId then
+//                typeInferenceHandleEqualities typeArgsByName typeParameters cTypeParameters
+//            else
+//                failwith ""
+//        | _ -> failwith ""
+//    | RecordInstanceType (scopeId, typeParameters) -> failwith "TODO"
+//    | TupleType elementTypes ->
+//        match concreteType with
+//        | TupleType (cElementTypes) ->
+//            typeInferenceHandleEqualities typeArgsByName elementTypes cElementTypes
+//        | _ -> failwith ""
+//    | TypeClassType (scopeId, typeArguments) -> failwith "TODO"
 
 and _reifyType (prestoType: PrestoType) (typeArgsByName: Map<string, PrestoType>): PrestoType =
     match prestoType with
@@ -307,6 +324,10 @@ and _reifyType (prestoType: PrestoType) (typeArgsByName: Map<string, PrestoType>
     | TypeClassInstanceType (scopeId, typeArgumentTypes) ->
         let typeArgumentTypes = List.map (fun t -> _reifyType t typeArgsByName) typeArgumentTypes
         TypeClassInstanceType (scopeId, typeArgumentTypes)
+    | FunctionType (scopeId, typeParameterNames, paramTypes, returnType) ->
+        let reifiedParamTypes = List.map (fun t -> _reifyType t typeArgsByName) paramTypes
+        let reifiedReturnType = _reifyType returnType typeArgsByName
+        FunctionType (scopeId, [], reifiedParamTypes, reifiedReturnType)
     | _ -> prestoType
 
 and checkFunctionCall (state: TypeCheckerState) (functionCall: FunctionCall): TypeCheckerState * Option<PrestoType> =
@@ -328,22 +349,12 @@ and checkFunctionCall (state: TypeCheckerState) (functionCall: FunctionCall): Ty
             | Some functionType ->
                 match functionType with
                 | FunctionType (scopeId, typeParameterNames, paramTypes, returnType) ->
-                    match returnType with
-                    | TypeParameterType typeParameterName ->
-                        let typeArgumentIndex = List.findIndex (fun x -> x = typeParameterName) typeParameterNames
-                        (state, Some argumentTypes[typeArgumentIndex])
-                    | _ ->
-                        // TODO: handle inference diff than specified
+                    // TODO: handle inference diff than specified
 
-                        let typeArgsByName: Map<string, PrestoType> = Map.empty
-                        let typeArgsByName =
-                            if typeArgsByName.Count < typeParameterNames.Length then
-                                inferFunctionCallTypeArgs typeArgsByName paramTypes returnType argumentTypes
-                            else
-                                typeArgsByName
+                    let typeArgsByName = inferFunctionCallTypeArgs paramTypes argumentTypes
 
-                        let reifiedReturnType = _reifyType returnType typeArgsByName
-                        (state, Some reifiedReturnType)
+                    let reifiedReturnType = _reifyType returnType typeArgsByName
+                    (state, Some reifiedReturnType)
                 | _ ->
                     let error = compile_error(
                         description = $"Expected function type, got {functionType}",
@@ -546,9 +557,9 @@ and checkBinaryOperator (state: TypeCheckerState) (binaryOperator: BinaryOperato
             | BinaryOperatorType.ReverseFunctionComposition ->
                 // TODO: make sure this works with differing type param names
                 match leftType with
-                | FunctionType (_, lTypeParameterNames, lParameterTypes, lReturnType) ->
+                | FunctionType (lScopeId, lTypeParameterNames, lParameterTypes, lReturnType) ->
                     match rightType with
-                    | FunctionType (_, _, rParameterTypes, rReturnType) when rParameterTypes.Length = 1 ->
+                    | FunctionType (rScopeId, rTypeParameterNames, rParameterTypes, rReturnType) when rParameterTypes.Length = 1 ->
                         if canTypesBeTheSame lReturnType rParameterTypes[0] then
                             let resultType = FunctionType (
                                 System.Guid.NewGuid(),
@@ -557,7 +568,13 @@ and checkBinaryOperator (state: TypeCheckerState) (binaryOperator: BinaryOperato
                                 rReturnType
                             )
 
-                            (state, Some resultType)
+                            // TODO: ensure right function only has 1 arg?
+
+                            let typeArgsByName = inferFunctionCallTypeArgs rParameterTypes [lReturnType]
+
+                            let reifiedResultType = _reifyType resultType typeArgsByName
+
+                            (state, Some reifiedResultType)
                         else
                             let error = compile_error(
                                 description = $"Return type of left side ({lReturnType}) of reverse function composition operator is not compatible with type of right side's parameter ({rParameterTypes[0]}).",
