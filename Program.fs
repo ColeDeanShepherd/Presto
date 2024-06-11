@@ -6,12 +6,15 @@ open TypeChecker
 open CodeGenerator
 open CSharpCompiler
 
+let stdLibFilePath = "./Presto.StandardLibrary/StdLib.pst"
+
 type CompileOptions = {
     FilePaths: string list
     OutputPath: string
     CompileGeneratedCSharp: bool
     CompileLibrary: bool
     RunExe: bool
+    NoStdLib: bool
 }
 
 let rec parseCommandLineArgsHelper (args: string array) (options: CompileOptions): string array * CompileOptions =
@@ -40,20 +43,29 @@ let rec parseCommandLineArgsHelper (args: string array) (options: CompileOptions
                 failwith "No value was specified for option \"--output-dir\""
             else
                 parseCommandLineArgsHelper args[2..] { options with OutputPath = args[1] }
+        | "--no-std-lib" ->
+            if args.Length = 0 then
+                failwith "No value was specified for option \"--no-std-lib\""
+            else
+                parseCommandLineArgsHelper args[2..] { options with NoStdLib = true }
         | _ -> parseCommandLineArgsHelper args[1..] { options with FilePaths = (options.FilePaths @ [args[0]])}
 
 let parseCommandLineArgs (args: string array): CompileOptions =
     let compileOptions: CompileOptions = {
-        FilePaths = []
+        FilePaths = [stdLibFilePath]
         OutputPath = System.Environment.CurrentDirectory
         CompileGeneratedCSharp = false
         CompileLibrary = false
         RunExe = false
+        NoStdLib = false
     }
 
     let (args, compileOptions) = parseCommandLineArgsHelper (Array.skip 1 args) compileOptions
 
-    compileOptions
+    if compileOptions.NoStdLib then
+        { compileOptions with FilePaths = compileOptions.FilePaths.Tail }
+    else
+        compileOptions
 
 let commandLineArgs = System.Environment.GetCommandLineArgs()
 let compileOptions = parseCommandLineArgs commandLineArgs
@@ -62,14 +74,6 @@ if compileOptions.FilePaths.IsEmpty then
     failwith "No files specified."
 
 let (scopeId, scopesById) = getInitialScopesById
-let mutable program = {
-    Bindings = List.empty
-    ScopeId = scopeId
-    ScopesById = scopesById
-    TypesByExpressionId = Map.empty
-    ResolvedSymbolsByExpressionId = Map.empty
-    TypeCanonicalNamesByScopeId = Map.empty
-}
 let mutable generatedFilePaths: string list = []
 
 let compileFile (program: Program) (filePath: string): string option * Program =
@@ -141,15 +145,30 @@ let compileFile (program: Program) (filePath: string): string option * Program =
 
                         (Some generatedFilePath, program)
 
-for filePath in compileOptions.FilePaths do
-    let (maybeGeneratedFilePath, newProgram) = compileFile program filePath
+let rec compileFiles (filePaths: string list) (program: Program) (generatedFilePaths: string list): Program * string list =
+    if filePaths.IsEmpty then (program, generatedFilePaths)
+    else
 
-    match maybeGeneratedFilePath with
-    | Some generatedFilePath ->
-        generatedFilePaths <- generatedFilePaths @ [generatedFilePath]
-    | None ->
+    let (maybeGeneratedFilePath, newProgram) = compileFile program filePaths.Head
+
+    let generatedFilePaths =
+        match maybeGeneratedFilePath with
+        | Some generatedFilePath ->
+            generatedFilePaths @ [generatedFilePath]
+        | None -> generatedFilePaths
     
-    program <- newProgram
+    compileFiles filePaths.Tail newProgram generatedFilePaths
+
+let initialProgram = {
+    Bindings = List.empty
+    ScopeId = scopeId
+    ScopesById = scopesById
+    TypesByExpressionId = Map.empty
+    ResolvedSymbolsByExpressionId = Map.empty
+    TypeCanonicalNamesByScopeId = Map.empty
+}
+
+let program = compileFiles compileOptions.FilePaths initialProgram []
 
 let prestoCompilerSucceeded = generatedFilePaths.Length = compileOptions.FilePaths.Length
 

@@ -1,9 +1,12 @@
+##### All Types #####
 no_op = fn (): nothing -> {}
 ignore = fn [t] (x: t): nothing -> {}
 identity = fn [t] (x: t): t -> x
 
-# eq = fn [t] (a: t, b: t): bool -> BUILT_IN
+eq = fn [t] (a: t, b: t): bool -> impl_in_CSharp[bool]()
 not_eq = fn [t] (a: t, b: t): bool -> not(eq(a, b))
+
+to_text = fn [t] (x: t): text -> impl_in_CSharp[text]()
 
 ##### Boolean #####
 is_true = fn (x: bool): bool -> x == true
@@ -18,11 +21,11 @@ not = fn (x: bool): bool -> if x then false else true
 # logical_not = fn (a: bool, b: bool): bool = BUILT_IN
 # logical_xnor = fn (a: bool, b: bool): bool = BUILT_IN
 
-##### Arithmetic #####
-# add
-# subtract
-# multiply
-# divide
+##### Natural Numbers & Reals #####
+sum = fn (a: nat, b: nat): nat -> impl_in_CSharp[nat]()
+difference = fn (a: nat, b: nat): nat -> impl_in_CSharp[nat]()
+product = fn (a: nat, b: nat): nat -> impl_in_CSharp[nat]()
+quotient = fn (a: nat, b: nat): nat -> impl_in_CSharp[nat]()
 # modulus
 # remainder
 # power
@@ -73,7 +76,7 @@ not = fn (x: bool): bool -> if x then false else true
 # to_upper
 
 ##### String #####
-# length
+length = fn (x: text): nat -> impl_in_CSharp[nat]()
 concatenate = fn (a: text, b: text): text -> a + b
 # contains
 # starts_with
@@ -86,13 +89,49 @@ concatenate = fn (a: text, b: text): text -> a + b
 # remove
 # replace
 # split
-# to_upper
+uppercase = fn (x: text): text -> impl_in_CSharp[text]()
 # to_lower
 # trim
 # trim_start
 # trim_end
+parse_real = fn (x: text): Result[real, text] -> impl_in_CSharp[Result[real, text]]()
+get_lines = fn (x: seq[char]): seq[text] -> impl_in_CSharp[seq[text]]()
+split_by = fn (x: text, separator: text): seq[text] -> impl_in_CSharp[seq[text]]()
 
-##### List #####
+##### List/Seq #####
 # head
 # tail
 # last
+list_1st = fn [t] (x: seq[t]): t -> impl_in_CSharp[t]()
+list_2nd = fn [t] (x: seq[t]): t -> impl_in_CSharp[t]()
+last_or_default = fn [t] (x: seq[t], default: t): t -> impl_in_CSharp[t]()
+
+##### Tuple #####
+_1st = fn [t1, t2] (x: (t1, t2)): t1 -> impl_in_CSharp[t1]()
+_2nd = fn [t1, t2] (x: (t1, t2)): t2 -> impl_in_CSharp[t2]()
+t4_1st = fn [t1, t2, t3, t4] (x: (t1, t2, t3, t4)): t1 -> impl_in_CSharp[t1]()
+t4_2nd = fn [t1, t2, t3, t4] (x: (t1, t2, t3, t4)): t2 -> impl_in_CSharp[t2]()
+t4_3rd = fn [t1, t2, t3, t4] (x: (t1, t2, t3, t4)): t3 -> impl_in_CSharp[t3]()
+t4_4th = fn [t1, t2, t3, t4] (x: (t1, t2, t3, t4)): t4 -> impl_in_CSharp[t4]()
+
+##### Grouping #####
+key = fn [t, tkey] (x: Grouping[t, tkey]): tkey -> impl_in_CSharp[tkey]()
+values = fn [t, tkey] (x: Grouping[t, tkey]): t -> impl_in_CSharp[t]()
+
+##### Result #####
+unwrap = fn [t, e] (x: Result[t, e]): t -> impl_in_CSharp[t]()
+
+##### Higher-order Functions #####
+map = fn [ti, to] (x: seq[ti], f: fn (x: ti): to): seq[to] -> impl_in_CSharp[seq[to]]()
+sort_by = fn [t, ts] (x: seq[t], f: fn (x: t): ts): seq[t] -> impl_in_CSharp[seq[t]]()
+group_by = fn [t, tkey] (x: seq[t], f: fn (x: t): tkey): Grouping[t, tkey] -> impl_in_CSharp[Grouping[t, tkey]]()
+
+##### Console #####
+read_real = fn (console: Console): Result[real, text] -> impl_in_CSharp[Result[real, text]]()
+read_line = fn (console: Console): Result[text, text] -> impl_in_CSharp[Result[text, text]]()
+
+print = fn (console: Console): Result[nothing, text] -> impl_in_CSharp[Result[nothing, text]]()
+print_line = fn (console: Console): Result[nothing, text] -> impl_in_CSharp[Result[nothing, text]]()
+
+##### File System #####
+read_text_file = fn (file_system: FileSystem, file_path: text): seq[char] -> impl_in_CSharp[seq[char]]()
