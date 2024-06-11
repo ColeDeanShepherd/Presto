@@ -19,28 +19,28 @@ print_line = fn (console: Console): Result[nothing, text] -> impl_in_CSharp[Resu
 
 read_text_file = fn (file_system: FileSystem, file_path: text): seq[char] -> impl_in_CSharp[seq[char]]()
 
-#unwrap = fn [t, e] (x: Result[t, e]): t -> impl_in_CSharp[t]()
+unwrap = fn [t, e] (x: Result[t, e]): t -> impl_in_CSharp[t]()
 
 get_lines = fn (x: seq[char]): seq[text] -> impl_in_CSharp[seq[text]]()
 split_by = fn (x: text, separator: text): seq[text] -> impl_in_CSharp[seq[text]]()
 
-#map = fn [ti, to] (x: seq[ti], f: fn (x: ti): to): seq[to] -> impl_in_CSharp[seq[to]]()
-#sort_by = fn [t, ts] (x: seq[t], f: fn (x: t): ts): seq[t] -> impl_in_CSharp[seq[t]]()
-#group_by = fn [t, tkey] (x: seq[t], f: fn (x: t): tkey): Grouping[t, tkey] -> impl_in_CSharp[Grouping[t, tkey]]()
+map = fn [ti, to] (x: seq[ti], f: fn (x: ti): to): seq[to] -> impl_in_CSharp[seq[to]]()
+sort_by = fn [t, ts] (x: seq[t], f: fn (x: t): ts): seq[t] -> impl_in_CSharp[seq[t]]()
+group_by = fn [t, tkey] (x: seq[t], f: fn (x: t): tkey): Grouping[t, tkey] -> impl_in_CSharp[Grouping[t, tkey]]()
 
-#list_1st = fn [t] (x: seq[t]): t -> impl_in_CSharp[t]()
-#list_2nd = fn [t] (x: seq[t]): t -> impl_in_CSharp[t]()
-#last_or_default = fn [t] (x: seq[t], default: t): t -> impl_in_CSharp[t]()
+list_1st = fn [t] (x: seq[t]): t -> impl_in_CSharp[t]()
+list_2nd = fn [t] (x: seq[t]): t -> impl_in_CSharp[t]()
+last_or_default = fn [t] (x: seq[t], default: t): t -> impl_in_CSharp[t]()
 
-#_1st = fn [t1, t2] (x: (t1, t2)): t1 -> impl_in_CSharp[t1]()
-#_2nd = fn [t1, t2] (x: (t1, t2)): t2 -> impl_in_CSharp[t2]()
-#t4_1st = fn [t1, t2, t3, t4] (x: (t1, t2, t3, t4)): t1 -> impl_in_CSharp[t1]()
-#t4_2nd = fn [t1, t2, t3, t4] (x: (t1, t2, t3, t4)): t2 -> impl_in_CSharp[t2]()
-#t4_3rd = fn [t1, t2, t3, t4] (x: (t1, t2, t3, t4)): t3 -> impl_in_CSharp[t3]()
-#t4_4th = fn [t1, t2, t3, t4] (x: (t1, t2, t3, t4)): t4 -> impl_in_CSharp[t4]()
+_1st = fn [t1, t2] (x: (t1, t2)): t1 -> impl_in_CSharp[t1]()
+_2nd = fn [t1, t2] (x: (t1, t2)): t2 -> impl_in_CSharp[t2]()
+t4_1st = fn [t1, t2, t3, t4] (x: (t1, t2, t3, t4)): t1 -> impl_in_CSharp[t1]()
+t4_2nd = fn [t1, t2, t3, t4] (x: (t1, t2, t3, t4)): t2 -> impl_in_CSharp[t2]()
+t4_3rd = fn [t1, t2, t3, t4] (x: (t1, t2, t3, t4)): t3 -> impl_in_CSharp[t3]()
+t4_4th = fn [t1, t2, t3, t4] (x: (t1, t2, t3, t4)): t4 -> impl_in_CSharp[t4]()
 
-#key = fn [t, tkey] (x: Grouping[t, tkey]): tkey -> impl_in_CSharp[tkey]()
-#values = fn [t, tkey] (x: Grouping[t, tkey]): t -> impl_in_CSharp[t]()
+key = fn [t, tkey] (x: Grouping[t, tkey]): tkey -> impl_in_CSharp[tkey]()
+values = fn [t, tkey] (x: Grouping[t, tkey]): t -> impl_in_CSharp[t]()
 
 main = fn (console: Console) -> {}
 

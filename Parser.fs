@@ -32,6 +32,7 @@ type ParseNodeType =
     | Union
     | UnionCase
     | Function
+    | FunctionType
     | TypeParameter
     | TypeArgument
     | Parameter
@@ -656,7 +657,7 @@ and parseFunctionReturnType (state: ParseState): List<ParseNode> * ParseState =
     | None ->
         ([], state)
 
-and parseFunction (state: ParseState): Option<ParseNode> * ParseState =
+and parseFunctionOrFunctionType (state: ParseState): Option<ParseNode> * ParseState =
     let (optionFnToken, state) = parseToken state token_type.fn_keyword
 
     match optionFnToken with
@@ -696,35 +697,56 @@ and parseFunction (state: ParseState): Option<ParseNode> * ParseState =
                 let (whitespace5, state) = parseTrivia state
                 let (optionRightParen, state) = parseToken state token_type.right_paren
 
-                // If next token is ':', then parse it & a return type expression.
-                let (optionColonToken, state) = tryPeekExpectedTokenAfterTrivia state token_type.colon
-                let (returnTypeNodes, state) =
-                    match optionColonToken with
-                    | Some _ -> parseFunctionReturnType state
-                    | None -> ([], state)
-
                 match optionRightParen with
                 | Some rightParen ->
-                    let (whitespace6, state) = parseTrivia state
-                    let (optionRightArrow, state) = parseToken state token_type.right_arrow
+                    // If next token is ':', then parse it & a return type expression.
+                    let (optionColonToken, state) = tryPeekExpectedTokenAfterTrivia state token_type.colon
+                    let (returnTypeNodes, state) =
+                        match optionColonToken with
+                        | Some _ -> parseFunctionReturnType state
+                        | None -> ([], state)
 
+                    let (optionRightArrow, state) = tryPeekExpectedTokenAfterTrivia state token_type.right_arrow
+                    
                     match optionRightArrow with
-                    | Some rightArrow ->
-                        let (whitespace7, state) = parseTrivia state
-                        let (optionResult, state) = parseExpression state
+                    | None ->
+                        if returnTypeNodes.IsEmpty then
+                            let error = compile_error(
+                                description = "Function types must specify their return types",
+                                position = currentTextPosition state
+                            )
 
-                        match optionResult with
-                        | Some result ->
+                            (None, { state with Errors = state.Errors @ [error] })
+                        else
                             (
                                 Some {
-                                    Type = ParseNodeType.Function
-                                    Children = List.concat [ [fnToken]; whitespace1; typeParametersNodes; [leftParen]; whitespace4; parameters; whitespace5; [rightParen]; returnTypeNodes; whitespace6; [rightArrow]; whitespace7; [result] ]
+                                    Type = ParseNodeType.FunctionType
+                                    Children = List.concat [ [fnToken]; whitespace1; typeParametersNodes; [leftParen]; whitespace4; parameters; whitespace5; [rightParen]; returnTypeNodes; ]
                                     Token = None
                                 },
                                 state
                             )
+                    | Some _ ->
+                        let (whitespace6, state) = parseTrivia state
+                        let (optionRightArrow, state) = parseToken state token_type.right_arrow
+
+                        match optionRightArrow with
+                        | Some rightArrow ->
+                            let (whitespace7, state) = parseTrivia state
+                            let (optionResult, state) = parseExpression state
+
+                            match optionResult with
+                            | Some result ->
+                                (
+                                    Some {
+                                        Type = ParseNodeType.Function
+                                        Children = List.concat [ [fnToken]; whitespace1; typeParametersNodes; [leftParen]; whitespace4; parameters; whitespace5; [rightParen]; returnTypeNodes; whitespace6; [rightArrow]; whitespace7; [result] ]
+                                        Token = None
+                                    },
+                                    state
+                                )
+                            | None -> (None, state)
                         | None -> (None, state)
-                    | None -> (None, state)
                 | None -> (None, state)
             | None -> (None, state)
         | None -> (None, state)
@@ -902,7 +924,7 @@ and parsePrefixExpression (state: ParseState): Option<ParseNode> * ParseState =
     | Some nextToken ->
         match nextToken._type with
         | token_type.fn_keyword ->
-            wrapInExpressionNode (parseFunction state)
+            wrapInExpressionNode (parseFunctionOrFunctionType state)
         | token_type.record_keyword ->
             wrapInExpressionNode (parseRecord state)
         | token_type.union_keyword ->

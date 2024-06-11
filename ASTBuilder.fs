@@ -51,16 +51,36 @@ type PrestoType =
     | Real
     | Character
     | Text of System.Guid
-    | RecordType of System.Guid * List<string> * List<PrestoType> (* scope ID, type param names, field types *)
-    | UnionType of System.Guid * List<string> * List<UnionTypeConstructor> (* scope ID, type param names, constructors *)
-    | FunctionType of System.Guid * List<string> * List<PrestoType> * PrestoType (* scope ID, type param names, param types, return type *)
-    | TypeParameterType of string (* name of type parameter *)
-    | TypeClassType of System.Guid * List<PrestoType> (* type class id, type arguments *)
-    | TypeClassInstanceType of System.Guid * List<PrestoType> (* type class id, type arguments *)
-    | UnionInstanceType of System.Guid * List<PrestoType> (* type class id, type arguments *)
+    | TypeParameterType of System.Guid * string (* id, name *)
     | TupleType of List<PrestoType> (* value types *)
-    | RecordInstanceType of System.Guid * List<PrestoType> (* record ID, type arguments *)
+    | RecordType of RecordTypeFields
+    | RecordInstanceType of RecordTypeFields * List<PrestoType> (* record id, type arguments *)
+    | UnionType of UnionTypeFields
+    | UnionInstanceType of UnionTypeFields * List<PrestoType> (* union id, type arguments *)
+    | FunctionType of FunctionTypeFields
+    | TypeClassType of TypeClassTypeFields
+    | TypeClassInstanceType of TypeClassTypeFields * List<PrestoType> (* type class id, type arguments *)
     | Type
+and RecordTypeFields = {
+    ScopeId: System.Guid
+    TypeParamNameAndIds: List<System.Guid * string>
+    FieldTypes: List<PrestoType>
+}
+and UnionTypeFields = {
+    ScopeId: System.Guid
+    TypeParamNameAndIds: List<System.Guid * string>
+    Constructors: List<UnionTypeConstructor>
+}
+and FunctionTypeFields = {
+    ScopeId: System.Guid
+    TypeParamNameAndIds: List<System.Guid * string>
+    ParamTypes: List<PrestoType>
+    ReturnType: PrestoType
+}
+and TypeClassTypeFields = {
+    ScopeId: System.Guid
+    TypeParamNameAndIds: List<System.Guid * string>
+}
 and UnionTypeConstructor = {
     Name: string
     Parameters: List<string * PrestoType>
@@ -81,6 +101,7 @@ and ExpressionValue =
     | UnionExpression of Union
     | TypeClassExpression of TypeClass
     | FunctionExpression of Function
+    | FunctionTypeExpression of FunctionType
     | IfThenElseExpression of IfThenElse
     | BlockExpression of Block
     | FunctionCallExpression of FunctionCall
@@ -99,6 +120,7 @@ and Binding = {
     Value: Expression
 }
 and TypeParameter = {
+    Id: System.Guid
     NameToken: token
 }
 and Parameter = {
@@ -110,6 +132,12 @@ and Function = {
     Parameters: List<Parameter>
     OptionReturnTypeExpression: Option<Expression>
     Value: Expression
+    ScopeId: System.Guid
+}
+and FunctionType = {
+    TypeParameters: List<TypeParameter>
+    Parameters: List<Parameter>
+    ReturnTypeExpression: Expression
     ScopeId: System.Guid
 }
 and FunctionCall = {
@@ -301,7 +329,7 @@ let rec buildTypeParameter (state: ASTBuilderState) (node: ParseNode): (Option<T
     let nameToken = identifier.Token.Value
     let name = nameToken._text
     
-    let typeParameter: TypeParameter = { NameToken = nameToken }
+    let typeParameter: TypeParameter = { Id = System.Guid.NewGuid(); NameToken = nameToken }
 
     let (success, state) = addSymbol state name (TypeParameterSymbol typeParameter)
 
@@ -380,6 +408,43 @@ and buildFunction (state: ASTBuilderState) (node: ParseNode): (Option<Function> 
                     popScope state
                 )
             | None -> (None, popScope state)
+        | None -> (None, popScope state)
+    | None -> (None, popScope state)
+
+and buildFunctionType (state: ASTBuilderState) (node: ParseNode): (Option<FunctionType> * ASTBuilderState) =
+    assert (node.Type = ParseNodeType.FunctionType)
+
+    let (scope, state) = pushScope state
+
+    let typeParameterNodes = childrenOfType node ParseNodeType.TypeParameter
+    let (optionTypeParameters, state) = buildAllOrNone state typeParameterNodes buildTypeParameter
+
+    match optionTypeParameters with
+    | Some typeParameters ->
+        let parameterNodes = childrenOfType node ParseNodeType.Parameter
+        let (optionParameters, state) = buildAllOrNone state parameterNodes buildParameter
+
+        match optionParameters with
+        | Some parameters ->
+            let expressionNodes = childrenOfType node ParseNodeType.Expression
+
+            if expressionNodes.Length <> 1 then
+                failwith "Function type parse node doesn't contain 1 expression nodes."
+            else
+                let (optionReturnTypeExpression, state) = buildExpression state expressionNodes[0]
+
+                match optionReturnTypeExpression with
+                | Some returnTypeExpression ->
+                    (
+                        Some {
+                            TypeParameters = typeParameters
+                            Parameters = parameters
+                            ReturnTypeExpression = returnTypeExpression
+                            ScopeId = state.CurrentScopeId
+                        },
+                        popScope state
+                    )
+                | None -> (None, popScope state)
         | None -> (None, popScope state)
     | None -> (None, popScope state)
 
@@ -631,6 +696,12 @@ and buildExpression (state: ASTBuilderState) (node: ParseNode): (Option<Expressi
         match optionFunction with
         | Some fn -> (Some (newExpression (FunctionExpression fn)), state)
         | None -> (None, state)
+    | ParseNodeType.FunctionType ->
+        let (optionFunctionType, state) = buildFunctionType state child
+
+        match optionFunctionType with
+        | Some fn -> (Some (newExpression (FunctionTypeExpression fn)), state)
+        | None -> (None, state)
     | ParseNodeType.IfThenElse ->
         let (optionIfThenElse, state) = buildIfThenElse state child
 
@@ -783,13 +854,30 @@ let getInitialScopesById =
     }
     let scopesById = scopesById.Add(textScopeId, textScope)
 
-    let groupingType = RecordType (groupingScopeId, ["t"; "TKey"], [])
+    let groupingType = RecordType {
+        ScopeId = groupingScopeId
+        TypeParamNameAndIds = [(System.Guid.NewGuid(), "t"); (System.Guid.NewGuid(), "TKey")]
+        FieldTypes = []
+    }
 
-    let consoleType = RecordType (System.Guid.NewGuid(), [], [])
+    let consoleType = RecordType {
+        ScopeId = System.Guid.NewGuid()
+        TypeParamNameAndIds = []
+        FieldTypes = []
+    }
     
-    let fileSystemType = RecordType (System.Guid.NewGuid(), [], [])
+    let fileSystemType = RecordType {
+        ScopeId = System.Guid.NewGuid()
+        TypeParamNameAndIds = []
+        FieldTypes = []
+    }
 
     let ioErrorType = textType
+    
+    let resultTGuid = System.Guid.NewGuid()
+    let resultEGuid = System.Guid.NewGuid()
+    
+    let implInCSharpTGuid = System.Guid.NewGuid()
 
     let scope = {
         SymbolsByName =
@@ -808,21 +896,24 @@ let getInitialScopesById =
                     "Result",
                     BuiltInSymbol (
                         "Result",
-                        UnionType (
-                            resultScopeId,
-                            ["t"; "E"],
-                            [
-                                { Name = "Ok"; Parameters = [("value", TypeParameterType "t")] };
-                                { Name = "Err"; Parameters = [("error", TypeParameterType "E")] }
+                        UnionType {
+                            ScopeId = resultScopeId
+                            TypeParamNameAndIds = [(resultTGuid, "t"); (resultEGuid, "E")]
+                            Constructors = [
+                                { Name = "Ok"; Parameters = [("value", TypeParameterType (resultTGuid, "t"))] };
+                                { Name = "Err"; Parameters = [("error", TypeParameterType (resultEGuid, "E"))] }
                             ]
-                        )
+                        }
                     )
                 )
                 .Add(
                     "seq",
                     BuiltInSymbol (
                         "seq",
-                        TypeClassType (seqScopeId, [PrestoType.TypeParameterType "t"])
+                        TypeClassType {
+                            ScopeId = seqScopeId
+                            TypeParamNameAndIds = [(System.Guid.NewGuid(), "t")]
+                        }
                     )
                 )
                 .Add("Grouping", BuiltInSymbol ("Grouping", groupingType))
@@ -831,12 +922,12 @@ let getInitialScopesById =
                     "impl_in_CSharp",
                     BuiltInSymbol (
                         "impl_in_CSharp",
-                        FunctionType (
-                            System.Guid.NewGuid(),
-                            ["t"],
-                            [],
-                            TypeParameterType "t"
-                        )
+                        FunctionType {
+                            ScopeId = System.Guid.NewGuid()
+                            TypeParamNameAndIds = [(implInCSharpTGuid, "t")]
+                            ParamTypes = []
+                            ReturnType = TypeParameterType (implInCSharpTGuid, "t")
+                        }
                     )
                 );
         ParentId = None;

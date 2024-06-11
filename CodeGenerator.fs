@@ -282,17 +282,17 @@ and generateTypeReference (state: CodeGeneratorState) (prestoType: PrestoType): 
     | Boolean -> generateString state "bool"
     | Character -> generateString state "char"
     | Type -> generateString state "Type"
-    | RecordType (scopeId, _, _) ->
-        let canonicalName = state.Program.TypeCanonicalNamesByScopeId[scopeId]
+    | RecordType ft ->
+        let canonicalName = state.Program.TypeCanonicalNamesByScopeId[ft.ScopeId]
 
         match canonicalName with
         | "Console" -> generateString state "Presto.Runtime.Console"
         | _ -> generateString state canonicalName
-    | UnionType (scopeId, typeParamNames, constructors) -> generateString state state.Program.TypeCanonicalNamesByScopeId[scopeId]
-    | FunctionType (scopeId, _, _, _) -> generateString state state.Program.TypeCanonicalNamesByScopeId[scopeId]
-    | TypeParameterType typeParameter -> generateString state typeParameter
-    | UnionInstanceType (scopeId, typeParameters) ->
-        let canonicalName = state.Program.TypeCanonicalNamesByScopeId[scopeId]
+    | UnionType ut -> generateString state state.Program.TypeCanonicalNamesByScopeId[ut.ScopeId]
+    | FunctionType ft -> generateString state state.Program.TypeCanonicalNamesByScopeId[ft.ScopeId]
+    | TypeParameterType (id, name) -> generateString state name
+    | UnionInstanceType (ut, typeParameters) ->
+        let canonicalName = state.Program.TypeCanonicalNamesByScopeId[ut.ScopeId]
         let state = generateString state canonicalName
 
         let state =
@@ -305,8 +305,8 @@ and generateTypeReference (state: CodeGeneratorState) (prestoType: PrestoType): 
                 state
 
         state
-    | TypeClassInstanceType (scopeId, typeParameters) ->
-        let canonicalName = state.Program.TypeCanonicalNamesByScopeId[scopeId]
+    | TypeClassInstanceType (tct, typeParameters) ->
+        let canonicalName = state.Program.TypeCanonicalNamesByScopeId[tct.ScopeId]
         let state = generateTypeName state prestoType canonicalName
 
         let state =
@@ -319,8 +319,8 @@ and generateTypeReference (state: CodeGeneratorState) (prestoType: PrestoType): 
                 state
 
         state
-    | RecordInstanceType (scopeId, typeParameters) ->
-        let canonicalName = state.Program.TypeCanonicalNamesByScopeId[scopeId]
+    | RecordInstanceType (rt, typeParameters) ->
+        let canonicalName = state.Program.TypeCanonicalNamesByScopeId[rt.ScopeId]
         let state = generateTypeName state prestoType canonicalName
 
         let state =

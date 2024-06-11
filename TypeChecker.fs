@@ -18,8 +18,8 @@ type TypeCheckerState = {
 let getTypeScopeId (state: TypeCheckerState) (prestoType: PrestoType): (Option<System.Guid> * TypeCheckerState) =
     match prestoType with
     | Text scopeId -> (Some scopeId, state)
-    | RecordType (scopeId, _, _) -> (Some scopeId, state)
-    | UnionType (scopeId, typeParameters, constructors) -> (Some scopeId, state)
+    | RecordType rt -> (Some rt.ScopeId, state)
+    | UnionType ut -> (Some ut.ScopeId, state)
     | _ ->
         let error = compile_error(
             description = $"Couldn't access members of type: {prestoType}",
@@ -82,11 +82,11 @@ and checkUnion (state: TypeCheckerState) (union: Union): TypeCheckerState * Opti
     let successfullyCheckedTypeParameterTypes = not (List.exists<Option<PrestoType>> (fun x -> x.IsNone) optionTypeParameterTypes)
     
     if successfullyCheckedTypeParameterTypes then
-        let typeParameterNames =
-            List.map<Option<PrestoType>, string>
+        let typeParameterIdAndNames =
+            List.map<Option<PrestoType>, System.Guid * string>
                 (fun x ->
                     match x.Value with
-                    | TypeParameterType name -> name
+                    | TypeParameterType (guid, name) -> (guid, name)
                     | _ -> failwith "Unexpected failure")
                 optionTypeParameterTypes
 
@@ -99,7 +99,7 @@ and checkUnion (state: TypeCheckerState) (union: Union): TypeCheckerState * Opti
                     (fun x -> x.Value)
                     optionUnionTypeConstructors
 
-            (popScope state, Some (UnionType (union.ScopeId, typeParameterNames, constructors)))
+            (popScope state, Some (UnionType { ScopeId = union.ScopeId; TypeParamNameAndIds = typeParameterIdAndNames; Constructors = constructors }))
         else
             (popScope state, None)
     else
@@ -134,14 +134,14 @@ and checkRecord (state: TypeCheckerState) (record: Record): TypeCheckerState * O
     let succeededCheckingFields = fieldTypes.Length = optionFieldTypes.Length
 
     if succeededCheckingFields then
-        let prestoType = RecordType (record.ScopeId, [], fieldTypes)
+        let prestoType = RecordType { ScopeId = record.ScopeId; TypeParamNameAndIds = []; FieldTypes = fieldTypes }
 
         (popScope state, Some prestoType)
     else
         (popScope state, None)
 
 and checkTypeParameter (state: TypeCheckerState) (typeParameter: TypeParameter): TypeCheckerState * Option<PrestoType> =
-    (state, Some (TypeParameterType typeParameter.NameToken._text))
+    (state, Some (TypeParameterType (typeParameter.Id, typeParameter.NameToken._text)))
     
 and checkParameter (state: TypeCheckerState) (parameter: Parameter): TypeCheckerState * Option<PrestoType> =
     checkExpression state parameter.TypeExpression
@@ -160,11 +160,11 @@ and checkFunction (state: TypeCheckerState) (expression: Expression) (fn: Functi
         let (state, optionTypeParameterTypes) = checkMany state checkTypeParameter fn.TypeParameters []
         let successfullyCheckedTypeParameterTypes = not (List.exists<Option<'a>> (fun x -> x.IsNone) optionTypeParameterTypes)
         
-        let typeParameterNames =
-            List.map<Option<PrestoType>, string>
+        let typeParameterIdAndNames =
+            List.map<Option<PrestoType>, System.Guid * string>
                 (fun x ->
                     match x.Value with
-                    | TypeParameterType name -> name
+                    | TypeParameterType (guid, name) -> (guid, name)
                     | _ -> failwith "Unexpected failure")
                 optionTypeParameterTypes
 
@@ -177,7 +177,13 @@ and checkFunction (state: TypeCheckerState) (expression: Expression) (fn: Functi
             let state =
                 match optionSpecifiedReturnType with
                 | Some specifiedReturnType ->
-                    let prestoType = FunctionType (fn.ScopeId, typeParameterNames, parameterTypes, specifiedReturnType)
+                    let prestoType = FunctionType {
+                        ScopeId = fn.ScopeId
+                        TypeParamNameAndIds = typeParameterIdAndNames
+                        ParamTypes = parameterTypes
+                        ReturnType = specifiedReturnType
+                    }
+
                     { state with TypesByExpressionId = state.TypesByExpressionId.Add(expression.Id, prestoType) }
                 | None -> state
 
@@ -201,9 +207,61 @@ and checkFunction (state: TypeCheckerState) (expression: Expression) (fn: Functi
 
                         (state, None)
                 else
-                    let inferredPrestoType = FunctionType (fn.ScopeId, typeParameterNames, parameterTypes, inferredReturnType)
+                    let inferredPrestoType = FunctionType {
+                        ScopeId = fn.ScopeId
+                        TypeParamNameAndIds = typeParameterIdAndNames
+                        ParamTypes = parameterTypes
+                        ReturnType = inferredReturnType
+                    }
                     (popScope state, Some inferredPrestoType)
             | None -> (popScope state, None)
+        else
+            (popScope state, None)
+    else
+        (popScope state, None)
+
+and checkFunctionType (state: TypeCheckerState) (expression: Expression) (fn: FunctionType): TypeCheckerState * Option<PrestoType> =
+    let state = pushScope state fn.ScopeId
+
+    let (state, optionParameterTypes) = checkMany state checkParameter fn.Parameters []
+    let successfullyCheckedParameterTypes = not (List.exists<Option<'a>> (fun x -> x.IsNone) optionParameterTypes)
+
+    if successfullyCheckedParameterTypes then
+        let parameterTypes = List.map<Parameter, PrestoType> (fun x -> state.TypesByExpressionId[x.TypeExpression.Id]) fn.Parameters
+
+        let (state, optionTypeParameterTypes) = checkMany state checkTypeParameter fn.TypeParameters []
+        let successfullyCheckedTypeParameterTypes = not (List.exists<Option<'a>> (fun x -> x.IsNone) optionTypeParameterTypes)
+        
+        let typeParameterIdAndNames =
+            List.map<Option<PrestoType>, System.Guid * string>
+                (fun x ->
+                    match x.Value with
+                    | TypeParameterType (guid, name) -> (guid, name)
+                    | _ -> failwith "Unexpected failure")
+                optionTypeParameterTypes
+
+        if successfullyCheckedTypeParameterTypes then
+            let (state, optionReturnType) = checkExpression state fn.ReturnTypeExpression
+
+            let state =
+                match optionReturnType with
+                | Some specifiedReturnType ->
+                    let prestoType = FunctionType {
+                        ScopeId = fn.ScopeId
+                        TypeParamNameAndIds = typeParameterIdAndNames
+                        ParamTypes = parameterTypes
+                        ReturnType = specifiedReturnType
+                    }
+
+                    { state with TypesByExpressionId = state.TypesByExpressionId.Add(expression.Id, prestoType) }
+                | None -> state
+
+            if optionReturnType.IsSome then
+                let state = popScope state
+
+                (state, Some state.TypesByExpressionId[expression.Id])
+            else
+                (popScope state, None)
         else
             (popScope state, None)
     else
@@ -248,7 +306,7 @@ and checkIfThenElse (state: TypeCheckerState) (ifThenElse: IfThenElse): TypeChec
             (state, None) // TODO: error
     | None -> (state, None)
 
-and inferFunctionCallTypeArgs (paramTypes: List<PrestoType>) (argTypes: List<PrestoType>): Map<string, PrestoType> =
+and inferFunctionCallTypeArgs (paramTypes: List<PrestoType>) (argTypes: List<PrestoType>): Map<System.Guid, PrestoType> =
     Map.empty
 
 //    let equalities = List.zip paramTypes argTypes
@@ -317,17 +375,25 @@ and inferFunctionCallTypeArgs (paramTypes: List<PrestoType>) (argTypes: List<Pre
 //        | _ -> failwith ""
 //    | TypeClassType (scopeId, typeArguments) -> failwith "TODO"
 
-and _reifyType (prestoType: PrestoType) (typeArgsByName: Map<string, PrestoType>): PrestoType =
+and _reifyType (prestoType: PrestoType) (typeArgsByParamId: Map<System.Guid, PrestoType>): PrestoType =
     match prestoType with
-    | TypeParameterType typeParameterName ->
-        typeArgsByName[typeParameterName]
+    | TypeParameterType (typeParameterId, typeParameterName) ->
+        if typeArgsByParamId.ContainsKey typeParameterId then
+            typeArgsByParamId[typeParameterId]
+        else
+            prestoType
     | TypeClassInstanceType (scopeId, typeArgumentTypes) ->
-        let typeArgumentTypes = List.map (fun t -> _reifyType t typeArgsByName) typeArgumentTypes
+        let typeArgumentTypes = List.map (fun t -> _reifyType t typeArgsByParamId) typeArgumentTypes
         TypeClassInstanceType (scopeId, typeArgumentTypes)
-    | FunctionType (scopeId, typeParameterNames, paramTypes, returnType) ->
-        let reifiedParamTypes = List.map (fun t -> _reifyType t typeArgsByName) paramTypes
-        let reifiedReturnType = _reifyType returnType typeArgsByName
-        FunctionType (scopeId, [], reifiedParamTypes, reifiedReturnType)
+    | FunctionType ft ->
+        let reifiedParamTypes = List.map (fun t -> _reifyType t typeArgsByParamId) ft.ParamTypes
+        let reifiedReturnType = _reifyType ft.ReturnType typeArgsByParamId
+        FunctionType {
+            ScopeId = ft.ScopeId
+            TypeParamNameAndIds = []
+            ParamTypes = reifiedParamTypes
+            ReturnType = reifiedReturnType
+        }
     | _ -> prestoType
 
 and checkFunctionCall (state: TypeCheckerState) (functionCall: FunctionCall): TypeCheckerState * Option<PrestoType> =
@@ -348,11 +414,11 @@ and checkFunctionCall (state: TypeCheckerState) (functionCall: FunctionCall): Ty
             match optionFunctionType with
             | Some functionType ->
                 match functionType with
-                | FunctionType (scopeId, typeParameterNames, paramTypes, returnType) ->
+                | FunctionType ft ->
                     // TODO: handle inference diff than specified
 
-                    let typeArgsByName = inferFunctionCallTypeArgs paramTypes argumentTypes
-                    let reifiedReturnType = _reifyType returnType typeArgsByName
+                    let typeArgsByName = inferFunctionCallTypeArgs ft.ParamTypes argumentTypes
+                    let reifiedReturnType = _reifyType ft.ReturnType typeArgsByName
                     (state, Some reifiedReturnType)
                 | _ ->
                     let error = compile_error(
@@ -379,12 +445,12 @@ and checkGenericInstantiation (state: TypeCheckerState) (genericInstantiation: G
         match optionExpressionType with
         | Some expressionType ->
             match expressionType with
-            | TypeClassType (scopeId, typeParameterNames) ->
-                let typeParameterNameCount = typeParameterNames.Length
+            | TypeClassType tct ->
+                let typeParameterNameCount = tct.TypeParamNameAndIds.Length
                 let typeArgumentCount = typeArgumentTypes.Length
 
                 if typeParameterNameCount = typeArgumentCount then
-                    let expressionType = TypeClassInstanceType (scopeId, typeArgumentTypes)
+                    let expressionType = TypeClassInstanceType (tct, typeArgumentTypes)
                     (state, Some expressionType)
                 else
                     let error = compile_error(
@@ -394,12 +460,12 @@ and checkGenericInstantiation (state: TypeCheckerState) (genericInstantiation: G
                     let state = { state with Errors = state.Errors @ [error]}
 
                     (state, Some expressionType) // Why are we returning expression type?
-            | UnionType (scopeId, typeParameterNames, constructors) ->
-                let typeParameterNameCount = typeParameterNames.Length
+            | UnionType ut ->
+                let typeParameterNameCount = ut.TypeParamNameAndIds.Length
                 let typeArgumentCount = typeArgumentTypes.Length
 
                 if typeParameterNameCount = typeArgumentCount then
-                    let expressionType = UnionInstanceType (scopeId, typeArgumentTypes)
+                    let expressionType = UnionInstanceType (ut, typeArgumentTypes)
                     (state, Some expressionType)
                 else
                     let error = compile_error(
@@ -409,12 +475,12 @@ and checkGenericInstantiation (state: TypeCheckerState) (genericInstantiation: G
                     let state = { state with Errors = state.Errors @ [error]}
 
                     (state, Some expressionType) // Why are we returning expression type?
-            | RecordType (scopeId, typeParameterNames, fieldTypes) ->
-                let typeParameterNameCount = typeParameterNames.Length
+            | RecordType rt ->
+                let typeParameterNameCount = rt.TypeParamNameAndIds.Length
                 let typeArgumentCount = typeArgumentTypes.Length
 
                 if typeParameterNameCount = typeArgumentCount then
-                    let expressionType = RecordInstanceType (scopeId, typeArgumentTypes)
+                    let expressionType = RecordInstanceType (rt, typeArgumentTypes)
                     (state, Some expressionType)
                 else
                     let error = compile_error(
@@ -424,29 +490,23 @@ and checkGenericInstantiation (state: TypeCheckerState) (genericInstantiation: G
                     let state = { state with Errors = state.Errors @ [error]}
 
                     (state, Some expressionType) // Why are we returning expression type?
-            | FunctionType (scopeId, typeParameterNames, parameterTypes, returnType) ->
-                let typeParameterNameCount = typeParameterNames.Length
+            | FunctionType ft ->
+                let typeParameterNameCount = ft.TypeParamNameAndIds.Length
                 let typeArgumentCount = typeArgumentTypes.Length
 
                 if typeParameterNameCount = typeArgumentCount then
-                    let rec reifyType (prestoType: PrestoType) =
-                        match prestoType with
-                        | TypeParameterType typeParameterName ->
-                            let typeParameterIndex =
-                                List.findIndex
-                                    (fun x -> x = typeParameterName)
-                                    typeParameterNames
-
-                            typeArgumentTypes[typeParameterIndex]
-                        | TypeClassInstanceType (scopeId, typeArgumentTypes) ->
-                            let typeArgumentTypes = List.map reifyType typeArgumentTypes
-                            TypeClassInstanceType (scopeId, typeArgumentTypes)
-                        | _ -> prestoType
-
                     let typeParameterNames = []
-                    let parameterTypes = List.map reifyType parameterTypes
-                    let returnType = reifyType returnType
-                    let expressionType = FunctionType (scopeId, typeParameterNames, parameterTypes, returnType)
+                    let typeParamIds = List.map (fun (id, _) -> id) ft.TypeParamNameAndIds
+                    let typeParamIdTypeArgs = List.zip typeParamIds typeArgumentTypes
+                    let typeArgsByParamId = Map.ofList typeParamIdTypeArgs
+                    let parameterTypes = List.map (fun pt -> (_reifyType pt typeArgsByParamId)) ft.ParamTypes
+                    let returnType = _reifyType ft.ReturnType typeArgsByParamId
+                    let expressionType = FunctionType {
+                        ScopeId = ft.ScopeId
+                        TypeParamNameAndIds = typeParameterNames
+                        ParamTypes = parameterTypes
+                        ReturnType = returnType
+                    }
 
                     (state, Some expressionType)
                 else
@@ -556,27 +616,27 @@ and checkBinaryOperator (state: TypeCheckerState) (binaryOperator: BinaryOperato
             | BinaryOperatorType.ReverseFunctionComposition ->
                 // TODO: make sure this works with differing type param names
                 match leftType with
-                | FunctionType (lScopeId, lTypeParameterNames, lParameterTypes, lReturnType) ->
+                | FunctionType lft ->
                     match rightType with
-                    | FunctionType (rScopeId, rTypeParameterNames, rParameterTypes, rReturnType) when rParameterTypes.Length = 1 ->
-                        if canTypesBeTheSame lReturnType rParameterTypes[0] then
-                            let resultType = FunctionType (
-                                System.Guid.NewGuid(),
-                                lTypeParameterNames,
-                                lParameterTypes,
-                                rReturnType
-                            )
+                    | FunctionType rft when rft.ParamTypes.Length = 1 ->
+                        if canTypesBeTheSame lft.ReturnType rft.ParamTypes[0] then
+                            let resultType = FunctionType {
+                                ScopeId = System.Guid.NewGuid()
+                                TypeParamNameAndIds = lft.TypeParamNameAndIds
+                                ParamTypes = lft.ParamTypes
+                                ReturnType = rft.ReturnType
+                            }
 
                             // TODO: ensure right function only has 1 arg?
 
-                            let typeArgsByName = inferFunctionCallTypeArgs rParameterTypes [lReturnType]
+                            let typeArgsByName = inferFunctionCallTypeArgs rft.ParamTypes [lft.ReturnType]
 
                             let reifiedResultType = _reifyType resultType typeArgsByName
 
                             (state, Some reifiedResultType)
                         else
                             let error = compile_error(
-                                description = $"Return type of left side ({lReturnType}) of reverse function composition operator is not compatible with type of right side's parameter ({rParameterTypes[0]}).",
+                                description = $"Return type of left side ({lft.ReturnType}) of reverse function composition operator is not compatible with type of right side's parameter ({rft.ParamTypes[0]}).",
                                 position = text_position(file_name = "", line_index = 0u, column_index = 0u)
                             )
 
@@ -680,7 +740,7 @@ and checkErrorPropagationExpression (state: TypeCheckerState) (errorPropagationE
     match optionInnerExpressionType with
     | Some innerExpressionType ->
         match innerExpressionType with
-        | UnionInstanceType (scopeId, typeParameters) when scopeId = resultScopeId ->
+        | UnionInstanceType (uf, typeParameters) when uf.ScopeId = resultScopeId ->
             (state, Some typeParameters[0])
         | _ ->
             let error = compile_error(
@@ -711,6 +771,7 @@ and checkExpression (state: TypeCheckerState) (expression: Expression): TypeChec
             | RecordExpression record -> checkRecord state record
             | UnionExpression union -> checkUnion state union
             | FunctionExpression fn -> checkFunction state expression fn
+            | FunctionTypeExpression fnType -> checkFunctionType state expression fnType
             | IfThenElseExpression ifThenElse -> checkIfThenElse state ifThenElse
             | FunctionCallExpression call -> checkFunctionCall state call
             | BlockExpression block -> checkBlock state block
