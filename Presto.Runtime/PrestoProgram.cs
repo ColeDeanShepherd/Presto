@@ -82,7 +82,7 @@ public static partial class PrestoProgram
 
     public static string concatenate(string a, string b ) => a + b;
     public static nat sum(nat a, nat b) => a + b;
-    public static string to_string<T>(T x) => x.ToString()!;
+    public static string to_text<T>(T x) => x.ToString()!;
     public static Result<real, string> parse_real(string s)
     {
         try

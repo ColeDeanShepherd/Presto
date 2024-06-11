@@ -56,14 +56,15 @@ quotient = fn (a: nat, b: nat): nat -> impl_in_CSharp[nat]()
 # log
 # log2
 # log10
-# round
+round = fn [t] (x: t, digits: nat): t -> impl_in_CSharp[t]()
 # sign
 # sqrt
 # truncate
 
 ##### Comparable #####
-# min
-# max
+min = fn [t] (xs: seq[t]): t -> impl_in_CSharp[t]()
+max = fn [t] (xs: seq[t]): t -> impl_in_CSharp[t]()
+mean = fn [t] (xs: seq[t]): t -> impl_in_CSharp[t]()
 
 ##### Char #####
 # is_ascii
@@ -134,4 +135,4 @@ print = fn (console: Console): Result[nothing, text] -> impl_in_CSharp[Result[no
 print_line = fn (console: Console): Result[nothing, text] -> impl_in_CSharp[Result[nothing, text]]()
 
 ##### File System #####
-read_text_file = fn (file_system: FileSystem, file_path: text): seq[char] -> impl_in_CSharp[seq[char]]()
+read_text_file = fn (file_system: FileSystem, file_path: text): Result[seq[char], text] -> impl_in_CSharp[Result[seq[char], text]]()

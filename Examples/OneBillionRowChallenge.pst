@@ -11,7 +11,7 @@ main = fn (console: Console, fileSystem: FileSystem) -> {
     grouped_split_lines = group_by(parsed_split_lines, _1st)
     weather_station_and_stats = map(
         grouped_split_lines,
-        fn (g: Grouping[(text, real), text]) -> (key(g), round(min(values(g)), 1), round(mean(values(g)), 1), round(max(value(g)), 1))
+        fn (g: Grouping[(text, real), text]) -> (key(g), round(min(values(g)), 1), round(mean(values(g)), 1), round(max(values(g)), 1))
     )
     sorted_weather_station_and_stats = sort_by(weather_station_and_stats, _1st)
 
@@ -24,7 +24,7 @@ main = fn (console: Console, fileSystem: FileSystem) -> {
 #    map(split_by(_, ";"), _) >>
 #    map(fn (x: _) -> (_1st(x), (_2nd >> parse_real >> unwrap)(x)), _) >>
 #    group_by(_1st, _) >>
-#    map(fn (g: _) -> (key(g), round(min(values(g)), 1), round(mean(values(g)), 1), round(max(value(g)), 1)), _) >>
+#    map(fn (g: _) -> (key(g), round(min(values(g)), 1), round(mean(values(g)), 1), round(max(values(g)), 1)), _) >>
 #    sort_by(_1st, _) >>
 #    print_weather_stations
 #
@@ -34,7 +34,7 @@ main = fn (console: Console, fileSystem: FileSystem) -> {
 #    .map(split_by(_, ";"), _)
 #    .map(fn (x: _) -> (_1st(x), (_2nd >> parse_real >> unwrap)(x)), _)
 #    .group_by(_1st, _)
-#    .map(fn (g: _) -> (key(g), round(min(values(g)), 1), round(mean(values(g)), 1), round(max(value(g)), 1)), _)
+#    .map(fn (g: _) -> (key(g), round(min(values(g)), 1), round(mean(values(g)), 1), round(max(values(g)), 1)), _)
 #    .sort_by(_1st, _)
 #    .print_weather_stations()
 #}

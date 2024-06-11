@@ -74,7 +74,6 @@ if compileOptions.FilePaths.IsEmpty then
     failwith "No files specified."
 
 let (scopeId, scopesById) = getInitialScopesById
-let mutable generatedFilePaths: string list = []
 
 let compileFile (program: Program) (filePath: string): string option * Program =
     let fileNameWithoutExtension = Path.GetFileNameWithoutExtension(filePath)
@@ -168,7 +167,7 @@ let initialProgram = {
     TypeCanonicalNamesByScopeId = Map.empty
 }
 
-let program = compileFiles compileOptions.FilePaths initialProgram []
+let (program, generatedFilePaths) = compileFiles compileOptions.FilePaths initialProgram []
 
 let prestoCompilerSucceeded = generatedFilePaths.Length = compileOptions.FilePaths.Length
 

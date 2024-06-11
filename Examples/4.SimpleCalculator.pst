@@ -9,13 +9,13 @@ main = fn (console: Console) -> {
     operation = read_line(console)?
 
     if operation == "+" then
-        print_line(console, "Result: " + to_string(num_1 + num_2))
+        print_line(console, "Result: " + to_text(num_1 + num_2))
     else if operation == "-" then
-        print_line(console, "Result: " + to_string(num_1 - num_2))
+        print_line(console, "Result: " + to_text(num_1 - num_2))
     else if operation == "*" then
-        print_line(console, "Result: " + to_string(num_1 * num_2))
+        print_line(console, "Result: " + to_text(num_1 * num_2))
     else if operation == "/" then
-        print_line(console, "Result: " + to_string(num_1 / num_2))
+        print_line(console, "Result: " + to_text(num_1 / num_2))
     else
         print_line(console, "Invalid operation")
 }
