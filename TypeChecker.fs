@@ -307,18 +307,54 @@ and checkIfThenElse (state: TypeCheckerState) (ifThenElse: IfThenElse): TypeChec
     | None -> (state, None)
 
 and inferFunctionCallTypeArgs (paramTypes: List<PrestoType>) (argTypes: List<PrestoType>): Map<System.Guid, PrestoType> =
-    Map.empty
+    let equalities = List.zip paramTypes argTypes
+    let typesByTypeParamId: Map<System.Guid, PrestoType> = Map.empty
+    typeInferenceHandleEqualities equalities typesByTypeParamId
 
-//    let equalities = List.zip paramTypes argTypes
-//    typeInferenceHandleEqualities typeArgsByName equalities
+and typeInferenceHandleEqualities (equalities: List<PrestoType * PrestoType>) (typesByTypeParamId: Map<System.Guid, PrestoType>): Map<System.Guid, PrestoType> =
+    if equalities.IsEmpty then
+        typesByTypeParamId
+    else
+        let (type1, type2) = equalities.Head
+        let typeArgsByName = typeInferenceHandleEquality type1 type2 typesByTypeParamId
+        typeInferenceHandleEqualities equalities.Tail typeArgsByName
 
-//and typeInferenceHandleEqualities (typeArgsByTypeVarId: Map<int, PrestoType>) (equalities: List<PrestoType * PrestoType>): Map<string, PrestoType> =
-//    if equalities.IsEmpty then
-//        typeArgsByTypeVarId
-//    else
-//        let (type1, type2) = equalities.Head
-//        let typeArgsByName = typeInferenceHandleEquality type1 type2 typeArgsByTypeVarId
-//        typeInferenceHandleEqualities typeArgsByName equalities.Tail
+and typeInferenceHandleEquality (type1: PrestoType) (type2: PrestoType) (typesByTypeParamId: Map<System.Guid, PrestoType>): Map<System.Guid, PrestoType> =
+    if type1 = type2 then
+        typesByTypeParamId
+    else
+        match (type1, type2) with
+        | (TypeParameterType (id1, name1), TypeParameterType (id2, name2)) ->
+            let typesByTypeParamId = typeInferenceHandleTypeParameterEquality id1 type2 typesByTypeParamId
+            typeInferenceHandleTypeParameterEquality id2 type1 typesByTypeParamId
+        | (TypeParameterType (id1, name1), _) ->
+            typeInferenceHandleTypeParameterEquality id1 type2 typesByTypeParamId
+        | (_, TypeParameterType (id2, name2)) ->
+            typeInferenceHandleTypeParameterEquality id2 type1 typesByTypeParamId
+        | (RecordInstanceType (tct1, typeArgs1), RecordInstanceType (tct2, typeArgs2)) ->
+            let equalities = List.zip typeArgs1 typeArgs2
+            typeInferenceHandleEqualities equalities typesByTypeParamId
+        | (UnionInstanceType (tct1, typeArgs1), UnionInstanceType (tct2, typeArgs2)) ->
+            let equalities = List.zip typeArgs1 typeArgs2
+            typeInferenceHandleEqualities equalities typesByTypeParamId
+        | (TypeClassInstanceType (tct1, typeArgs1), TypeClassInstanceType (tct2, typeArgs2)) ->
+            let equalities = List.zip typeArgs1 typeArgs2
+            typeInferenceHandleEqualities equalities typesByTypeParamId
+        | (TupleType elTypes1, TupleType elTypes2) ->
+            let equalities = List.zip elTypes1 elTypes2
+            typeInferenceHandleEqualities equalities typesByTypeParamId
+        | _ -> typesByTypeParamId
+
+and typeInferenceHandleTypeParameterEquality (typeParameterId: System.Guid) (prestoType: PrestoType) (typesByTypeParamId: Map<System.Guid, PrestoType>): Map<System.Guid, PrestoType> =
+    if typesByTypeParamId.ContainsKey typeParameterId then
+        let prevInferredType = typesByTypeParamId[typeParameterId]
+
+        if prevInferredType = prestoType then
+            typesByTypeParamId
+        else
+            failwith ""
+    else
+        typesByTypeParamId.Add (typeParameterId, prestoType)
 
 //and typeInferenceHandleEquality (type1: PrestoType) (type2: PrestoType) (typeArgsByName: Map<string, PrestoType>): Map<string, PrestoType> = 
 //    let (genericType, concreteType) =
@@ -419,6 +455,7 @@ and checkFunctionCall (state: TypeCheckerState) (functionCall: FunctionCall): Ty
 
                     let typeArgsByName = inferFunctionCallTypeArgs ft.ParamTypes argumentTypes
                     let reifiedReturnType = _reifyType ft.ReturnType typeArgsByName
+
                     (state, Some reifiedReturnType)
                 | _ ->
                     let error = compile_error(
@@ -630,7 +667,6 @@ and checkBinaryOperator (state: TypeCheckerState) (binaryOperator: BinaryOperato
                             // TODO: ensure right function only has 1 arg?
 
                             let typeArgsByName = inferFunctionCallTypeArgs rft.ParamTypes [lft.ReturnType]
-
                             let reifiedResultType = _reifyType resultType typeArgsByName
 
                             (state, Some reifiedResultType)
