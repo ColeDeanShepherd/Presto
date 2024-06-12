@@ -17,19 +17,13 @@
     <None Include="examples\ListFirst.pst" />
     <None Include="examples\1.HelloWorld.pst" />
     <None Include="Examples\Test.pst" />
-    <Compile Include="CSharpCompiler.fs" />
     <None Include="README.md" />
     <None Include="BootstrappedCompiler.pst" />
-    <Compile Include="CompilerCore.fs" />
-    <Compile Include="Lexer.fs" />
-    <Compile Include="Parser.fs" />
-    <Compile Include="ASTBuilder.fs" />
-    <Compile Include="TypeChecker.fs" />
-    <Compile Include="CodeGenerator.fs" />
     <Compile Include="Program.fs" />
   </ItemGroup>
 
   <ItemGroup>
+    <ProjectReference Include="..\Presto.Library\Presto.Library.fsproj" />
     <ProjectReference Include="Presto.Runtime\Presto.Runtime.csproj" />
     <ProjectReference Include="Presto.SelfHosting\Presto.SelfHosting.csproj" />
   </ItemGroup>
