@@ -75,6 +75,9 @@ if compileOptions.FilePaths.IsEmpty then
 
 let (scopeId, scopesById) = getInitialScopesById
 
+let programHasMain (program: Program): bool =
+    List.exists<Binding> (fun b -> b.NameToken._text = "main") program.Bindings
+
 let compileFile (program: Program) (filePath: string): string option * Program =
     let fileNameWithoutExtension = Path.GetFileNameWithoutExtension(filePath)
 
@@ -105,6 +108,7 @@ let compileFile (program: Program) (filePath: string): string option * Program =
             printfn "Done parsing!"
 
             // build AST
+            let hadMain = programHasMain program
             let buildAstOutput = buildAst parseOutput.CompilationUnit program
 
             if not buildAstOutput.Errors.IsEmpty then
@@ -114,8 +118,10 @@ let compileFile (program: Program) (filePath: string): string option * Program =
                 (None, program)
             else
                 printfn "Done building the AST!"
+                
+                let hasMain = programHasMain buildAstOutput.Program
 
-                // generate code
+                // check types
                 let (program, typeCheckingErrors) = checkTypes buildAstOutput.Program
 
                 if not typeCheckingErrors.IsEmpty then
@@ -127,7 +133,8 @@ let compileFile (program: Program) (filePath: string): string option * Program =
                     printfn "Done type checking!"
 
                     // generate code
-                    let codeGeneratorOutput = generateCode program compileOptions.CompileLibrary
+                    let generateMain = (not hadMain) && hasMain
+                    let codeGeneratorOutput = generateCode program compileOptions.CompileLibrary generateMain
 
                     if not codeGeneratorOutput.Errors.IsEmpty then
                         for error in codeGeneratorOutput.Errors do

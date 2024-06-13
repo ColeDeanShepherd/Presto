@@ -13,7 +13,7 @@ main = fn (console: Console, fileSystem: FileSystem) -> {
         grouped_split_lines,
         fn (g: Grouping[(text, real), text]) -> (key(g), round(min(values(g)), 1), round(mean(values(g)), 1), round(max(values(g)), 1))
     )
-    sorted_weather_station_and_stats = sort_by(weather_station_and_stats, _1st)
+    sorted_weather_station_and_stats = sort_by(weather_station_and_stats, t4_1st)
 
     print_weather_stations(console, sorted_weather_station_and_stats)
 }

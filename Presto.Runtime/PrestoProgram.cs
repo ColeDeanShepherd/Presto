@@ -161,6 +161,17 @@ public static partial class PrestoProgram
     public static T3 t4_3rd<T1, T2, T3, T4>(Tuple<T1, T2, T3, T4> t) => t.Item3;
     public static T4 t4_4th<T1, T2, T3, T4>(Tuple<T1, T2, T3, T4> t) => t.Item4;
 
+    public static T list_1st<T>(IEnumerable<T> l) => l.First();
+    public static T list_2nd<T>(IEnumerable<T> l) => l.Skip(1).First();
+
+    public static TKey key<T, TKey>(IGrouping<TKey, T> grouping) => grouping.Key;
+    public static IEnumerable<T> values<T, TKey>(IGrouping<TKey, T> grouping) => grouping;
+
+    public static decimal min(IEnumerable<real> d) => d.Min();
+    public static decimal max(IEnumerable<real> d) => d.Max();
+    public static decimal mean(IEnumerable<real> d) => d.Average();
+    public static decimal round(real d) => Math.Round(d);
+
     public static T unwrap<T, E>(Result<T, E> result) =>
         result.IsOk
             ? result.Value!

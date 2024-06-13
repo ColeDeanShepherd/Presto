@@ -16,11 +16,17 @@ let ``inferFunctionCallTypeArgs`` () =
 
     let textType = PrestoType.Text (System.Guid.NewGuid())
 
-    let tTypeParam = TypeParameterType (System.Guid.NewGuid(), "t")
-    let tKeyTypeParam = TypeParameterType (System.Guid.NewGuid(), "tkey")
+    let tTypeParamId = System.Guid.NewGuid()
+    let tTypeParam = TypeParameterType (tTypeParamId, "t")
+
+    let tKeyTypeParamId = System.Guid.NewGuid()
+    let tKeyTypeParam = TypeParameterType (tKeyTypeParamId, "tkey")
     
-    let t1TypeParam = TypeParameterType (System.Guid.NewGuid(), "t1")
-    let t2TypeParam = TypeParameterType (System.Guid.NewGuid(), "t2")
+    let t1TypeParamId = System.Guid.NewGuid()
+    let t1TypeParam = TypeParameterType (t1TypeParamId, "t1")
+
+    let t2TypeParamId = System.Guid.NewGuid()
+    let t2TypeParam = TypeParameterType (t2TypeParamId, "t2")
 
     let paramTypes = [
         TypeClassInstanceType (seqTypeFields, [tTypeParam])
@@ -47,4 +53,7 @@ let ``inferFunctionCallTypeArgs`` () =
 
     let typesByTypeParamId = inferFunctionCallTypeArgs paramTypes argTypes
 
-    Assert.True(true)
+    Assert.Equal(TupleType [textType; PrestoType.Real], typesByTypeParamId[tTypeParamId])
+    Assert.Equal(textType, typesByTypeParamId[tKeyTypeParamId])
+    Assert.Equal(textType, typesByTypeParamId[t1TypeParamId])
+    Assert.Equal(PrestoType.Real, typesByTypeParamId[t2TypeParamId])
