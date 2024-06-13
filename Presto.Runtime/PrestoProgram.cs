@@ -153,13 +153,13 @@ public static partial class PrestoProgram
     public static IEnumerable<string> split_by(string str, string separator) =>
         str.Split(separator);
 
-    public static T1 _1st<T1, T2>(Tuple<T1, T2> t) => t.Item1;
-    public static T2 _2nd<T1, T2>(Tuple<T1, T2> t) => t.Item2;
+    public static T1 _1st<T1, T2>((T1, T2) t) => t.Item1;
+    public static T2 _2nd<T1, T2>((T1, T2) t) => t.Item2;
 
-    public static T1 t4_1st<T1, T2, T3, T4>(Tuple<T1, T2, T3, T4> t) => t.Item1;
-    public static T2 t4_2nd<T1, T2, T3, T4>(Tuple<T1, T2, T3, T4> t) => t.Item2;
-    public static T3 t4_3rd<T1, T2, T3, T4>(Tuple<T1, T2, T3, T4> t) => t.Item3;
-    public static T4 t4_4th<T1, T2, T3, T4>(Tuple<T1, T2, T3, T4> t) => t.Item4;
+    public static T1 t4_1st<T1, T2, T3, T4>((T1, T2, T3, T4) t) => t.Item1;
+    public static T2 t4_2nd<T1, T2, T3, T4>((T1, T2, T3, T4) t) => t.Item2;
+    public static T3 t4_3rd<T1, T2, T3, T4>((T1, T2, T3, T4) t) => t.Item3;
+    public static T4 t4_4th<T1, T2, T3, T4>((T1, T2, T3, T4) t) => t.Item4;
 
     public static T list_1st<T>(IEnumerable<T> l) => l.First();
     public static T list_2nd<T>(IEnumerable<T> l) => l.Skip(1).First();

@@ -6,7 +6,8 @@ main = fn (console: Console, fileSystem: FileSystem) -> {
     split_lines = map(lines, fn (line: text) -> split_by(line, ";"))
     parsed_split_lines = map(
         split_lines,
-        fn (x: seq[text]) -> (list_1st(x), (list_2nd >> parse_real >> unwrap)(x))
+        #fn (x: seq[text]) -> (list_1st(x), (list_2nd >> parse_real >> unwrap)(x))
+        fn (x: seq[text]) -> (list_1st(x), unwrap(parse_real(list_2nd(x))))
     )
     grouped_split_lines = group_by(parsed_split_lines, _1st)
     weather_station_and_stats = map(
