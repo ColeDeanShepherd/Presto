@@ -1,12 +1,11 @@
 module Tests
 
-open System
 open Xunit
 open ASTBuilder
 open TypeChecker
 
 [<Fact>]
-let ``inferFunctionCallTypeArgs`` () =
+let ``inferFunctionCallTypeArgs1`` () =
     let seqTypeFields: TypeClassTypeFields = {
         ScopeId = System.Guid.NewGuid()
         TypeParamNameAndIds = [(System.Guid.NewGuid(), "t")]
@@ -16,11 +15,11 @@ let ``inferFunctionCallTypeArgs`` () =
 
     let textType = PrestoType.Text (System.Guid.NewGuid())
 
-    let tTypeParamId = System.Guid.NewGuid()
-    let tTypeParam = TypeParameterType (tTypeParamId, "t")
-
     let tKeyTypeParamId = System.Guid.NewGuid()
     let tKeyTypeParam = TypeParameterType (tKeyTypeParamId, "tkey")
+
+    let tTypeParamId = System.Guid.NewGuid()
+    let tTypeParam = TypeParameterType (tTypeParamId, "t")
     
     let t1TypeParamId = System.Guid.NewGuid()
     let t1TypeParam = TypeParameterType (t1TypeParamId, "t1")
@@ -57,3 +56,57 @@ let ``inferFunctionCallTypeArgs`` () =
     Assert.Equal(textType, typesByTypeParamId[tKeyTypeParamId])
     Assert.Equal(textType, typesByTypeParamId[t1TypeParamId])
     Assert.Equal(PrestoType.Real, typesByTypeParamId[t2TypeParamId])
+
+[<Fact>]
+let ``inferFunctionCallTypeArgs2`` () =
+    let seqTypeFields: TypeClassTypeFields = {
+        ScopeId = System.Guid.NewGuid()
+        TypeParamNameAndIds = [(System.Guid.NewGuid(), "t")]
+    }
+
+    let seqType = TypeClassType seqTypeFields
+
+    let groupingTypeFields: RecordTypeFields = {
+        ScopeId = groupingScopeId
+        TypeParamNameAndIds = [(System.Guid.NewGuid(), "t"); (System.Guid.NewGuid(), "tkey")]
+        FieldTypes = []
+    }
+    let groupingType = RecordType groupingTypeFields
+
+    let textType = PrestoType.Text (System.Guid.NewGuid())
+
+    let groupingInstanceType = RecordInstanceType (groupingTypeFields, [textType; PrestoType.Real])
+    
+    let mapTiTypeParamId = System.Guid.NewGuid()
+    let mapTiTypeParam = TypeParameterType (mapTiTypeParamId, "ti")
+
+    let mapToTypeParamId = System.Guid.NewGuid()
+    let mapToTypeParam = TypeParameterType (mapToTypeParamId, "to")
+
+    let paramTypes = [
+        TypeClassInstanceType (seqTypeFields, [mapTiTypeParam])
+        FunctionType {
+            ScopeId = System.Guid.NewGuid()
+            TypeParamNameAndIds = []
+            ParamTypes = [
+                mapTiTypeParam
+            ]
+            ReturnType = mapToTypeParam
+        }
+    ]
+    let argTypes = [
+        TypeClassInstanceType (seqTypeFields, [groupingInstanceType])
+        FunctionType {
+            ScopeId = System.Guid.NewGuid()
+            TypeParamNameAndIds = []
+            ParamTypes = [
+                groupingInstanceType
+            ]
+            ReturnType = TupleType [textType; PrestoType.Real; PrestoType.Real; PrestoType.Real]
+        }
+    ]
+
+    let typesByTypeParamId = inferFunctionCallTypeArgs paramTypes argTypes
+
+    Assert.Equal(groupingInstanceType, typesByTypeParamId[mapTiTypeParamId])
+    Assert.Equal(TupleType [textType; PrestoType.Real; PrestoType.Real; PrestoType.Real], typesByTypeParamId[mapToTypeParamId])

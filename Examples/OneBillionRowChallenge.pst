@@ -1,5 +1,5 @@
 main = fn (console: Console, fileSystem: FileSystem) -> {
-    file_name = "asdf.txt"
+    file_name = "C:/Users/ColeShepherd/Desktop/asdf.txt"
 
     file_contents = read_text_file(fileSystem, file_name)?
     lines = get_lines(file_contents)
@@ -9,10 +9,10 @@ main = fn (console: Console, fileSystem: FileSystem) -> {
         #fn (x: seq[text]) -> (list_1st(x), (list_2nd >> parse_real >> unwrap)(x))
         fn (x: seq[text]) -> (list_1st(x), unwrap(parse_real(list_2nd(x))))
     )
-    grouped_split_lines = group_by(parsed_split_lines, _1st)
+    grouped_split_lines = group_by(parsed_split_lines, _1st, _2nd)
     weather_station_and_stats = map(
         grouped_split_lines,
-        fn (g: Grouping[(text, real), text]) -> (key(g), round(min(values(g)), 1), round(mean(values(g)), 1), round(max(values(g)), 1))
+        fn (g: Grouping[text, real]) -> (key(g), round(min(values(g)), 1), round(mean(values(g)), 1), round(max(values(g)), 1))
     )
     sorted_weather_station_and_stats = sort_by(weather_station_and_stats, t4_1st)
 
@@ -41,20 +41,22 @@ main = fn (console: Console, fileSystem: FileSystem) -> {
 #}
 
 print_weather_stations = fn (console: Console, x: seq[(text, real, real, real)]) -> {
-    p2 = fn (x: (text, real, real, real)) -> print_weather_station(console, x)
+    p2 = fn (y: (text, real, real, real)) -> print_weather_station(console, y)
 
     print(console, "{")?
-    map(x, p2 >> unwrap)
+    #map(x, p2 >> unwrap)
+    for_each(x, p2 >> unwrap)
     print(console, "}")
 }
 
 print_weather_station = fn (console: Console, x: (text, real, real, real)) -> {
     print(console, t4_1st(x))?
     print(console, "=")?
-    print(console, (t4_2nd >> to_text)(x))?
+    #print(console, (t4_2nd >> to_text)(x))?
+    print(console, to_text(t4_2nd(x)))?
     print(console, "/")?
-    print(console, (t4_3rd >> to_text)(x))?
+    print(console, to_text(t4_3rd(x)))?
     print(console, "/")?
-    print(console, (t4_4th >> to_text)(x))?
+    print(console, to_text(t4_4th(x)))?
     print(console, ", ")
 }

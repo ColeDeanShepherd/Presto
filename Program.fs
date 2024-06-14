@@ -170,6 +170,7 @@ let initialProgram = {
     ScopeId = scopeId
     ScopesById = scopesById
     TypesByExpressionId = Map.empty
+    TypeArgumentsByExpressionId = Map.empty
     ResolvedSymbolsByExpressionId = Map.empty
     TypeCanonicalNamesByScopeId = Map.empty
 }

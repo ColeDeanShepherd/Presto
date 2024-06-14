@@ -131,11 +131,25 @@ public static partial class PrestoProgram
     ) =>
         source.Select(selector);
 
-    public static IEnumerable<IGrouping<TKey, TSource>> group_by<TSource, TKey>(
+    public static Unit for_each<TSource, TResult>(
         IEnumerable<TSource> source,
-        Func<TSource, TKey> keySelector
+        Func<TSource, TResult> selector
+    )
+    {
+        foreach (var item in source)
+        {
+            selector(item);
+        }
+
+        return Unit.Instance;
+    }
+
+    public static IEnumerable<IGrouping<TKey, TResultElement>> group_by<TKey, TElement, TResultElement>(
+        IEnumerable<TElement> source,
+        Func<TElement, TKey> keySelector,
+        Func<TElement, TResultElement> elementSelector
     ) =>
-        source.GroupBy(keySelector);
+        source.GroupBy(keySelector, elementSelector);
 
     public static IOrderedEnumerable<TSource> sort_by<TSource, TKey>(
         IEnumerable<TSource> source,
@@ -164,13 +178,13 @@ public static partial class PrestoProgram
     public static T list_1st<T>(IEnumerable<T> l) => l.First();
     public static T list_2nd<T>(IEnumerable<T> l) => l.Skip(1).First();
 
-    public static TKey key<T, TKey>(IGrouping<TKey, T> grouping) => grouping.Key;
-    public static IEnumerable<T> values<T, TKey>(IGrouping<TKey, T> grouping) => grouping;
+    public static TKey key<TKey, T>(IGrouping<TKey, T> grouping) => grouping.Key;
+    public static IEnumerable<T> values<TKey, T>(IGrouping<TKey, T> grouping) => grouping;
 
     public static decimal min(IEnumerable<real> d) => d.Min();
     public static decimal max(IEnumerable<real> d) => d.Max();
     public static decimal mean(IEnumerable<real> d) => d.Average();
-    public static decimal round(real d) => Math.Round(d);
+    public static decimal round(real d, uint decimals) => Math.Round(d, (int)decimals);
 
     public static T unwrap<T, E>(Result<T, E> result) =>
         result.IsOk

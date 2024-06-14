@@ -56,15 +56,19 @@ quotient = fn (a: nat, b: nat): nat -> impl_in_CSharp[nat]()
 # log
 # log2
 # log10
-round = fn [t] (x: t, digits: nat): t -> impl_in_CSharp[t]()
+#round = fn [t] (x: t, digits: nat): t -> impl_in_CSharp[t]()
+round = fn (x: real, digits: nat): real -> impl_in_CSharp[real]()
 # sign
 # sqrt
 # truncate
 
 ##### Comparable #####
-min = fn [t] (xs: seq[t]): t -> impl_in_CSharp[t]()
-max = fn [t] (xs: seq[t]): t -> impl_in_CSharp[t]()
-mean = fn [t] (xs: seq[t]): t -> impl_in_CSharp[t]()
+min = fn (xs: seq[real]): real -> impl_in_CSharp[real]()
+max = fn (xs: seq[real]): real -> impl_in_CSharp[real]()
+mean = fn (xs: seq[real]): real -> impl_in_CSharp[real]()
+#min = fn [t] (xs: seq[t]): t -> impl_in_CSharp[t]()
+#max = fn [t] (xs: seq[t]): t -> impl_in_CSharp[t]()
+#mean = fn [t] (xs: seq[t]): t -> impl_in_CSharp[t]()
 
 ##### Char #####
 # is_ascii
@@ -116,16 +120,17 @@ t4_3rd = fn [t1, t2, t3, t4] (x: (t1, t2, t3, t4)): t3 -> impl_in_CSharp[t3]()
 t4_4th = fn [t1, t2, t3, t4] (x: (t1, t2, t3, t4)): t4 -> impl_in_CSharp[t4]()
 
 ##### Grouping #####
-key = fn [t, tkey] (x: Grouping[t, tkey]): tkey -> impl_in_CSharp[tkey]()
-values = fn [t, tkey] (x: Grouping[t, tkey]): t -> impl_in_CSharp[t]()
+key = fn [tkey, t] (x: Grouping[tkey, t]): tkey -> impl_in_CSharp[tkey]()
+values = fn [tkey, t] (x: Grouping[tkey, t]): seq[t] -> impl_in_CSharp[seq[t]]()
 
 ##### Result #####
 unwrap = fn [t, e] (x: Result[t, e]): t -> impl_in_CSharp[t]()
 
 ##### Higher-order Functions #####
+for_each = fn [ti, to] (x: seq[ti], f: fn (x: ti): to): nothing -> impl_in_CSharp[nothing]()
 map = fn [ti, to] (x: seq[ti], f: fn (x: ti): to): seq[to] -> impl_in_CSharp[seq[to]]()
 sort_by = fn [t, ts] (x: seq[t], f: fn (x: t): ts): seq[t] -> impl_in_CSharp[seq[t]]()
-group_by = fn [t, tkey] (x: seq[t], f: fn (x: t): tkey): Grouping[t, tkey] -> impl_in_CSharp[Grouping[t, tkey]]()
+group_by = fn [tkey, t, tf] (x: seq[t], key_selector: fn (x: t): tkey, element_selector: fn (x: t): tf): seq[Grouping[tkey, tf]] -> impl_in_CSharp[seq[Grouping[tkey, tf]]]()
 
 ##### Console #####
 read_real = fn (console: Console): Result[real, text] -> impl_in_CSharp[Result[real, text]]()
