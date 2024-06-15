@@ -80,6 +80,7 @@ and FunctionTypeFields = {
 and TraitTypeFields = {
     ScopeId: System.Guid
     TypeParamNameAndIds: List<System.Guid * string>
+    FunctionTypesByName: Map<string, PrestoType>
 }
 and UnionTypeConstructor = {
     Name: string
@@ -179,6 +180,7 @@ and RecordField = {
     TypeExpression: Expression
 }
 and Record = {
+    TypeParameters: List<TypeParameter>
     Fields: List<RecordField>
     ScopeId: System.Guid
 }
@@ -193,7 +195,7 @@ and Union = {
 }
 and Trait = {
     TypeParameters: List<TypeParameter>
-    Functions: List<Function>
+    Bindings: List<Binding>
     ScopeId: System.Guid
 }
 and NumberLiteral = {
@@ -490,16 +492,22 @@ and buildRecord (state: ASTBuilderState) (node: ParseNode): (Option<Record> * AS
     assert (node.Type = ParseNodeType.Record)
 
     let (scope, state) = pushScope state
-    
-    let fieldNodes = childrenOfType node ParseNodeType.RecordField
-    let (optionFields, state) = buildAllOrNone state fieldNodes buildRecordField
 
-    match optionFields with
-    | Some fields ->
-        (
-            Some { Fields = fields; ScopeId = state.CurrentScopeId },
-            popScope state
-        )
+    let typeParameterNodes = childrenOfType node ParseNodeType.TypeParameter
+    let (optionTypeParameters, state) = buildAllOrNone state typeParameterNodes buildTypeParameter
+
+    match optionTypeParameters with
+    | Some typeParameters ->
+        let fieldNodes = childrenOfType node ParseNodeType.RecordField
+        let (optionFields, state) = buildAllOrNone state fieldNodes buildRecordField
+
+        match optionFields with
+        | Some fields ->
+            (
+                Some { TypeParameters = typeParameters; Fields = fields; ScopeId = state.CurrentScopeId },
+                popScope state
+            )
+        | None -> (None, popScope state)
     | None -> (None, popScope state)
 
 and buildUnionCase (state: ASTBuilderState) (node: ParseNode): (Option<UnionCase> * ASTBuilderState) =
@@ -519,16 +527,46 @@ and buildUnion (state: ASTBuilderState) (node: ParseNode): (Option<Union> * ASTB
     assert (node.Type = ParseNodeType.Union)
 
     let (scope, state) = pushScope state
-    
-    let caseNodes = childrenOfType node ParseNodeType.UnionCase
-    let (optionCases, state) = buildAllOrNone state caseNodes buildUnionCase
 
-    match optionCases with
-    | Some cases ->
-        (
-            Some { TypeParameters = []; Cases = cases; ScopeId = state.CurrentScopeId },
-            popScope state
-        )
+    let typeParameterNodes = childrenOfType node ParseNodeType.TypeParameter
+    let (optionTypeParameters, state) = buildAllOrNone state typeParameterNodes buildTypeParameter
+
+    match optionTypeParameters with
+    | Some typeParameters ->
+        let caseNodes = childrenOfType node ParseNodeType.UnionCase
+        let (optionCases, state) = buildAllOrNone state caseNodes buildUnionCase
+
+        match optionCases with
+        | Some cases ->
+            (
+                Some { TypeParameters = typeParameters; Cases = cases; ScopeId = state.CurrentScopeId },
+                popScope state
+            )
+        | None -> (None, popScope state)
+    | None -> (None, popScope state)
+
+and buildTrait (state: ASTBuilderState) (node: ParseNode): (Option<Trait> * ASTBuilderState) =
+    assert (node.Type = ParseNodeType.Trait)
+
+    let (scope, state) = pushScope state
+
+    let typeParameterNodes = childrenOfType node ParseNodeType.TypeParameter
+    let (optionTypeParameters, state) = buildAllOrNone state typeParameterNodes buildTypeParameter
+
+    match optionTypeParameters with
+    | Some typeParameters ->
+        let bindingNodes = childrenOfType node ParseNodeType.Binding
+        let (optionBindings, state) = buildAllOrNone state bindingNodes buildBinding
+
+        // TODO: check that bindings are all function types
+
+        match optionBindings with
+        | Some bindings ->
+            (
+                Some { TypeParameters = typeParameters; Bindings = bindings; ScopeId = state.CurrentScopeId },
+                popScope state
+            )
+        | None -> (None, popScope state)
     | None -> (None, popScope state)
 
 and buildTypeArgument (state: ASTBuilderState) (node: ParseNode): (Option<Expression> * ASTBuilderState) =
@@ -690,6 +728,12 @@ and buildExpression (state: ASTBuilderState) (node: ParseNode): (Option<Expressi
         
         match optionUnion with
         | Some union -> (Some (newExpression (UnionExpression union)), state)
+        | None -> (None, state)
+    | ParseNodeType.Trait ->
+        let (optionTrait, state) = buildTrait state child
+        
+        match optionTrait with
+        | Some _trait -> (Some (newExpression (TraitExpression _trait)), state)
         | None -> (None, state)
     | ParseNodeType.Function ->
         let (optionFunction, state) = buildFunction state child

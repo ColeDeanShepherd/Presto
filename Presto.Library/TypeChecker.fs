@@ -105,6 +105,47 @@ and checkUnion (state: TypeCheckerState) (union: Union): TypeCheckerState * Opti
     else
         (popScope state, None)
 
+and isFunctionType (prestoType: PrestoType): bool =
+    match prestoType with
+    | FunctionType _ -> true
+    | _ -> false
+
+and checkTrait (state: TypeCheckerState) (_trait: Trait): TypeCheckerState * Option<PrestoType> =
+    let state = pushScope state _trait.ScopeId
+
+    let (state, optionTypeParameterTypes) = checkMany state checkTypeParameter _trait.TypeParameters []
+    let successfullyCheckedTypeParameterTypes = not (List.exists<Option<PrestoType>> (fun x -> x.IsNone) optionTypeParameterTypes)
+
+    if successfullyCheckedTypeParameterTypes then
+        let typeParamIdAndNames =
+            List.map<Option<PrestoType>, System.Guid * string>
+                (fun x ->
+                    match x.Value with
+                    | TypeParameterType (guid, name) -> (guid, name)
+                    | _ -> failwith "Unexpected failure")
+                optionTypeParameterTypes
+
+        let (state, optionBindingTypes) = checkMany state checkBinding _trait.Bindings []
+        let bindingTypes =
+            List.filter<Option<PrestoType>> (fun x -> x.IsSome && (isFunctionType x.Value)) optionBindingTypes
+            |> List.map (fun x -> x.Value)
+
+        let succeededCheckingBindings = bindingTypes.Length = optionBindingTypes.Length
+
+        if succeededCheckingBindings then
+            let functionTypesByName =
+                List.zip _trait.Bindings bindingTypes
+                |> List.map (fun (b, t) -> (b.NameToken.text, t))
+                |> Map.ofList
+
+            let prestoType = TraitType { ScopeId = _trait.ScopeId; TypeParamNameAndIds = typeParamIdAndNames; FunctionTypesByName = functionTypesByName }
+
+            (popScope state, Some prestoType)
+        else
+            (popScope state, None)
+    else
+        (popScope state, None)
+
 and checkUnionCase (state: TypeCheckerState) (unionCase: UnionCase): TypeCheckerState * Option<UnionTypeConstructor> =
     let (state, optionParameterTypes) = checkMany state checkParameter unionCase.Parameters []
     let successfullyCheckedParameterTypes = not (List.exists<Option<PrestoType>> (fun x -> x.IsNone) optionParameterTypes)
@@ -126,17 +167,31 @@ and checkRecordField (state: TypeCheckerState) (recordField: RecordField): TypeC
 and checkRecord (state: TypeCheckerState) (record: Record): TypeCheckerState * Option<PrestoType> =
     let state = pushScope state record.ScopeId
 
-    let (state, optionFieldTypes) = checkMany state checkRecordField record.Fields []
-    let fieldTypes =
-        List.filter<Option<PrestoType>> (fun x -> x.IsSome) optionFieldTypes
-        |> List.map (fun x -> x.Value)
+    let (state, optionTypeParameterTypes) = checkMany state checkTypeParameter record.TypeParameters []
+    let successfullyCheckedTypeParameterTypes = not (List.exists<Option<PrestoType>> (fun x -> x.IsNone) optionTypeParameterTypes)
 
-    let succeededCheckingFields = fieldTypes.Length = optionFieldTypes.Length
+    if successfullyCheckedTypeParameterTypes then
+        let typeParamIdAndNames =
+            List.map<Option<PrestoType>, System.Guid * string>
+                (fun x ->
+                    match x.Value with
+                    | TypeParameterType (guid, name) -> (guid, name)
+                    | _ -> failwith "Unexpected failure")
+                optionTypeParameterTypes
 
-    if succeededCheckingFields then
-        let prestoType = RecordType { ScopeId = record.ScopeId; TypeParamNameAndIds = []; FieldTypes = fieldTypes }
+        let (state, optionFieldTypes) = checkMany state checkRecordField record.Fields []
+        let fieldTypes =
+            List.filter<Option<PrestoType>> (fun x -> x.IsSome) optionFieldTypes
+            |> List.map (fun x -> x.Value)
 
-        (popScope state, Some prestoType)
+        let succeededCheckingFields = fieldTypes.Length = optionFieldTypes.Length
+
+        if succeededCheckingFields then
+            let prestoType = RecordType { ScopeId = record.ScopeId; TypeParamNameAndIds = typeParamIdAndNames; FieldTypes = fieldTypes }
+
+            (popScope state, Some prestoType)
+        else
+            (popScope state, None)
     else
         (popScope state, None)
 
@@ -847,6 +902,7 @@ and checkExpression (state: TypeCheckerState) (expression: Expression): TypeChec
             match expression.Value with
             | RecordExpression record -> checkRecord state record
             | UnionExpression union -> checkUnion state union
+            | TraitExpression _trait -> checkTrait state _trait
             | FunctionExpression fn -> checkFunction state expression fn
             | FunctionTypeExpression fnType -> checkFunctionType state expression fnType
             | IfThenElseExpression ifThenElse -> checkIfThenElse state ifThenElse
