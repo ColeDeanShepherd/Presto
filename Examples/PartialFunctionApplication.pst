@@ -1,0 +1,4 @@
+main = fn (console: Console) -> {
+    partial_print = print(console, _)
+    partial_print("test")?
+}
