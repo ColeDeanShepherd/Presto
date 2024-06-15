@@ -9,6 +9,7 @@
     <None Include="Presto.StandardLibrary\StdLib.pst">
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
     </None>
+    <None Include="examples\OpenYouTube.pst" />
     <None Include="examples\PartialFunctionApplication.pst" />
     <None Include="examples\OneBillionRowChallenge.pst" />
     <None Include="examples\5.TemperatureConverter.pst" />

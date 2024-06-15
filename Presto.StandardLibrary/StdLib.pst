@@ -9,6 +9,11 @@ not_eq = fn [T] (a: T, b: T): Bool -> not(eq(a, b))
 to_text = fn [T] (x: T): Text -> impl_in_CSharp[Text]()
 
 ##### Boolean #####
+Bool = union {
+    True,
+    False
+}
+
 is_true = fn (x: Bool): Bool -> x == true
 is_false = fn (x: Bool): Bool -> x == false
 not = fn (x: Bool): Bool -> if x then false else true
@@ -104,12 +109,15 @@ get_lines = fn (x: Seq[Char]): Seq[Text] -> impl_in_CSharp[Seq[Text]]()
 split_by = fn (x: Text, separator: Text): Seq[Text] -> impl_in_CSharp[Seq[Text]]()
 
 ##### List/Seq #####
+Seq = trait [T] {
+    list_1st = fn [T] (x: Seq[T]): T
+    list_2nd = fn [T] (x: Seq[T]): T
+    last_or_default = fn [T] (x: Seq[T], default: T): T
+}
+
 # head
 # tail
 # last
-list_1st = fn [T] (x: Seq[T]): T -> impl_in_CSharp[T]()
-list_2nd = fn [T] (x: Seq[T]): T -> impl_in_CSharp[T]()
-last_or_default = fn [T] (x: Seq[T], default: T): T -> impl_in_CSharp[T]()
 
 ##### Tuple #####
 _1st = fn [T1, T2] (x: (T1, T2)): T1 -> impl_in_CSharp[T1]()
@@ -120,11 +128,20 @@ t4_3rd = fn [T1, T2, T3, T4] (x: (T1, T2, T3, T4)): T3 -> impl_in_CSharp[T3]()
 t4_4th = fn [T1, T2, T3, T4] (x: (T1, T2, T3, T4)): T4 -> impl_in_CSharp[T4]()
 
 ##### Grouping #####
+Grouping = record [TKey, T] {
+    key: TKey
+    values: Seq[T]
+}
+
 key = fn [TKey, T] (x: Grouping[TKey, T]): TKey -> impl_in_CSharp[TKey]()
 values = fn [TKey, T] (x: Grouping[TKey, T]): Seq[T] -> impl_in_CSharp[Seq[T]]()
 
 ##### Result #####
-unwrap = fn [T, e] (x: Result[T, e]): T -> impl_in_CSharp[T]()
+Result = union [T, E] {
+    Ok(value: T)
+    Err(error: E)
+}
+unwrap = fn [T, E] (x: Result[T, E]): T -> impl_in_CSharp[T]()
 
 ##### Higher-order Functions #####
 for_each = fn [TIn, TOut] (x: Seq[TIn], f: fn (x: TIn): TOut): Nothing -> impl_in_CSharp[Nothing]()
@@ -140,4 +157,11 @@ print = fn (console: Console, txt: Text): Result[Nothing, Text] -> impl_in_CShar
 print_line = fn (console: Console, txt: Text): Result[Nothing, Text] -> impl_in_CSharp[Result[Nothing, Text]]()
 
 ##### File System #####
-read_text_file = fn (file_system: FileSystem, file_path: Text): Result[Seq[Char], Text] -> impl_in_CSharp[Result[Seq[Char], Text]]()
+FileSystem = trait {
+    read_text_file = fn (file_system: FileSystem, file_path: Text): Result[Seq[Char], Text]
+}
+
+##### Desktop Environment #####
+DesktopEnv = trait {
+    open_URL_in_browser = fn (desktop_env: DesktopEnv, URL: text): Result[Nothing, Text]
+}

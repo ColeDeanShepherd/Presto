@@ -1,2 +1,13 @@
 main = fn (console: Console) ->
     print_line(console, "Hello, world!")
+
+# TODO: UFCS?
+#main = fn (console: Console) ->
+#    console.print_line("Hello, world!")
+
+# TODO: implicit parameters?
+#main = fn (console: Console) ->
+#    print_line("Hello, world!")
+
+#main = fn (implicit console: Console) ->
+#    print_line("Hello, world!")

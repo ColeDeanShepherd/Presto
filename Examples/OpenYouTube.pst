@@ -1,0 +1,1 @@
+main = fn (desktop_env: DesktopEnv) -> open_URL_in_browser(desktop_env, "https://youtube.com/")

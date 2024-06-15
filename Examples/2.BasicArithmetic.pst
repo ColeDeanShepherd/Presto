@@ -1,5 +1,9 @@
 main = fn (console: Console) -> {
     a = 5
     b = 3
-    print_line(console, "Sum: " + to_text(a + b))
+
+    print_line(console, "Sum: " + to_text(a + b))?
+    print_line(console, "Difference: " + to_text(a - b))?
+    print_line(console, "Product: " + to_text(a * b))?
+    print_line(console, "Quotient: " + to_text(a / b))
 }
