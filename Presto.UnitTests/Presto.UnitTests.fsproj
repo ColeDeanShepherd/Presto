@@ -27,7 +27,7 @@
   </ItemGroup>
 
   <ItemGroup>
-    <ProjectReference Include="..\..\Presto.Library\Presto.Library.fsproj" />
+    <ProjectReference Include="..\Presto.Library\Presto.Library.fsproj" />
   </ItemGroup>
 
 </Project>

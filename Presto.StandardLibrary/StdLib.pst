@@ -10,7 +10,7 @@ to_text = fn [T] (x: T): Text -> impl_in_CSharp[Text]()
 
 ##### Boolean #####
 Bool = union {
-    True,
+    True
     False
 }
 

@@ -1,0 +1,22 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>net8.0</TargetFramework>
+    <GenerateDocumentationFile>true</GenerateDocumentationFile>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <Compile Include="CSharpCompiler.fs" />
+    <Compile Include="CompilerCore.fs" />
+    <Compile Include="Lexer.fs" />
+    <Compile Include="Parser.fs" />
+    <Compile Include="ASTBuilder.fs" />
+    <Compile Include="TypeChecker.fs" />
+    <Compile Include="CodeGenerator.fs" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\Presto.SelfHosting\Presto.SelfHosting.csproj" />
+  </ItemGroup>
+
+</Project>

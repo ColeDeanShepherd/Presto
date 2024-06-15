@@ -2,7 +2,7 @@
   "profiles": {
     "Presto": {
       "commandName": "Project",
-      "commandLineArgs": "../../../Examples/OneBillionRowChallenge.pst --output-dir ./ --compile-generated-csharp true --compile-library false --run-exe true"
+      "commandLineArgs": "../../../Examples/1.HelloWorld.pst --output-dir ./ --compile-generated-csharp true --compile-library false --run-exe true"
     }
   }
 }

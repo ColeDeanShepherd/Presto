@@ -25,7 +25,7 @@
   </ItemGroup>
 
   <ItemGroup>
-    <ProjectReference Include="..\Presto.Library\Presto.Library.fsproj" />
+    <ProjectReference Include="Presto.Library\Presto.Library.fsproj" />
     <ProjectReference Include="Presto.Runtime\Presto.Runtime.csproj" />
     <ProjectReference Include="Presto.SelfHosting\Presto.SelfHosting.csproj" />
   </ItemGroup>
