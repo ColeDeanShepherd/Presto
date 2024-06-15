@@ -1,10 +1,10 @@
-﻿text_position = record {
-    file_name: text
-    line_index: nat
-    column_index: nat
+﻿TextPosition = record {
+    file_path: FilePath
+    line_index: Nat
+    column_index: Nat
 }
 
-compile_error = record {
-    description: text
-    position: text_position
+CompileError = record {
+    description: Text
+    position: TextPosition
 }

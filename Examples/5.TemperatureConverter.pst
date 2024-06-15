@@ -1,7 +1,7 @@
-celsius_to_fahrenheit = fn (celsius: real) ->
+celsius_to_fahrenheit = fn (celsius: Real) ->
     (celsius * (9.0 / 5.0)) + 32.0
 
-fahrenheit_to_celsius = fn (fahrenheit: real) ->
+fahrenheit_to_celsius = fn (fahrenheit: Real) ->
     (fahrenheit - 32.0) * (5.0 / 9.0)
 
 main = fn (console: Console) -> {

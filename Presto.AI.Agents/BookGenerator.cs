@@ -4,26 +4,26 @@ namespace Presto.AI.Agents;
 
 class Book
 {
-    public string Title { get; set; }
-    public List<BookChapter> Chapters { get; set; }
+    public string Title { get; set; } = null!;
+    public List<BookChapter> Chapters { get; set; } = null!;
 }
 
 class BookChapter
 {
-    public string Title { get; set; }
-    public List<BookSection> Sections { get; set; }
+    public string Title { get; set; } = null!;
+    public List<BookSection> Sections { get; set; } = null!;
 }
 
 class BookSection
 {
-    public string Title { get; set; }
-    public List<BookSubsection> Subsections { get; set; }
+    public string Title { get; set; } = null!;
+    public List<BookSubsection> Subsections { get; set; } = null!;
 }
 
 class BookSubsection
 {
-    public string Title { get; set; }
-    public string Content { get; set; }
+    public string Title { get; set; } = null!;
+    public string Content { get; set; } = null!;
 }
 
 public static class BookGenerator

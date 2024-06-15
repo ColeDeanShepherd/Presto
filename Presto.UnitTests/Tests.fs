@@ -8,7 +8,7 @@ open TypeChecker
 let ``inferFunctionCallTypeArgs1`` () =
     let seqTypeFields: TypeClassTypeFields = {
         ScopeId = System.Guid.NewGuid()
-        TypeParamNameAndIds = [(System.Guid.NewGuid(), "t")]
+        TypeParamNameAndIds = [(System.Guid.NewGuid(), "T")]
     }
 
     let seqType = TypeClassType seqTypeFields
@@ -16,16 +16,16 @@ let ``inferFunctionCallTypeArgs1`` () =
     let textType = PrestoType.Text (System.Guid.NewGuid())
 
     let tKeyTypeParamId = System.Guid.NewGuid()
-    let tKeyTypeParam = TypeParameterType (tKeyTypeParamId, "tkey")
+    let tKeyTypeParam = TypeParameterType (tKeyTypeParamId, "TKey")
 
     let tTypeParamId = System.Guid.NewGuid()
-    let tTypeParam = TypeParameterType (tTypeParamId, "t")
+    let tTypeParam = TypeParameterType (tTypeParamId, "T")
     
     let t1TypeParamId = System.Guid.NewGuid()
-    let t1TypeParam = TypeParameterType (t1TypeParamId, "t1")
+    let t1TypeParam = TypeParameterType (t1TypeParamId, "T1")
 
     let t2TypeParamId = System.Guid.NewGuid()
-    let t2TypeParam = TypeParameterType (t2TypeParamId, "t2")
+    let t2TypeParam = TypeParameterType (t2TypeParamId, "T2")
 
     let paramTypes = [
         TypeClassInstanceType (seqTypeFields, [tTypeParam])
@@ -61,14 +61,14 @@ let ``inferFunctionCallTypeArgs1`` () =
 let ``inferFunctionCallTypeArgs2`` () =
     let seqTypeFields: TypeClassTypeFields = {
         ScopeId = System.Guid.NewGuid()
-        TypeParamNameAndIds = [(System.Guid.NewGuid(), "t")]
+        TypeParamNameAndIds = [(System.Guid.NewGuid(), "T")]
     }
 
     let seqType = TypeClassType seqTypeFields
 
     let groupingTypeFields: RecordTypeFields = {
         ScopeId = groupingScopeId
-        TypeParamNameAndIds = [(System.Guid.NewGuid(), "t"); (System.Guid.NewGuid(), "tkey")]
+        TypeParamNameAndIds = [(System.Guid.NewGuid(), "T"); (System.Guid.NewGuid(), "TKey")]
         FieldTypes = []
     }
     let groupingType = RecordType groupingTypeFields
@@ -78,10 +78,10 @@ let ``inferFunctionCallTypeArgs2`` () =
     let groupingInstanceType = RecordInstanceType (groupingTypeFields, [textType; PrestoType.Real])
     
     let mapTiTypeParamId = System.Guid.NewGuid()
-    let mapTiTypeParam = TypeParameterType (mapTiTypeParamId, "ti")
+    let mapTiTypeParam = TypeParameterType (mapTiTypeParamId, "TIn")
 
     let mapToTypeParamId = System.Guid.NewGuid()
-    let mapToTypeParam = TypeParameterType (mapToTypeParamId, "to")
+    let mapToTypeParam = TypeParameterType (mapToTypeParamId, "TOut")
 
     let paramTypes = [
         TypeClassInstanceType (seqTypeFields, [mapTiTypeParam])

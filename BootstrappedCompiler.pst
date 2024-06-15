@@ -1,11 +1,11 @@
-advance_text_position = fn (position: text_position, read_char: char): text_position ->
+advance_text_position = fn (position: TextPosition, read_char: Char): TextPosition ->
     if not(eq(read_char, '\n')) then
-        text_position(
+        TextPosition(
             line_index = position.line_index,
             column_index = add(position.column_index, 1)
         )
     else
-        text_position(
+        TextPosition(
             line_index = add(position.line_index, 1),
             column_index = 0
         )

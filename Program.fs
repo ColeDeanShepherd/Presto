@@ -76,7 +76,7 @@ if compileOptions.FilePaths.IsEmpty then
 let (scopeId, scopesById) = getInitialScopesById
 
 let programHasMain (program: Program): bool =
-    List.exists<Binding> (fun b -> b.NameToken._text = "main") program.Bindings
+    List.exists<Binding> (fun b -> b.NameToken.text = "main") program.Bindings
 
 let compileFile (program: Program) (filePath: string): string option * Program =
     let fileNameWithoutExtension = Path.GetFileNameWithoutExtension(filePath)

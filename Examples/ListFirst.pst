@@ -1,4 +1,4 @@
-first = fn [t] (s: seq[t]): t 
+first = fn [T] (s: Seq[T]): T 
     requires not_empty(s)
     ensures returnValue == list[0]
     ->

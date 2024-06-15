@@ -1,4 +1,4 @@
-token_type = union {
+TokenType = union {
     identifier
     number_literal
     fn_keyword
@@ -33,30 +33,30 @@ token_type = union {
     double_greater_than
 }
 
-token = record {
-    _type: token_type
-    _text: text
-    position: text_position
-    was_inserted: bool
+Token = record {
+    _type: TokenType
+    text: Text
+    position: TextPosition
+    was_inserted: Bool
 }
 
-tokenize_output = record {
-    tokens: seq[token]
-    errors: seq[compile_error]
+TokenizeOutput = record {
+    tokens: Seq[Token]
+    errors: Seq[CompileError]
 }
 
-tokenize_state = record {
-    text_left: text
-    position: text_position
-    indentation_stack: seq[nat]
-    tokens: seq[token]
-    errors: seq[compile_error]
+TokenizeState = record {
+    text_left: Text
+    position: TextPosition
+    indentation_stack: Seq[Nat]
+    tokens: Seq[Token]
+    errors: Seq[CompileError]
 }
 
-is_done = fn (state: tokenize_state): bool -> length(state.text_left) == 0
-is_not_done = fn (state: tokenize_state): bool -> not(is_done(state))
-get_current_indentation = fn (state: tokenize_state): nat -> last_or_default[nat](state.indentation_stack, 0)
-#advance_text_position = fn (position: text_position, read_char: char): text_position -> {
+is_done = fn (state: TokenizeState): Bool -> length(state.text_left) == 0
+is_not_done = fn (state: TokenizeState): Bool -> not(is_done(state))
+get_current_indentation = fn (state: TokenizeState): Nat -> last_or_default[Nat](state.indentation_stack, 0)
+#advance_text_position = fn (position: TextPosition, read_char: Char): TextPosition -> {
 #    if not_eq(read_char, '\n') then
 #        new_text_position(position.line_index, sum(position.column_index, 1))
 #    else

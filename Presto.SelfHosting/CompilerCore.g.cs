@@ -1,15 +1,15 @@
 using System;
     using System.Collections.Generic;
     
-    using nat = System.UInt32;
-    using real = System.Decimal;
+    using Nat = System.UInt32;
+    using Real = System.Decimal;
     
     using Presto.Runtime;
     using static Presto.Runtime.PrestoProgram;
     
     public static partial class PrestoProgram {
 
-public record text_position(string file_name, nat line_index, nat column_index);
-public record compile_error(string description, text_position position);
+public record TextPosition(string file_path, Nat line_index, Nat column_index);
+public record CompileError(string description, TextPosition position);
 
 }

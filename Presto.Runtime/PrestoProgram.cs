@@ -1,9 +1,7 @@
 ﻿namespace Presto.Runtime;
 
-using System.Runtime.CompilerServices;
-using static System.Net.Mime.MediaTypeNames;
-using nat = System.UInt32;
-using real = System.Decimal;
+using Nat = System.UInt32;
+using Real = System.Decimal;
 
 public class Unit
 {
@@ -37,7 +35,7 @@ public static partial class PrestoProgram
 
     public static bool eq<T>(T a, T b) => (a != null) ? a.Equals(b) : (b == null);
     public static bool not(bool x) => !x;
-    public static uint length(string x) => (uint)x.Length;
+    public static Nat length(string x) => (Nat)x.Length;
     public static T last_or_default<T>(IEnumerable<T> x, T @default) => x.LastOrDefault(@default);
 
     public static Result<Unit, string> print(Console console, string text)
@@ -81,21 +79,21 @@ public static partial class PrestoProgram
     }
 
     public static string concatenate(string a, string b ) => a + b;
-    public static nat sum(nat a, nat b) => a + b;
-    public static string to_text<T>(T x) => x.ToString()!;
-    public static Result<real, string> parse_real(string s)
+    public static Nat sum(Nat a, Nat b) => a + b;
+    public static string to_text<T>(T x) => x!.ToString()!;
+    public static Result<Real, string> parse_real(string s)
     {
         try
         {
-            return Result.Ok<real, string>(real.Parse(s));
+            return Result.Ok<Real, string>(Real.Parse(s));
         }
         catch (Exception ex)
         {
-            return Result.Err<real, string>(ex.ToString());
+            return Result.Err<Real, string>(ex.ToString());
         }
     }
 
-    public static Result<real, string> read_real(Console console)
+    public static Result<Real, string> read_real(Console console)
     {
         var readResult = read_line(console);
         if (readResult.IsErr)
@@ -181,10 +179,10 @@ public static partial class PrestoProgram
     public static TKey key<TKey, T>(IGrouping<TKey, T> grouping) => grouping.Key;
     public static IEnumerable<T> values<TKey, T>(IGrouping<TKey, T> grouping) => grouping;
 
-    public static decimal min(IEnumerable<real> d) => d.Min();
-    public static decimal max(IEnumerable<real> d) => d.Max();
-    public static decimal mean(IEnumerable<real> d) => d.Average();
-    public static decimal round(real d, uint decimals) => Math.Round(d, (int)decimals);
+    public static decimal min(IEnumerable<Real> d) => d.Min();
+    public static decimal max(IEnumerable<Real> d) => d.Max();
+    public static decimal mean(IEnumerable<Real> d) => d.Average();
+    public static decimal round(Real d, Nat decimals) => Math.Round(d, (int)decimals);
 
     public static T unwrap<T, E>(Result<T, E> result) =>
         result.IsOk
