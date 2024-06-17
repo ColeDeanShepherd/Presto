@@ -165,7 +165,7 @@ let rec compileFiles (filePaths: string list) (program: Program) (generatedFileP
     
     compileFiles filePaths.Tail newProgram generatedFilePaths
 
-let initialProgram = {
+let initialProgram: Program = {
     Bindings = List.empty
     ScopeId = scopeId
     ScopesById = scopesById
@@ -173,6 +173,7 @@ let initialProgram = {
     TypeArgumentsByExpressionId = Map.empty
     ResolvedSymbolsByExpressionId = Map.empty
     TypeCanonicalNamesByScopeId = Map.empty
+    TraitTypeFieldsByScopeId = Map.empty
 }
 
 let (program, generatedFilePaths) = compileFiles compileOptions.FilePaths initialProgram []

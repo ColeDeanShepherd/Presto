@@ -1,12 +1,7 @@
-##### All Types #####
 no_op = fn (): Nothing -> {}
 ignore = fn [T] (x: T): Nothing -> {}
 identity = fn [T] (x: T): T -> x
-
-eq = fn [T] (a: T, b: T): Bool -> impl_in_CSharp[Bool]()
-not_eq = fn [T] (a: T, b: T): Bool -> not(eq(a, b))
-
-to_text = fn [T] (x: T): Text -> impl_in_CSharp[Text]()
+#default = fn [T] (): T -> BUILT_IN
 
 ##### Boolean #####
 Bool = union {
@@ -14,17 +9,30 @@ Bool = union {
     False
 }
 
-is_true = fn (x: Bool): Bool -> x == true
-is_false = fn (x: Bool): Bool -> x == false
-not = fn (x: Bool): Bool -> if x then false else true
+not = fn (x: Bool): Bool -> if x then False else True
+logical_and = fn (a: Bool, b: Bool): Bool = a && b
+logical_or = fn (a: Bool, b: Bool): Bool = a || b
+logical_xor = fn (a: Bool, b: Bool): Bool = BUILT_IN
+logical_nand = fn (a: Bool, b: Bool): Bool = BUILT_IN
+logical_nor = fn (a: Bool, b: Bool): Bool = BUILT_IN
+logical_not = fn (a: Bool, b: Bool): Bool = BUILT_IN
+logical_xnor = fn (a: Bool, b: Bool): Bool = BUILT_IN
 
-# logical_and = fn (a: Bool, b: Bool): Bool = BUILT_IN
-# logical_or = fn (a: Bool, b: Bool): Bool = BUILT_IN
-# logical_xor = fn (a: Bool, b: Bool): Bool = BUILT_IN
-# logical_nand = fn (a: Bool, b: Bool): Bool = BUILT_IN
-# logical_nor = fn (a: Bool, b: Bool): Bool = BUILT_IN
-# logical_not = fn (a: Bool, b: Bool): Bool = BUILT_IN
-# logical_xnor = fn (a: Bool, b: Bool): Bool = BUILT_IN
+
+
+
+
+
+
+
+eq = fn [T] (a: T, b: T): Bool -> impl_in_CSharp[Bool]()
+not_eq = fn [T] (a: T, b: T): Bool -> not(eq(a, b))
+
+to_text = fn [T] (x: T): Text -> impl_in_CSharp[Text]()
+
+
+
+
 
 ##### Natural Numbers & Reals #####
 sum = fn (a: Nat, b: Nat): Nat -> impl_in_CSharp[Nat]()
@@ -110,9 +118,9 @@ split_by = fn (x: Text, separator: Text): Seq[Text] -> impl_in_CSharp[Seq[Text]]
 
 ##### List/Seq #####
 Seq = trait [T] {
-    list_1st = fn [T] (x: Seq[T]): T
-    list_2nd = fn [T] (x: Seq[T]): T
-    last_or_default = fn [T] (x: Seq[T], default: T): T
+    list_1st = fn (x: Self): T
+    list_2nd = fn (x: Self): T
+    last_or_default = fn (x: Self, _default: T): T
 }
 
 # head
@@ -137,10 +145,10 @@ key = fn [TKey, T] (x: Grouping[TKey, T]): TKey -> impl_in_CSharp[TKey]()
 values = fn [TKey, T] (x: Grouping[TKey, T]): Seq[T] -> impl_in_CSharp[Seq[T]]()
 
 ##### Result #####
-Result = union [T, E] {
-    Ok(value: T)
-    Err(error: E)
-}
+#Result = union [T, E] {
+#    Ok(value: T)
+#    Err(error: E)
+#}
 unwrap = fn [T, E] (x: Result[T, E]): T -> impl_in_CSharp[T]()
 
 ##### Higher-order Functions #####
@@ -150,18 +158,20 @@ sort_by = fn [T, TSortKey] (x: Seq[T], f: fn (x: T): TSortKey): Seq[T] -> impl_i
 group_by = fn [TKey, T, TFinal] (x: Seq[T], key_selector: fn (x: T): TKey, element_selector: fn (x: T): TFinal): Seq[Grouping[TKey, TFinal]] -> impl_in_CSharp[Seq[Grouping[TKey, TFinal]]]()
 
 ##### Console #####
-read_real = fn (console: Console): Result[Real, Text] -> impl_in_CSharp[Result[Real, Text]]()
-read_line = fn (console: Console): Result[Text, Text] -> impl_in_CSharp[Result[Text, Text]]()
+Console = trait {
+    read_line = fn (console: Self): Result[Text, Text]
+    print = fn (console: Self, text: Text): Result[Nothing, Text]
+}
 
-print = fn (console: Console, txt: Text): Result[Nothing, Text] -> impl_in_CSharp[Result[Nothing, Text]]()
-print_line = fn (console: Console, txt: Text): Result[Nothing, Text] -> impl_in_CSharp[Result[Nothing, Text]]()
+read_real = fn (console: Console): Result[Real, Text] -> impl_in_CSharp[Result[Real, Text]]()
+print_line = fn (console: Console, text: Text): Result[Nothing, Text] -> impl_in_CSharp[Result[Nothing, Text]]()
 
 ##### File System #####
 FileSystem = trait {
-    read_text_file = fn (file_system: FileSystem, file_path: Text): Result[Seq[Char], Text]
+    read_text_file = fn (file_system: Self, file_path: Text): Result[Seq[Char], Text]
 }
 
 ##### Desktop Environment #####
 DesktopEnv = trait {
-    open_URL_in_browser = fn (desktop_env: DesktopEnv, URL: text): Result[Nothing, Text]
+    open_URL_in_browser = fn (desktop_env: Self, URL: Text): Result[Nothing, Text]
 }

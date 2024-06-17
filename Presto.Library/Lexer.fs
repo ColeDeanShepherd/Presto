@@ -300,6 +300,7 @@ let iterateTokenize (state: TokenizeState): TokenizeState =
                 | "if" -> TokenType.if_keyword
                 | "then" -> TokenType.then_keyword
                 | "else" -> TokenType.else_keyword
+                | "Self" -> TokenType.Self_keyword
                 | _ -> TokenType.identifier
 
             let nextToken = Token(_type = tokenType, text = tokenText, position = startPosition, was_inserted = false)

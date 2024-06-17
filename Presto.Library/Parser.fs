@@ -1066,6 +1066,8 @@ and parsePrefixExpression (state: ParseState): Option<ParseNode> * ParseState =
             wrapInExpressionNode (parseIfThenElse state)
         | TokenType.left_curly_bracket ->
             wrapInExpressionNode (parseBlock state)
+        | TokenType.Self_keyword ->
+            wrapInExpressionNode (parseToken state TokenType.Self_keyword)
         | TokenType.identifier ->
             wrapInExpressionNode (parseToken state TokenType.identifier)
         | TokenType.number_literal ->

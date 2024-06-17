@@ -8,6 +8,7 @@ TokenType = union {
     if_keyword
     then_keyword
     else_keyword
+    Self_keyword
     whitespace
     equals
     minus

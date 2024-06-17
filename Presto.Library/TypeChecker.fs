@@ -13,6 +13,7 @@ type TypeCheckerState = {
     TypeArgumentsByExpressionId: Map<System.Guid, Map<System.Guid, PrestoType>>
     ResolvedSymbolsByExpressionId: Map<System.Guid, Symbol>
     TypeCanonicalNamesByScopeId: Map<System.Guid, string>
+    TraitTypeFieldsByScopeId: Map<System.Guid, TraitTypeFields>
     Errors: List<CompileError>
 }
 
@@ -43,13 +44,19 @@ let rec resolveSymbolInternal (state: TypeCheckerState) (scope: Scope) (name: st
         let errors = List.append state.Errors [error]
         (None, { state with Errors = errors })
 
+let getCurrentScopeId (state: TypeCheckerState): System.Guid =
+    List.last state.ScopeIdStack
+
+let getParentScopeId (state: TypeCheckerState): System.Guid =
+    state.ScopeIdStack[state.ScopeIdStack.Length - 1]
+
 let resolveSymbol (state: TypeCheckerState) (nameToken: Token): (Option<Symbol> * TypeCheckerState) =
-    let currentScope = state.ScopesById[List.last state.ScopeIdStack]
+    let currentScope = state.ScopesById[getCurrentScopeId state]
 
     resolveSymbolInternal state currentScope nameToken.text nameToken.position
 
 let pushScope (state: TypeCheckerState) (scopeId: System.Guid): TypeCheckerState =
-    let parentScopeId = List.last state.ScopeIdStack
+    let parentScopeId = getCurrentScopeId state
     let parentScope = state.ScopesById[parentScopeId]
 
     //if not (List.contains scopeId parentScope.ChildIds) then
@@ -58,7 +65,7 @@ let pushScope (state: TypeCheckerState) (scopeId: System.Guid): TypeCheckerState
     { state with ScopeIdStack = state.ScopeIdStack @ [scopeId] }
 
 let popScope (state: TypeCheckerState): TypeCheckerState =
-    let scope = state.ScopesById[List.last state.ScopeIdStack]
+    let scope = state.ScopesById[getCurrentScopeId state]
 
     { state with ScopeIdStack = (List.take (state.ScopeIdStack.Length - 1) state.ScopeIdStack) }
     
@@ -138,7 +145,9 @@ and checkTrait (state: TypeCheckerState) (_trait: Trait): TypeCheckerState * Opt
                 |> List.map (fun (b, t) -> (b.NameToken.text, t))
                 |> Map.ofList
 
-            let prestoType = TraitType { ScopeId = _trait.ScopeId; TypeParamNameAndIds = typeParamIdAndNames; FunctionTypesByName = functionTypesByName }
+            let ttf: TraitTypeFields = { ScopeId = _trait.ScopeId; TypeParamNameAndIds = typeParamIdAndNames; FunctionTypesByName = functionTypesByName }
+            let prestoType = TraitType ttf
+            let state = { state with TraitTypeFieldsByScopeId = state.TraitTypeFieldsByScopeId.Add(_trait.ScopeId, ttf) }
 
             (popScope state, Some prestoType)
         else
@@ -886,6 +895,12 @@ and checkErrorPropagationExpression (state: TypeCheckerState) (errorPropagationE
             )
     | None -> (state, None)
 
+and checkSelfTypeExpr (state: TypeCheckerState) (expressionId: System.Guid) (traitId: System.Guid): TypeCheckerState * Option<PrestoType> =
+    // cur scope's parent should be a trait
+    // TODO: verify
+
+    (state, Some (SelfType (expressionId, traitId)))
+
 and checkCharacterLiteral (state: TypeCheckerState) (characterLiteral: CharacterLiteral): TypeCheckerState * Option<PrestoType> =
     (state, Some PrestoType.Character)
 
@@ -918,7 +933,8 @@ and checkExpression (state: TypeCheckerState) (expression: Expression): TypeChec
             | ParenExpr parenthesizedExpression -> checkParenExpr state parenthesizedExpression
             | TupleExpr tupleExpression -> checkTupleExpr state tupleExpression
             | ErrorPropagationExpression e -> checkErrorPropagationExpression state e
-            | TraitExpression trait -> failwith "not implemented"
+            | SelfTypeExpr (traitId) -> checkSelfTypeExpr state expression.Id traitId
+            | TraitExpression _trait -> failwith "not implemented"
             | _ -> failwith "not implemented"
 
         match optionPrestoType with
@@ -943,6 +959,7 @@ and checkBinding (state: TypeCheckerState) (binding: Binding): TypeCheckerState 
         | RecordExpression record -> trySetTypesCanonicalName state record.ScopeId name
         | UnionExpression union -> trySetTypesCanonicalName state union.ScopeId name
         | FunctionExpression fn -> trySetTypesCanonicalName state fn.ScopeId name
+        | TraitExpression trait -> trySetTypesCanonicalName state trait.ScopeId name
         | _ -> state
 
     checkExpression state binding.Value
@@ -955,19 +972,24 @@ let checkTypes (program: Program): Program * List<CompileError> =
         TypeArgumentsByExpressionId = program.TypeArgumentsByExpressionId
         ResolvedSymbolsByExpressionId = program.ResolvedSymbolsByExpressionId
         TypeCanonicalNamesByScopeId = program.TypeCanonicalNamesByScopeId
+        TraitTypeFieldsByScopeId = program.TraitTypeFieldsByScopeId
         Errors = []
     }
+
+    let state = trySetTypesCanonicalName state resultScopeId "Result"
     
     let (state, _) = checkMany state checkBinding program.Bindings []
 
     (
         {
-            program with
-                ScopesById = state.ScopesById
-                TypesByExpressionId = state.TypesByExpressionId
-                TypeArgumentsByExpressionId = state.TypeArgumentsByExpressionId
-                ResolvedSymbolsByExpressionId = state.ResolvedSymbolsByExpressionId
-                TypeCanonicalNamesByScopeId = state.TypeCanonicalNamesByScopeId
+            Bindings = program.Bindings
+            ScopeId = program.ScopeId
+            ScopesById = program.ScopesById
+            TraitTypeFieldsByScopeId = state.TraitTypeFieldsByScopeId
+            TypesByExpressionId = state.TypesByExpressionId
+            TypeArgumentsByExpressionId = state.TypeArgumentsByExpressionId
+            ResolvedSymbolsByExpressionId = state.ResolvedSymbolsByExpressionId
+            TypeCanonicalNamesByScopeId = state.TypeCanonicalNamesByScopeId
         },
         state.Errors
     )

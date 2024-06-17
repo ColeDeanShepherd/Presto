@@ -2,17 +2,12 @@
 
 using Nat = System.UInt32;
 using Real = System.Decimal;
+using Text = System.String;
 
 public class Unit
 {
     public static readonly Unit Instance = new();
 }
-
-public class Console
-{
-}
-
-public class FileSystem { }
 
 public record Result<T, E>(bool IsOk, T? Value, E? Error)
 {
@@ -35,10 +30,10 @@ public static partial class PrestoProgram
 
     public static bool eq<T>(T a, T b) => (a != null) ? a.Equals(b) : (b == null);
     public static bool not(bool x) => !x;
-    public static Nat length(string x) => (Nat)x.Length;
+    public static Nat length(Text x) => (Nat)x.Length;
     public static T last_or_default<T>(IEnumerable<T> x, T @default) => x.LastOrDefault(@default);
 
-    public static Result<Unit, string> print(Console console, string text)
+    public static Result<Unit, Text> __unsafe_print(Text text)
     {
         try
         {
@@ -46,13 +41,13 @@ public static partial class PrestoProgram
         }
         catch (Exception ex)
         {
-            return Result.Err<Unit, string>(ex.ToString());
+            return Result.Err<Unit, Text>(ex.ToString());
         }
 
-        return Result.Ok<Unit, string>(Unit.Instance);
+        return Result.Ok<Unit, Text>(Unit.Instance);
     }
 
-    public static Result<Unit, string> print_line(Console console, string text)
+    public static Result<Unit, Text> __unsafe_print_line(Text text)
     {
         try
         {
@@ -60,68 +55,68 @@ public static partial class PrestoProgram
         }
         catch (Exception ex)
         {
-            return Result.Err<Unit, string>(ex.ToString());
+            return Result.Err<Unit, Text>(ex.ToString());
         }
 
-        return Result.Ok<Unit, string>(Unit.Instance);
+        return Result.Ok<Unit, Text>(Unit.Instance);
     }
 
-    public static Result<string?, string> read_line(Console console)
+    public static Result<Text?, Text> __unsafe_read_line()
     {
         try
         {
-            return Result.Ok<string?, string>(System.Console.ReadLine());
+            return Result.Ok<Text?, Text>(System.Console.ReadLine());
         }
         catch (Exception ex)
         {
-            return Result.Err<string?, string>(ex.ToString());
+            return Result.Err<Text?, Text>(ex.ToString());
         }
     }
 
-    public static string concatenate(string a, string b ) => a + b;
+    public static Text concatenate(Text a, Text b ) => a + b;
     public static Nat sum(Nat a, Nat b) => a + b;
-    public static string to_text<T>(T x) => x!.ToString()!;
-    public static Result<Real, string> parse_real(string s)
+    public static Text to_text<T>(T x) => x!.ToString()!;
+    public static Result<Real, Text> parse_real(Text s)
     {
         try
         {
-            return Result.Ok<Real, string>(Real.Parse(s));
+            return Result.Ok<Real, Text>(Real.Parse(s));
         }
         catch (Exception ex)
         {
-            return Result.Err<Real, string>(ex.ToString());
+            return Result.Err<Real, Text>(ex.ToString());
         }
     }
 
-    public static Result<Real, string> read_real(Console console)
+    public static Result<Real, Text> __unsafe__read_real()
     {
-        var readResult = read_line(console);
+        var readResult = __unsafe_read_line();
         if (readResult.IsErr)
         {
             return Result.ErrUnit(readResult.Error!);
         }
 
-        string str = readResult.Value!;
+        Text str = readResult.Value!;
 
         return parse_real(str);
     }
 
-    public static string uppercase(string s) => s.ToUpperInvariant();
+    public static Text uppercase(Text s) => s.ToUpperInvariant();
 
-    public static Result<IEnumerable<char>, string> read_text_file(FileSystem fs, string fileName)
+    public static Result<IEnumerable<char>, Text> __unsafe_read_text_file(Text fileName)
     {
         try
         {
-            return Result.Ok<IEnumerable<char>, string>(File.ReadAllText(fileName));
+            return Result.Ok<IEnumerable<char>, Text>(File.ReadAllText(fileName));
         }
         catch (Exception e)
         {
-            return Result.Err<IEnumerable<char>, string>(e.ToString());
+            return Result.Err<IEnumerable<char>, Text>(e.ToString());
         }
     }
 
-    public static IEnumerable<string> get_lines(IEnumerable<char> textStream) =>
-        new string(textStream.ToArray()).Split(new[] { "\r\n", "\r", "\n" }, StringSplitOptions.None);
+    public static IEnumerable<Text> get_lines(IEnumerable<char> textStream) =>
+        new Text(textStream.ToArray()).Split(new[] { "\r\n", "\r", "\n" }, StringSplitOptions.None);
 
     public static IEnumerable<TResult> map<TSource, TResult>(
         IEnumerable<TSource> source,
@@ -162,7 +157,7 @@ public static partial class PrestoProgram
         return x => g(f(x));
     }
 
-    public static IEnumerable<string> split_by(string str, string separator) =>
+    public static IEnumerable<Text> split_by(Text str, Text separator) =>
         str.Split(separator);
 
     public static T1 _1st<T1, T2>((T1, T2) t) => t.Item1;

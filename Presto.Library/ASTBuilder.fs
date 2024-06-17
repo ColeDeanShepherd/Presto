@@ -60,6 +60,7 @@ type PrestoType =
     | FunctionType of FunctionTypeFields
     | TraitType of TraitTypeFields
     | TraitInstanceType of TraitTypeFields * List<PrestoType> (* id, type arguments *)
+    | SelfType of System.Guid * System.Guid (* expression id, trait id *)
     | Type
 and RecordTypeFields = {
     ScopeId: System.Guid
@@ -116,6 +117,7 @@ and ExpressionValue =
     | ParenExpr of ParenthesizedExpression2
     | ErrorPropagationExpression of ErrorPropagationOperatorExpression
     | TupleExpr of TupleExpression
+    | SelfTypeExpr of System.Guid (* scope id *)
 and Binding = {
     NameToken: Token
     Value: Expression
@@ -236,6 +238,7 @@ type Program = {
     ScopeId: System.Guid
 
     TypeCanonicalNamesByScopeId: Map<System.Guid, string>
+    TraitTypeFieldsByScopeId: Map<System.Guid, TraitTypeFields>
 }
 
 type ASTBuilderState = {
@@ -245,7 +248,11 @@ type ASTBuilderState = {
     ResolvedSymbolsByExpressionId: Map<System.Guid, Symbol>
     ScopesById: Map<System.Guid, Scope>
     ScopeId: System.Guid
+    
     TypeCanonicalNamesByScopeId: Map<System.Guid, string>
+    TraitTypeFieldsByScopeId: Map<System.Guid, TraitTypeFields>
+    
+    TypeArgumentsByExpressionId: Map<System.Guid, Map<System.Guid, PrestoType>>
     
     CurrentScopeId: System.Guid
     Errors: List<CompileError>
@@ -268,6 +275,9 @@ let getSymbolTextPosition (symbol: Symbol): TextPosition =
     | UnionCaseSymbol unionCase -> unionCase.NameToken.position
     | BuiltInSymbol (builtInSymbol, prestoType) -> TextPosition(file_path = "", line_index = 0u, column_index = 0u)
     
+let getParentScopeId (state: ASTBuilderState): System.Guid =
+    state.ScopesById[state.CurrentScopeId].ParentId.Value
+
 let pushScope (state: ASTBuilderState): (Scope * ASTBuilderState) =
     let parentScopeId = state.CurrentScopeId
     let parentScope = state.ScopesById[parentScopeId]
@@ -853,6 +863,8 @@ and buildExpression (state: ASTBuilderState) (node: ParseNode): (Option<Expressi
     | ParseNodeType.Token when child.Token.Value._type = TokenType.string_literal ->
         let stringLiteral: StringLiteral = { Token = child.Token.Value }
         (Some (newExpression (StringLiteralExpression stringLiteral)), state)
+    | ParseNodeType.Token when child.Token.Value._type = TokenType.Self_keyword ->
+        (Some (newExpression (SelfTypeExpr (getParentScopeId state))), state)
     | _ ->
         let error = CompileError(
             description = $"Unexpected parse node type: {child.Type}",
@@ -878,6 +890,8 @@ and buildBinding (state: ASTBuilderState) (node: ParseNode): (Option<Binding> * 
         if success then (Some binding, state)
         else (None, state)
     | None -> (None, state)
+    
+let resultScopeId = System.Guid.NewGuid()
 
 let getInitialScopesById =
     let scopesById: Map<System.Guid, Scope> = Map.empty
@@ -885,6 +899,9 @@ let getInitialScopesById =
     let scopeId = System.Guid.NewGuid()
     
     let implInCSharpTGuid = System.Guid.NewGuid()
+    
+    let resultTScopeId = System.Guid.NewGuid()
+    let resultEScopeId = System.Guid.NewGuid()
 
     let scope = {
         SymbolsByName =
@@ -894,6 +911,25 @@ let getInitialScopesById =
                 .Add("Real", BuiltInSymbol ("Real", PrestoType.Real))
                 .Add("Char", BuiltInSymbol ("Char", PrestoType.Character))
                 .Add("Text", BuiltInSymbol ("Text", PrestoType.Text))
+                
+                .Add("Bool", BuiltInSymbol ("Bool", PrestoType.Boolean))
+                .Add("true", BuiltInSymbol ("true", PrestoType.Boolean))
+                .Add("false", BuiltInSymbol ("false", PrestoType.Boolean))
+                
+                .Add(
+                    "Result",
+                    BuiltInSymbol (
+                        "Result",
+                        UnionType {
+                            ScopeId = resultScopeId
+                            TypeParamNameAndIds = [(resultTScopeId, "T"); (resultEScopeId, "E")]
+                            Constructors = [
+                                { Name = "Ok"; Parameters = [("value", TypeParameterType (resultTScopeId, "T"))] }
+                                { Name = "Err"; Parameters = [("error", TypeParameterType (resultEScopeId, "E"))] }
+                            ]
+                        }
+                    )
+                )
 
                 .Add(
                     "impl_in_CSharp",
@@ -929,21 +965,24 @@ let buildCompilationUnit (state: ASTBuilderState) (node: ParseNode): (Option<Pro
             ScopeId = state.CurrentScopeId
             ScopesById = state.ScopesById
             TypesByExpressionId = state.TypesByExpressionId
-            TypeArgumentsByExpressionId = Map.empty
+            TypeArgumentsByExpressionId = state.TypeArgumentsByExpressionId
             ResolvedSymbolsByExpressionId = state.ResolvedSymbolsByExpressionId
             TypeCanonicalNamesByScopeId = state.TypeCanonicalNamesByScopeId
+            TraitTypeFieldsByScopeId = state.TraitTypeFieldsByScopeId
         },
         state
     )
 
 let buildAst (compilationUnitNode: ParseNode) (program: Program): ASTBuilderOutput =
-    let state = {
+    let state: ASTBuilderState = {
         Bindings = program.Bindings
         TypesByExpressionId = program.TypesByExpressionId
         ResolvedSymbolsByExpressionId = program.ResolvedSymbolsByExpressionId
         ScopesById = program.ScopesById
         ScopeId = program.ScopeId
         TypeCanonicalNamesByScopeId = program.TypeCanonicalNamesByScopeId
+        TraitTypeFieldsByScopeId = program.TraitTypeFieldsByScopeId
+        TypeArgumentsByExpressionId = program.TypeArgumentsByExpressionId
         
         CurrentScopeId = program.ScopeId
         Errors = []

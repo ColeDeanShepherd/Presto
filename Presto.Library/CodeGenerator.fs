@@ -304,6 +304,19 @@ and generateErrorPropagationExpression (state: CodeGeneratorState) (e: ErrorProp
 
     state
 
+and generateSelfTypeExpr (state: CodeGeneratorState) (expressionId: System.Guid) (traitId: System.Guid): CodeGeneratorState =
+    let traitName = state.Program.TypeCanonicalNamesByScopeId[traitId]
+    let state = generateString state traitName
+
+    let ttf = state.Program.TraitTypeFieldsByScopeId[traitId]
+    
+    let typeParamNames = List.map snd ttf.TypeParamNameAndIds
+    let state = generateString state "<"
+    let state = generateManyWithSeparator state typeParamNames generateString ", " true
+    let state = generateString state ">"
+
+    state
+
 and generateExpressionInternal (state: CodeGeneratorState) (expression: Expression) (isTypeExpression: bool): CodeGeneratorState =
     match expression.Value with
     | RecordExpression record -> failwith "Not implemented"
@@ -322,6 +335,7 @@ and generateExpressionInternal (state: CodeGeneratorState) (expression: Expressi
     | ParenExpr pe -> generateParenthesizedExpression state pe
     | TupleExpr te -> generateTupleExpression state te
     | ErrorPropagationExpression e -> generateErrorPropagationExpression state e
+    | SelfTypeExpr traitId -> generateSelfTypeExpr state expression.Id traitId
     
 and generateExpression (state: CodeGeneratorState) (expression: Expression): CodeGeneratorState =
     generateExpressionInternal state expression false
@@ -330,6 +344,7 @@ and generateTypeName (state: CodeGeneratorState) (name: string): CodeGeneratorSt
     match name with
     | "Seq" -> generateString state "IEnumerable"
     | "Grouping" -> generateString state "IGrouping"
+    | "Nothing" -> generateString state "Unit"
     | _ -> generateString state name
 
 and generateTypeReference (state: CodeGeneratorState) (prestoType: PrestoType): CodeGeneratorState =
@@ -501,6 +516,13 @@ and generateRecordField (state: CodeGeneratorState) (recordField: RecordField): 
 and generateRecord (state: CodeGeneratorState) (name: string) (record: Record): CodeGeneratorState =
     let state = generateString state "public record "
     let state = generateString state name
+
+    let state =
+        if record.TypeParameters.Length > 0 then
+            generateTypeParameters state record.TypeParameters
+        else
+            state
+
     let state = generateString state "("
     let state = generateManyWithSeparator state record.Fields generateRecordField ", " true
     let state = generateString state ")"
@@ -521,6 +543,63 @@ and generateUnion (state: CodeGeneratorState) (name: string) (union: Union): Cod
 
     state
 
+and getFunctionTypeFromFunctionTypeExpr (x: ExpressionValue) =
+    match x with
+    | FunctionTypeExpression ft -> ft
+    | _ -> failwith ""
+
+and isSelfExpr (x: ExpressionValue): bool =
+    match x with
+    | SelfTypeExpr _ -> true
+    | _ -> false
+
+and generateFunctionSignatureWithoutSelfParams (state: CodeGeneratorState) (name: string) (ft: FunctionType): CodeGeneratorState =
+    let state = generateTypeExpression state ft.ReturnTypeExpression
+    let state = generateString state " "
+    let state = generateString state name
+
+    let state =
+        if ft.TypeParameters.Length > 0 then
+            generateTypeParameters state ft.TypeParameters
+        else
+            state
+
+    let state = generateString state "("
+
+    let parameters = List.filter<Parameter> (fun p -> not (isSelfExpr p.TypeExpression.Value)) ft.Parameters
+    let state = generateManyWithSeparator state parameters generateParameter ", " true
+
+    let state = generateString state ")"
+
+    state
+
+and generateTrait (state: CodeGeneratorState) (name: string) (_trait: Trait): CodeGeneratorState =
+    let state = generateString state "public interface "
+    let state = generateString state name
+
+    let state =
+        if _trait.TypeParameters.Length > 0 then
+            generateTypeParameters state _trait.TypeParameters
+        else
+            state
+
+    let state = generateString state "{"
+
+    let functionTypeExpressions = List.map<Binding, string * FunctionType> (fun b -> (b.NameToken.text, (getFunctionTypeFromFunctionTypeExpr b.Value.Value))) _trait.Bindings
+    let generateFunctionSignatureHelper (state: CodeGeneratorState) (x: string * FunctionType) =
+        let (name, ft) = x
+        generateFunctionSignatureWithoutSelfParams state name ft
+
+    let state =
+        if functionTypeExpressions.IsEmpty then
+            state
+        else
+            generateManyWithDelimiter state functionTypeExpressions generateFunctionSignatureHelper (";" + System.Environment.NewLine) true
+
+    let state = generateString state "}"
+
+    state
+
 and shouldTerminateWithSemicolon (binding: Binding): bool =
     match binding.Value.Value with
     | FunctionExpression fn -> false
@@ -529,11 +608,15 @@ and shouldTerminateWithSemicolon (binding: Binding): bool =
 and generateTopLevelBinding (state: CodeGeneratorState) (binding: Binding): CodeGeneratorState =
     generateBinding state binding true
     
+and generateNonTopLevelBinding (state: CodeGeneratorState) (binding: Binding): CodeGeneratorState =
+    generateBinding state binding false
+    
 and generateBinding (state: CodeGeneratorState) (binding: Binding) (isTopLevel: bool): CodeGeneratorState =
     let state =
         match binding.Value.Value with
         | RecordExpression record -> generateRecord state binding.NameToken.text record
         | UnionExpression union -> generateUnion state binding.NameToken.text union
+        | TraitExpression _trait -> generateTrait state binding.NameToken.text _trait
         | FunctionExpression fn ->
             let state = generateFunction state binding.NameToken.text fn isTopLevel
 
@@ -592,7 +675,7 @@ let generatedCodeFooter (program: Program) (compileLibrary: bool) (generateMain:
         let mainArgsStr =
             match mainFnType with
             | FunctionType ftf ->
-                List.map (fun pt -> "new()") ftf.ParamTypes |> String.concat ", "
+                List.map (fun pt -> "null") ftf.ParamTypes |> String.concat ", "
             | _ -> failwith ""
 
         "public static void Main(string[] args)
