@@ -11,13 +11,13 @@ Binding -> Identifier "=" Expression
 Expression ->
       Function
     | Record
-    | Union
+    | Enum
     | Identifier
     | IfThenElse
 TypeExpression -> Expression
 Function -> "fn" "(" SepBy(Parameter, ",") ")" "->" Expression
 Record -> "record" SepBy(Whitespace, Field)
-Union -> "union" SepBy(Whitespace, UnionCase)
+Enum -> "enum" SepBy(Whitespace, EnumCase)
 Field -> Identifier ":" TypeExpression
 Parameter -> Identifier (":" Expression)?
 IfThenElse -> "if" Expression "then" Expression "else" Expression
@@ -29,8 +29,8 @@ type ParseNodeType =
     | Expression
     | Record
     | RecordField
-    | Union
-    | UnionCase
+    | Enum
+    | EnumCase
     | Trait
     | Function
     | FunctionType
@@ -507,7 +507,7 @@ and parseRecord (state: ParseState): Option<ParseNode> * ParseState =
         | _ -> (None, state)
     | None -> (None, state)
 
-and parseUnionCase (state: ParseState): Option<ParseNode> * ParseState =
+and parseEnumCase (state: ParseState): Option<ParseNode> * ParseState =
     let (optionIdentifier, state) = parseToken state TokenType.identifier
 
     match optionIdentifier with
@@ -528,7 +528,7 @@ and parseUnionCase (state: ParseState): Option<ParseNode> * ParseState =
             | Some rightParen ->
                 (
                     Some {
-                        Type = ParseNodeType.UnionCase
+                        Type = ParseNodeType.EnumCase
                         Children = List.concat [ [identifier]; whitespace1; [leftParen]; whitespace2; parameters; whitespace3; [rightParen]; ]
                         Token = None
                     },
@@ -538,7 +538,7 @@ and parseUnionCase (state: ParseState): Option<ParseNode> * ParseState =
         | None ->
             (
                 Some {
-                    Type = ParseNodeType.UnionCase
+                    Type = ParseNodeType.EnumCase
                     Children = List.concat [ [identifier] ]
                     Token = None
                 },
@@ -601,11 +601,11 @@ and parseTrait (state: ParseState): Option<ParseNode> * ParseState =
         | None -> (None, state)
     | None -> (None, state)
 
-and parseUnion (state: ParseState): Option<ParseNode> * ParseState =
-    let (optionUnionToken, state) = parseToken state TokenType.union_keyword
+and parseEnum (state: ParseState): Option<ParseNode> * ParseState =
+    let (optionEnumToken, state) = parseToken state TokenType.enum_keyword
 
-    match optionUnionToken with
-    | Some unionToken ->
+    match optionEnumToken with
+    | Some enumToken ->
         let (whitespace1, state) = parseTrivia state
         let (optionNextToken, state) = peekToken state
 
@@ -636,7 +636,7 @@ and parseUnion (state: ParseState): Option<ParseNode> * ParseState =
             match optionLeftCurlyBracket with
             | Some leftCurlyBracket -> 
                 let (whitespace2, state) = parseTrivia state
-                let (cases, state) = parseSeparatedByWhitespace state parseUnionCase (Some TokenType.right_curly_bracket) []
+                let (cases, state) = parseSeparatedByWhitespace state parseEnumCase (Some TokenType.right_curly_bracket) []
                 let (whitespace3, state) = parseTrivia state
                 let (optionRightCurlyBracket, state) = parseToken state TokenType.right_curly_bracket
 
@@ -644,8 +644,8 @@ and parseUnion (state: ParseState): Option<ParseNode> * ParseState =
                 | Some rightCurlyBracket ->
                     (
                         Some {
-                            Type = ParseNodeType.Union
-                            Children = List.concat [ [unionToken]; whitespace1; typeParametersNodes; [leftCurlyBracket]; whitespace2; cases; whitespace3; [rightCurlyBracket] ]
+                            Type = ParseNodeType.Enum
+                            Children = List.concat [ [enumToken]; whitespace1; typeParametersNodes; [leftCurlyBracket]; whitespace2; cases; whitespace3; [rightCurlyBracket] ]
                             Token = None
                         },
                         state
@@ -1058,8 +1058,8 @@ and parsePrefixExpression (state: ParseState): Option<ParseNode> * ParseState =
             wrapInExpressionNode (parseFunctionOrFunctionType state)
         | TokenType.record_keyword ->
             wrapInExpressionNode (parseRecord state)
-        | TokenType.union_keyword ->
-            wrapInExpressionNode (parseUnion state)
+        | TokenType.enum_keyword ->
+            wrapInExpressionNode (parseEnum state)
         | TokenType.trait_keyword ->
             wrapInExpressionNode (parseTrait state)
         | TokenType.if_keyword ->

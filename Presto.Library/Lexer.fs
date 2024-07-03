@@ -296,7 +296,7 @@ let iterateTokenize (state: TokenizeState): TokenizeState =
                 | "fn" -> TokenType.fn_keyword
                 | "record" -> TokenType.record_keyword
                 | "trait" -> TokenType.trait_keyword
-                | "union" -> TokenType.union_keyword
+                | "enum" -> TokenType.enum_keyword
                 | "if" -> TokenType.if_keyword
                 | "then" -> TokenType.then_keyword
                 | "else" -> TokenType.else_keyword

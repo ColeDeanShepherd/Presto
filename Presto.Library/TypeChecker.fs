@@ -20,7 +20,7 @@ type TypeCheckerState = {
 let getTypeScopeId (state: TypeCheckerState) (prestoType: PrestoType): (Option<System.Guid> * TypeCheckerState) =
     match prestoType with
     | RecordType rt -> (Some rt.ScopeId, state)
-    | UnionType ut -> (Some ut.ScopeId, state)
+    | EnumType ut -> (Some ut.ScopeId, state)
     | _ ->
         let error = CompileError(
             description = $"Couldn't access members of type: {prestoType}",
@@ -82,10 +82,10 @@ let rec checkMany
             let accumulator = accumulator @ [optionExpressionType]
             checkMany state checkFn nodes.Tail accumulator
 
-and checkUnion (state: TypeCheckerState) (union: Union): TypeCheckerState * Option<PrestoType> =
-    let state = pushScope state union.ScopeId
+and checkEnum (state: TypeCheckerState) (enum: Enum): TypeCheckerState * Option<PrestoType> =
+    let state = pushScope state enum.ScopeId
 
-    let (state, optionTypeParameterTypes) = checkMany state checkTypeParameter union.TypeParameters []
+    let (state, optionTypeParameterTypes) = checkMany state checkTypeParameter enum.TypeParameters []
     let successfullyCheckedTypeParameterTypes = not (List.exists<Option<PrestoType>> (fun x -> x.IsNone) optionTypeParameterTypes)
     
     if successfullyCheckedTypeParameterTypes then
@@ -97,16 +97,16 @@ and checkUnion (state: TypeCheckerState) (union: Union): TypeCheckerState * Opti
                     | _ -> failwith "Unexpected failure")
                 optionTypeParameterTypes
 
-        let (state, optionUnionTypeConstructors) = checkMany state checkUnionCase union.Cases []
-        let successfullyCheckedUnionTypeConstructors = not (List.exists<Option<UnionTypeConstructor>> (fun x -> x.IsNone) optionUnionTypeConstructors)
+        let (state, optionEnumTypeConstructors) = checkMany state checkEnumCase enum.Cases []
+        let successfullyCheckedEnumTypeConstructors = not (List.exists<Option<EnumTypeConstructor>> (fun x -> x.IsNone) optionEnumTypeConstructors)
     
-        if successfullyCheckedUnionTypeConstructors then
+        if successfullyCheckedEnumTypeConstructors then
             let constructors =
-                List.map<Option<UnionTypeConstructor>, UnionTypeConstructor>
+                List.map<Option<EnumTypeConstructor>, EnumTypeConstructor>
                     (fun x -> x.Value)
-                    optionUnionTypeConstructors
+                    optionEnumTypeConstructors
 
-            (popScope state, Some (UnionType { ScopeId = union.ScopeId; TypeParamNameAndIds = typeParameterIdAndNames; Constructors = constructors }))
+            (popScope state, Some (EnumType { ScopeId = enum.ScopeId; TypeParamNameAndIds = typeParameterIdAndNames; Constructors = constructors }))
         else
             (popScope state, None)
     else
@@ -155,18 +155,18 @@ and checkTrait (state: TypeCheckerState) (_trait: Trait): TypeCheckerState * Opt
     else
         (popScope state, None)
 
-and checkUnionCase (state: TypeCheckerState) (unionCase: UnionCase): TypeCheckerState * Option<UnionTypeConstructor> =
-    let (state, optionParameterTypes) = checkMany state checkParameter unionCase.Parameters []
+and checkEnumCase (state: TypeCheckerState) (enumCase: EnumCase): TypeCheckerState * Option<EnumTypeConstructor> =
+    let (state, optionParameterTypes) = checkMany state checkParameter enumCase.Parameters []
     let successfullyCheckedParameterTypes = not (List.exists<Option<PrestoType>> (fun x -> x.IsNone) optionParameterTypes)
 
     if successfullyCheckedParameterTypes then
-        let parameterNames = List.map<Parameter, string> (fun x -> x.NameToken.text) unionCase.Parameters
+        let parameterNames = List.map<Parameter, string> (fun x -> x.NameToken.text) enumCase.Parameters
         let parameterTypes =
             List.map<Option<PrestoType>, PrestoType>
                 (fun x -> x.Value)
                 optionParameterTypes
 
-        (state, Some { Name = unionCase.NameToken.text; Parameters = List.zip parameterNames parameterTypes})
+        (state, Some { Name = enumCase.NameToken.text; Parameters = List.zip parameterNames parameterTypes})
     else
         (state, None)
 
@@ -400,7 +400,7 @@ and typeInferenceHandleEquality (type1: PrestoType) (type2: PrestoType) (typesBy
         | (RecordInstanceType (tct1, typeArgs1), RecordInstanceType (tct2, typeArgs2)) ->
             let equalities = List.zip typeArgs1 typeArgs2
             typeInferenceHandleEqualities equalities typesByTypeParamId
-        | (UnionInstanceType (tct1, typeArgs1), UnionInstanceType (tct2, typeArgs2)) ->
+        | (EnumInstanceType (tct1, typeArgs1), EnumInstanceType (tct2, typeArgs2)) ->
             let equalities = List.zip typeArgs1 typeArgs2
             typeInferenceHandleEqualities equalities typesByTypeParamId
         | (TraitInstanceType (tct1, typeArgs1), TraitInstanceType (tct2, typeArgs2)) ->
@@ -455,7 +455,7 @@ and typeInferenceHandleTypeParameterEquality
 //    | Character -> typeArgsByName
 //    | Type -> typeArgsByName
 //    | RecordType (scopeId, typeParamNames, fieldTypes) -> failwith "TODO"
-//    | UnionType (scopeId, typeParamNames, constructors) -> failwith "TODO"
+//    | EnumType (scopeId, typeParamNames, constructors) -> failwith "TODO"
 //    | TypeParameterType typeParameter ->
 //        if not (typeArgsByName.ContainsKey typeParameter) then
 //            Map.add typeParameter concreteType typeArgsByName
@@ -470,9 +470,9 @@ and typeInferenceHandleTypeParameterEquality
 //            let typeArgsByName = typeInferenceHandleEqualities typeArgsByName argTypes cArgTypes
 //            typeInferenceHandleEquality returnType cReturnType typeArgsByName
 //        | _ -> failwith ""
-//    | UnionInstanceType (scopeId, typeParameters) ->
+//    | EnumInstanceType (scopeId, typeParameters) ->
 //        match concreteType with
-//        | UnionInstanceType (cScopeId, cTypeParameters) ->
+//        | EnumInstanceType (cScopeId, cTypeParameters) ->
 //            if scopeId = cScopeId then
 //                typeInferenceHandleEqualities typeArgsByName typeParameters cTypeParameters
 //            else
@@ -517,10 +517,10 @@ and _reifyType (prestoType: PrestoType) (typeArgsByParamId: Map<System.Guid, Pre
         let typeArgumentTypes = List.map (fun t -> _reifyType t typeArgsByParamId) typeArgs
         //let rtf = { rtf with TypeParamNameAndIds = [] }
         RecordInstanceType (rtf, typeArgumentTypes)
-    | UnionInstanceType (utf, typeArgs) ->
+    | EnumInstanceType (utf, typeArgs) ->
         let typeArgumentTypes = List.map (fun t -> _reifyType t typeArgsByParamId) typeArgs
         //let utf = { utf with TypeParamNameAndIds = [] }
-        UnionInstanceType (utf, typeArgumentTypes)
+        EnumInstanceType (utf, typeArgumentTypes)
     | _ -> prestoType
 
 and mergeMaps m1 m2 =
@@ -599,12 +599,12 @@ and checkGenericInstantiation (state: TypeCheckerState) (genericInstantiation: G
                     let state = { state with Errors = state.Errors @ [error]}
 
                     (state, Some expressionType) // Why are we returning expression type?
-            | UnionType ut ->
+            | EnumType ut ->
                 let typeParameterNameCount = ut.TypeParamNameAndIds.Length
                 let typeArgumentCount = typeArgumentTypes.Length
 
                 if typeParameterNameCount = typeArgumentCount then
-                    let expressionType = UnionInstanceType (ut, typeArgumentTypes)
+                    let expressionType = EnumInstanceType (ut, typeArgumentTypes)
                     (state, Some expressionType)
                 else
                     let error = CompileError(
@@ -736,7 +736,7 @@ and canTypesBeTheSame (a: PrestoType) (b: PrestoType): bool =
     (isTypeParameterType a) ||
     (isTypeParameterType b) ||
     match a, b with
-    | UnionInstanceType (_, aTypeArgs), UnionInstanceType (_, bTypeArgs) ->
+    | EnumInstanceType (_, aTypeArgs), EnumInstanceType (_, bTypeArgs) ->
         (aTypeArgs.Length = bTypeArgs.Length) &&
         List.forall (fun (a, b) -> canTypesBeTheSame a b) (List.zip aTypeArgs bTypeArgs)
     //| RecordType (_, _, )
@@ -839,7 +839,7 @@ and checkSymbol (state: TypeCheckerState) (symbol: Symbol): TypeCheckerState * O
     | TypeParameterSymbol typeParameter -> checkTypeParameter state typeParameter
     | ParameterSymbol parameter -> checkExpression state parameter.TypeExpression
     | RecordFieldSymbol recordField -> checkExpression state recordField.TypeExpression
-    | UnionCaseSymbol unionCase -> (state, None)
+    | EnumCaseSymbol enumCase -> (state, None)
     | BuiltInSymbol (builtInSymbol, prestoType) -> (state, Some prestoType)
 
 and checkSymbolReference (state: TypeCheckerState) (token: Token) (expressionId: System.Guid): TypeCheckerState * Option<PrestoType> =
@@ -881,7 +881,7 @@ and checkErrorPropagationExpression (state: TypeCheckerState) (errorPropagationE
     match optionInnerExpressionType with
     | Some innerExpressionType ->
         match innerExpressionType with
-        | UnionInstanceType (uf, typeParameters) when state.TypeCanonicalNamesByScopeId[uf.ScopeId] = "Result" -> // TODO: fully-qualified name
+        | EnumInstanceType (uf, typeParameters) when state.TypeCanonicalNamesByScopeId[uf.ScopeId] = "Result" -> // TODO: fully-qualified name
             (state, Some typeParameters[0])
         | _ ->
             let error = CompileError(
@@ -916,7 +916,7 @@ and checkExpression (state: TypeCheckerState) (expression: Expression): TypeChec
         let (state, optionPrestoType) =
             match expression.Value with
             | RecordExpression record -> checkRecord state record
-            | UnionExpression union -> checkUnion state union
+            | EnumExpression enum -> checkEnum state enum
             | TraitExpression _trait -> checkTrait state _trait
             | FunctionExpression fn -> checkFunction state expression fn
             | FunctionTypeExpression fnType -> checkFunctionType state expression fnType
@@ -957,9 +957,9 @@ and checkBinding (state: TypeCheckerState) (binding: Binding): TypeCheckerState 
     let state =
         match binding.Value.Value with
         | RecordExpression record -> trySetTypesCanonicalName state record.ScopeId name
-        | UnionExpression union -> trySetTypesCanonicalName state union.ScopeId name
+        | EnumExpression enum -> trySetTypesCanonicalName state enum.ScopeId name
         | FunctionExpression fn -> trySetTypesCanonicalName state fn.ScopeId name
-        | TraitExpression trait -> trySetTypesCanonicalName state trait.ScopeId name
+        | TraitExpression _trait -> trySetTypesCanonicalName state _trait.ScopeId name
         | _ -> state
 
     checkExpression state binding.Value

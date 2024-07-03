@@ -16,7 +16,7 @@ Type System
 - Character? (individual character in Text? what about glyph runs?)
 - Type (the type of a type)
 - Record (a collection of named fields)
-- Union
+- Enum
 - Function
 
 Generics
@@ -38,7 +38,7 @@ If we think about more complex functions like so:
 clamp = fn (x: Nat, min: Nat, max: Nat, proof: proof(min <= max)): Nat -> ...
 
 
-TokenType: a Union type with the possible values: identifier, number_literal, etc.
+TokenType: a Enum type with the possible values: identifier, number_literal, etc.
 Token: a Record type with the fields: _type, text, position, was_inserted
 List(Token): An expression that evaluates to an internal type (let's call it __list_of_token). "list" is a function that takes a type, and returns a type. If we evaluate this twice with the same args, the types are the same (list(TokenType) == list(TokenType)).
 fn (state: TokenizeState): bool -> ...: A function type with one arg of type "TokenizeState" that returns "bool"
@@ -55,8 +55,8 @@ type PrestoType =
     | TupleType of List<PrestoType> (* value types *)
     | RecordType of RecordTypeFields
     | RecordInstanceType of RecordTypeFields * List<PrestoType> (* record id, type arguments *)
-    | UnionType of UnionTypeFields
-    | UnionInstanceType of UnionTypeFields * List<PrestoType> (* union id, type arguments *)
+    | EnumType of EnumTypeFields
+    | EnumInstanceType of EnumTypeFields * List<PrestoType> (* enum id, type arguments *)
     | FunctionType of FunctionTypeFields
     | TraitType of TraitTypeFields
     | TraitInstanceType of TraitTypeFields * List<PrestoType> (* id, type arguments *)
@@ -67,10 +67,10 @@ and RecordTypeFields = {
     TypeParamNameAndIds: List<System.Guid * string>
     FieldTypes: List<PrestoType>
 }
-and UnionTypeFields = {
+and EnumTypeFields = {
     ScopeId: System.Guid
     TypeParamNameAndIds: List<System.Guid * string>
-    Constructors: List<UnionTypeConstructor>
+    Constructors: List<EnumTypeConstructor>
 }
 and FunctionTypeFields = {
     ScopeId: System.Guid
@@ -83,7 +83,7 @@ and TraitTypeFields = {
     TypeParamNameAndIds: List<System.Guid * string>
     FunctionTypesByName: Map<string, PrestoType>
 }
-and UnionTypeConstructor = {
+and EnumTypeConstructor = {
     Name: string
     Parameters: List<string * PrestoType>
 }
@@ -92,7 +92,7 @@ and Symbol =
     | TypeParameterSymbol of TypeParameter
     | ParameterSymbol of Parameter
     | RecordFieldSymbol of RecordField
-    | UnionCaseSymbol of UnionCase
+    | EnumCaseSymbol of EnumCase
     | BuiltInSymbol of string * PrestoType
 and Expression = {
     Id: System.Guid
@@ -100,7 +100,7 @@ and Expression = {
 }
 and ExpressionValue =
     | RecordExpression of Record
-    | UnionExpression of Union
+    | EnumExpression of Enum
     | TraitExpression of Trait
     | FunctionExpression of Function
     | FunctionTypeExpression of FunctionType
@@ -186,13 +186,13 @@ and Record = {
     Fields: List<RecordField>
     ScopeId: System.Guid
 }
-and UnionCase = {
+and EnumCase = {
     NameToken: Token
     Parameters: List<Parameter>
 }
-and Union = {
+and Enum = {
     TypeParameters: List<TypeParameter>
-    Cases: List<UnionCase>
+    Cases: List<EnumCase>
     ScopeId: System.Guid
 }
 and Trait = {
@@ -272,7 +272,7 @@ let getSymbolTextPosition (symbol: Symbol): TextPosition =
     | TypeParameterSymbol typeParameter -> typeParameter.NameToken.position
     | ParameterSymbol parameter -> parameter.NameToken.position
     | RecordFieldSymbol recordField -> recordField.NameToken.position
-    | UnionCaseSymbol unionCase -> unionCase.NameToken.position
+    | EnumCaseSymbol enumCase -> enumCase.NameToken.position
     | BuiltInSymbol (builtInSymbol, prestoType) -> TextPosition(file_path = "", line_index = 0u, column_index = 0u)
     
 let getParentScopeId (state: ASTBuilderState): System.Guid =
@@ -520,21 +520,21 @@ and buildRecord (state: ASTBuilderState) (node: ParseNode): (Option<Record> * AS
         | None -> (None, popScope state)
     | None -> (None, popScope state)
 
-and buildUnionCase (state: ASTBuilderState) (node: ParseNode): (Option<UnionCase> * ASTBuilderState) =
-    assert (node.Type = ParseNodeType.UnionCase)
+and buildEnumCase (state: ASTBuilderState) (node: ParseNode): (Option<EnumCase> * ASTBuilderState) =
+    assert (node.Type = ParseNodeType.EnumCase)
     
     let identifierNode = childOfTokenType node TokenType.identifier
     let nameToken = identifierNode.Token.Value;
     let name = nameToken.text
 
     let case = { NameToken = nameToken; Parameters = [] }
-    let (success, state) = addSymbol state name (UnionCaseSymbol case)
+    let (success, state) = addSymbol state name (EnumCaseSymbol case)
 
     if success then (Some case, state)
     else (None, state)
 
-and buildUnion (state: ASTBuilderState) (node: ParseNode): (Option<Union> * ASTBuilderState) =
-    assert (node.Type = ParseNodeType.Union)
+and buildEnum (state: ASTBuilderState) (node: ParseNode): (Option<Enum> * ASTBuilderState) =
+    assert (node.Type = ParseNodeType.Enum)
 
     let (scope, state) = pushScope state
 
@@ -543,8 +543,8 @@ and buildUnion (state: ASTBuilderState) (node: ParseNode): (Option<Union> * ASTB
 
     match optionTypeParameters with
     | Some typeParameters ->
-        let caseNodes = childrenOfType node ParseNodeType.UnionCase
-        let (optionCases, state) = buildAllOrNone state caseNodes buildUnionCase
+        let caseNodes = childrenOfType node ParseNodeType.EnumCase
+        let (optionCases, state) = buildAllOrNone state caseNodes buildEnumCase
 
         match optionCases with
         | Some cases ->
@@ -733,11 +733,11 @@ and buildExpression (state: ASTBuilderState) (node: ParseNode): (Option<Expressi
         match optionRecord with
         | Some record -> (Some (newExpression (RecordExpression record)), state)
         | None -> (None, state)
-    | ParseNodeType.Union ->
-        let (optionUnion, state) = buildUnion state child
+    | ParseNodeType.Enum ->
+        let (optionEnum, state) = buildEnum state child
         
-        match optionUnion with
-        | Some union -> (Some (newExpression (UnionExpression union)), state)
+        match optionEnum with
+        | Some enum -> (Some (newExpression (EnumExpression enum)), state)
         | None -> (None, state)
     | ParseNodeType.Trait ->
         let (optionTrait, state) = buildTrait state child
@@ -920,7 +920,7 @@ let getInitialScopesById =
                     "Result",
                     BuiltInSymbol (
                         "Result",
-                        UnionType {
+                        EnumType {
                             ScopeId = resultScopeId
                             TypeParamNameAndIds = [(resultTScopeId, "T"); (resultEScopeId, "E")]
                             Constructors = [

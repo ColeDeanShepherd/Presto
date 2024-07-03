@@ -30,4 +30,8 @@
     <ProjectReference Include="Presto.SelfHosting\Presto.SelfHosting.csproj" />
   </ItemGroup>
 
+  <ItemGroup>
+    <Folder Include="examples\web_ui\" />
+  </ItemGroup>
+
 </Project>

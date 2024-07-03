@@ -9,6 +9,7 @@ let ``inferFunctionCallTypeArgs1`` () =
     let seqTypeFields: TraitTypeFields = {
         ScopeId = System.Guid.NewGuid()
         TypeParamNameAndIds = [(System.Guid.NewGuid(), "T")]
+        FunctionTypesByName = Map.empty
     }
 
     let seqType = TraitType seqTypeFields
@@ -60,6 +61,7 @@ let ``inferFunctionCallTypeArgs2`` () =
     let seqTypeFields: TraitTypeFields = {
         ScopeId = System.Guid.NewGuid()
         TypeParamNameAndIds = [(System.Guid.NewGuid(), "T")]
+        FunctionTypesByName = Map.empty
     }
 
     let seqType = TraitType seqTypeFields

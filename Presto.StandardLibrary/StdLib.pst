@@ -1,22 +1,61 @@
 no_op = fn (): Nothing -> {}
-ignore = fn [T] (x: T): Nothing -> {}
 identity = fn [T] (x: T): T -> x
+
+#ignore = fn [T] (x: T): Nothing -> {}
 #default = fn [T] (): T -> BUILT_IN
 
-##### Boolean #####
-Bool = union {
+OneOrMoreBits = trait {
+    not = fn (x: Self): Self
+    and = fn (a: Self, b: Self): Self
+    or = fn (a: Self, b: Self): Self
+    xor = fn (a: Self, b: Self): Self
+}
+
+nand = not >> and
+nor = not >> or
+xnor = not >> xor
+
+MultipleBits = trait {
+    # TODO: shifting/rotation operators
+}
+
+########## Boolean ##########
+Bool = enum {
     True
     False
 }
 
-not = fn (x: Bool): Bool -> if x then False else True
-logical_and = fn (a: Bool, b: Bool): Bool = a && b
-logical_or = fn (a: Bool, b: Bool): Bool = a || b
-logical_xor = fn (a: Bool, b: Bool): Bool = BUILT_IN
-logical_nand = fn (a: Bool, b: Bool): Bool = BUILT_IN
-logical_nor = fn (a: Bool, b: Bool): Bool = BUILT_IN
-logical_not = fn (a: Bool, b: Bool): Bool = BUILT_IN
-logical_xnor = fn (a: Bool, b: Bool): Bool = BUILT_IN
+impl OneOrMoreBits for Bool {
+    not = fn (x: Bool): Bool ->
+        match x {
+            True -> False
+            False -> True
+        }
+
+    and = fn (a: Bool, b: Bool): Bool ->
+        match (a, b) {
+            (False, False) -> False
+            (False, True) -> False
+            (True, False) -> False
+            (True, True) -> True
+        }
+
+    or = fn (a: Bool, b: Bool): Bool ->
+        match (a, b) {
+            (False, False) -> False
+            (False, True) -> True
+            (True, False) -> True
+            (True, True) -> True
+        }
+
+    xor = fn (a: Bool, b: Bool): Bool ->
+        match (a, b) {
+            (False, False) -> False
+            (False, True) -> True
+            (True, False) -> True
+            (True, True) -> False
+        }
+}
 
 
 
@@ -25,20 +64,23 @@ logical_xnor = fn (a: Bool, b: Bool): Bool = BUILT_IN
 
 
 
-eq = fn [T] (a: T, b: T): Bool -> impl_in_CSharp[Bool]()
-not_eq = fn [T] (a: T, b: T): Bool -> not(eq(a, b))
-
-to_text = fn [T] (x: T): Text -> impl_in_CSharp[Text]()
 
 
 
 
 
-##### Natural Numbers & Reals #####
+
+########## Natural Numbers & Reals ##########
+
+
 sum = fn (a: Nat, b: Nat): Nat -> impl_in_CSharp[Nat]()
 difference = fn (a: Nat, b: Nat): Nat -> impl_in_CSharp[Nat]()
 product = fn (a: Nat, b: Nat): Nat -> impl_in_CSharp[Nat]()
-quotient = fn (a: Nat, b: Nat): Nat -> impl_in_CSharp[Nat]()
+
+quotient = fn (dividend: Nat, divisor: Nat): Nat
+    requires divisor != 0 ->
+    impl_in_CSharp[Nat]()
+
 # modulus
 # remainder
 # power
@@ -74,6 +116,45 @@ round = fn (x: Real, digits: Nat): Real -> impl_in_CSharp[Real]()
 # sign
 # sqrt
 # truncate
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+eq = fn [T] (a: T, b: T): Bool -> impl_in_CSharp[Bool]() # TODO: type class?
+not_eq = not >> eq
+
+
+to_text = fn [T] (x: T): Text -> impl_in_CSharp[Text]() # TODO: type class?
+
+
+
+
+
 
 ##### Comparable #####
 min = fn (xs: Seq[Real]): Real -> impl_in_CSharp[Real]()
@@ -145,7 +226,7 @@ key = fn [TKey, T] (x: Grouping[TKey, T]): TKey -> impl_in_CSharp[TKey]()
 values = fn [TKey, T] (x: Grouping[TKey, T]): Seq[T] -> impl_in_CSharp[Seq[T]]()
 
 ##### Result #####
-#Result = union [T, E] {
+#Result = enum [T, E] {
 #    Ok(value: T)
 #    Err(error: E)
 #}
@@ -175,3 +256,38 @@ FileSystem = trait {
 DesktopEnv = trait {
     open_URL_in_browser = fn (desktop_env: Self, URL: Text): Result[Nothing, Text]
 }
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+

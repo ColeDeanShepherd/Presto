@@ -74,8 +74,8 @@ let rec generateSymbol (state: CodeGeneratorState) (token: Token) (expressionId:
         generateName state parameter.NameToken.text
     | RecordFieldSymbol recordField ->
         generateName state recordField.NameToken.text
-    | UnionCaseSymbol unionCase ->
-        generateName state unionCase.NameToken.text
+    | EnumCaseSymbol enumCase ->
+        generateName state enumCase.NameToken.text
     | BuiltInSymbol (builtInSymbol, prestoType) ->
         // TODO: make less hacky
         match builtInSymbol with
@@ -320,7 +320,7 @@ and generateSelfTypeExpr (state: CodeGeneratorState) (expressionId: System.Guid)
 and generateExpressionInternal (state: CodeGeneratorState) (expression: Expression) (isTypeExpression: bool): CodeGeneratorState =
     match expression.Value with
     | RecordExpression record -> failwith "Not implemented"
-    | UnionExpression union -> failwith "Not implemented"
+    | EnumExpression enum -> failwith "Not implemented"
     | FunctionExpression fn -> generateLambdaExpression state fn
     | IfThenElseExpression ifThenElse -> generateIfThenElse state ifThenElse
     | FunctionCallExpression call -> generateFunctionCallInternal state expression.Id call isTypeExpression
@@ -362,10 +362,10 @@ and generateTypeReference (state: CodeGeneratorState) (prestoType: PrestoType): 
         match canonicalName with
         | "Console" -> generateString state "Presto.Runtime.Console"
         | _ -> generateString state canonicalName
-    | UnionType ut -> generateString state state.Program.TypeCanonicalNamesByScopeId[ut.ScopeId]
+    | EnumType ut -> generateString state state.Program.TypeCanonicalNamesByScopeId[ut.ScopeId]
     | FunctionType ft -> generateString state state.Program.TypeCanonicalNamesByScopeId[ft.ScopeId]
     | TypeParameterType (id, name) -> generateString state name
-    | UnionInstanceType (ut, typeParameters) ->
+    | EnumInstanceType (ut, typeParameters) ->
         let canonicalName = state.Program.TypeCanonicalNamesByScopeId[ut.ScopeId]
         let state = generateString state canonicalName
 
@@ -529,16 +529,16 @@ and generateRecord (state: CodeGeneratorState) (name: string) (record: Record): 
 
     state
 
-and generateUnionCase (state: CodeGeneratorState) (unionCase: UnionCase): CodeGeneratorState =
-    let state = generateString state unionCase.NameToken.text
+and generateEnumCase (state: CodeGeneratorState) (enumCase: EnumCase): CodeGeneratorState =
+    let state = generateString state enumCase.NameToken.text
 
     state
 
-and generateUnion (state: CodeGeneratorState) (name: string) (union: Union): CodeGeneratorState =
+and generateEnum (state: CodeGeneratorState) (name: string) (enum: Enum): CodeGeneratorState =
     let state = generateString state "public enum "
     let state = generateString state name
     let state = generateString state "{"
-    let state = generateManyWithSeparator state union.Cases generateUnionCase ", " true
+    let state = generateManyWithSeparator state enum.Cases generateEnumCase ", " true
     let state = generateString state "}"
 
     state
@@ -615,7 +615,7 @@ and generateBinding (state: CodeGeneratorState) (binding: Binding) (isTopLevel: 
     let state =
         match binding.Value.Value with
         | RecordExpression record -> generateRecord state binding.NameToken.text record
-        | UnionExpression union -> generateUnion state binding.NameToken.text union
+        | EnumExpression enum -> generateEnum state binding.NameToken.text enum
         | TraitExpression _trait -> generateTrait state binding.NameToken.text _trait
         | FunctionExpression fn ->
             let state = generateFunction state binding.NameToken.text fn isTopLevel
