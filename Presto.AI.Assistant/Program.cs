@@ -1,23 +1,15 @@
-﻿using Presto.Core;
+﻿namespace Presto.AI.Assistant;
 
-namespace Presto.AI.Assistant;
-
-internal class Program
+public static class Program
 {
-    static async Task Main(string[] args)
+    public static async Task Main(string[] args)
     {
-        SetupDependencyInjection();
-        await Run();
-    }
-
-    static void SetupDependencyInjection()
-    {
-        var desktopApps = new DesktopApps();
-        Injected<IDesktopApps>.Register(desktopApps);
-    }
-
-    static async Task Run(Injected<IDesktopApps> desktopApps = default)
-    {
-        await ColesCommands.OpenRecRoomDesktopEnvironment();
+        //await ColesCommands.OpenRecRoomDesktopEnvironment();
     }
 }
+
+/*
+C# Language Improvements I'd Like
+* No classes
+* Green threads instead of async/await
+*/
