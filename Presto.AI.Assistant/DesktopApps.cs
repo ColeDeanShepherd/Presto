@@ -12,11 +12,12 @@ public static class DesktopApps
         Process.Start(processStartInfo);
     }
 
-    public static string GetChromeExecutablePath() =>
+    public static string GetGoogleChromeExecutablePath() =>
         Path.Combine(GetProgramFilesFolderPath(), @"Google\Chrome\Application\chrome.exe");
-    public static void OpenChrome(string profileName = "Default") =>
+    public static void OpenGoogleChrome() => OpenGoogleChrome("Default");
+    public static void OpenGoogleChrome(string profileName) =>
         OpenApp(
-            GetChromeExecutablePath(),
+            GetGoogleChromeExecutablePath(),
             arguments: (profileName != null)
                 ? $"--profile-directory=\"{profileName}\""
                 : "");

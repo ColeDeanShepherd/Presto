@@ -1,7 +1,5 @@
 using Avalonia.Controls;
-using Avalonia.Input;
 using Avalonia.Interactivity;
-using System.Threading.Tasks;
 
 namespace Presto.AI.Assistant.GUI;
 
@@ -10,10 +8,7 @@ public partial class MainWindow : Window
     public MainWindow()
     {
         InitializeComponent();
-        commandBar.ItemsSource = new[]
-        {
-            new Command("Open YouTube", "Open YouTube in the web browser.", async () => WebBrowser.OpenYouTube())
-        };
+        commandBar.ItemsSource = Commands.All;
     }
 
     private async void OnRunClicked(object? sender, RoutedEventArgs args)
