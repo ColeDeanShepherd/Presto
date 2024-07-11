@@ -48,4 +48,7 @@ public static class WebBrowser
 
     public static void OpenChatGPT() =>
         OpenUrl("https://chat.openai.com");
+
+    public static void OpenStatsigConsole() =>
+        OpenUrl("https://console.statsig.com");
 }

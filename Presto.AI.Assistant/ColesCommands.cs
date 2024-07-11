@@ -20,6 +20,8 @@ Random Ideas
 
 public static class ColesCommands
 {
+    public const string RecRoomGameId = "471710";
+
     public static async Task OpenRecRoomDesktopEnvironment()
     {
         #region Web Pages
@@ -61,4 +63,7 @@ public static class ColesCommands
         Path.Combine(
             GetUserProfileFolderPath(),
             @"dev\DevTools\RecNetDevEnv\bin\Release\RecNetDevEnv.exe");
+
+    public static void OpenRecRoom() =>
+        OpenSteamGame(RecRoomGameId);
 }

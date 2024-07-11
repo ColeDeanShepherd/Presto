@@ -41,4 +41,9 @@ public static class DesktopApps
     public static string GetSteamExecutablePath() =>
         Path.Combine(GetProgramFilesX86FolderPath(), "Steam/steam.exe");
     public static void OpenSteam() => OpenApp(GetSteamExecutablePath());
+
+    public static void OpenSteamGame(string gameId) => WebBrowser.OpenUrl($"steam://rungameid/{gameId}");
+
+    public static string GetSnippingToolExecutablePath() => "snippingtool.exe";
+    public static void OpenSnippingTool() => OpenApp(GetSnippingToolExecutablePath());
 }
