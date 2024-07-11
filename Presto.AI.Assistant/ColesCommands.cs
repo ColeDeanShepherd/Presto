@@ -5,6 +5,19 @@ using static FileSystem;
 using static DesktopApps;
 using static WebBrowser;
 
+/*
+C# Language Improvements I'd Like
+* No classes
+* Green threads instead of async/await
+* No need for semicolons
+
+
+Random Ideas
+* What if calling no-arg functions didn't require parenthesis?
+  There's an ambiguity when we want to reference a function though.
+  Maybe we can reference a function with &FuncName? Or ref(FuncName)?
+*/
+
 public static class ColesCommands
 {
     public static async Task OpenRecRoomDesktopEnvironment()
