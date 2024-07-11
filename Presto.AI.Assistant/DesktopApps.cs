@@ -2,6 +2,8 @@
 
 namespace Presto.AI.Assistant;
 
+using static FileSystem;
+
 public static class DesktopApps
 {
     public static void OpenApp(string fileName, string arguments = "")
@@ -11,31 +13,31 @@ public static class DesktopApps
     }
 
     public static string GetChromeExecutablePath() =>
-        Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ProgramFiles), @"Google\Chrome\Application", "chrome.exe");
+        Path.Combine(GetProgramFilesFolderPath(), @"Google\Chrome\Application\chrome.exe");
     public static void OpenChrome(string profileName = "Default") =>
         OpenApp(
             GetChromeExecutablePath(),
-            !string.IsNullOrWhiteSpace(profileName)
+            arguments: (profileName != null)
                 ? $"--profile-directory=\"{profileName}\""
                 : "");
 
     public static string GetSlackExecutablePath() =>
-        Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "slack", "slack.exe");
+        Path.Combine(GetLocalAppDataFolderPath(), "slack/slack.exe");
     public static void OpenSlack() => OpenApp(GetSlackExecutablePath());
 
     public static string GetNotepadPlusPlusExecutablePath() =>
-        Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ProgramFiles), "Notepad++", "notepad++.exe");
+        Path.Combine(GetProgramFilesFolderPath(), "Notepad++/notepad++.exe");
     public static void OpenNotepadPlusPlus() => OpenApp(GetNotepadPlusPlusExecutablePath());
 
     public static string GetDockerDesktopExecutablePath() =>
-        Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ProgramFiles), "Docker", "Docker", "Docker Desktop.exe");
+        Path.Combine(GetProgramFilesFolderPath(), "Docker/Docker/Docker Desktop.exe");
     public static void OpenDockerDesktop() => OpenApp(GetDockerDesktopExecutablePath());
 
     public static string GetVisualStudioCodeExecutablePath() =>
-        Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "Programs", "Microsoft VS Code", "Code.exe");
+        Path.Combine(GetLocalAppDataFolderPath(), "Programs/Microsoft VS Code/Code.exe");
     public static void OpenVisualStudioCode() => OpenApp(GetVisualStudioCodeExecutablePath());
 
     public static string GetSteamExecutablePath() =>
-        Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ProgramFilesX86), "Steam", "steam.exe");
+        Path.Combine(GetProgramFilesX86FolderPath(), "Steam/steam.exe");
     public static void OpenSteam() => OpenApp(GetSteamExecutablePath());
 }
