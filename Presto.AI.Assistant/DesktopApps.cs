@@ -22,6 +22,9 @@ public static class DesktopApps
                 ? $"--profile-directory=\"{profileName}\""
                 : "");
 
+    public static string GetFirefoxExecutablePath() => Path.Combine(GetProgramFilesFolderPath(), @"Mozilla Firefox\firefox.exe");
+    public static void OpenFirefox() => OpenApp(GetFirefoxExecutablePath());
+
     public static string GetSlackExecutablePath() =>
         Path.Combine(GetLocalAppDataFolderPath(), "slack/slack.exe");
     public static void OpenSlack() => OpenApp(GetSlackExecutablePath());

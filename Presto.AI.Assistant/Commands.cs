@@ -4,7 +4,8 @@ public static class Commands
 {
     public static readonly Command[] All = [
         #region Desktop Apps
-
+        
+        Command.Create("Open Firefox", DesktopApps.OpenFirefox),
         Command.Create("Open Google Chrome", DesktopApps.OpenGoogleChrome),
         Command.Create("Open Slack", DesktopApps.OpenSlack),
         Command.Create("Open Notepad++", DesktopApps.OpenNotepadPlusPlus),
@@ -28,7 +29,26 @@ public static class Commands
 
         #region Rec Room
 
+        Command.Create(
+            "Open Cole Shepherd's RR Dev Desktop",
+            () =>
+            {
+                // Open web pages.
+                DesktopApps.OpenFirefox();
+                WebBrowser.OpenUrl("https://app.todoist.com");
+                WebBrowser.OpenYouTube();
+                WebBrowser.OpenGmail();
+                WebBrowser.OpenGoogleCalendar();
+                ADO.OpenPullRequestsWebPage();
+                
+                // Open "Cole's Notes".
+                WebBrowser.OpenUrl("https://docs.google.com/document/d/1IxN-PAExj77bW0WR1PcX_9LkDB193_sGGL0fAkwrYQ4/edit#");
 
+                // Open desktop applications.
+                DesktopApps.OpenSlack();
+                RecNet.OpenRecNetDevEnv();
+                DesktopApps.OpenNotepadPlusPlus();
+            }),
 
         #endregion Rec Room
     ];
