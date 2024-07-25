@@ -2,7 +2,7 @@
 
 using static Task;
 using static FileSystem;
-using static DesktopApps;
+using static Desktop;
 using static WebBrowser;
 
 /*

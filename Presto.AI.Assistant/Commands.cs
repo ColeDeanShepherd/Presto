@@ -5,14 +5,14 @@ public static class Commands
     public static readonly Command[] All = [
         #region Desktop Apps
         
-        Command.Create("Open Firefox", DesktopApps.OpenFirefox),
-        Command.Create("Open Google Chrome", DesktopApps.OpenGoogleChrome),
-        Command.Create("Open Slack", DesktopApps.OpenSlack),
-        Command.Create("Open Notepad++", DesktopApps.OpenNotepadPlusPlus),
-        Command.Create("Open Docker Desktop", DesktopApps.OpenDockerDesktop),
-        Command.Create("Open Visual Studio Code", DesktopApps.OpenVisualStudioCode),
-        Command.Create("Open Steam", DesktopApps.OpenSteam),
-        Command.Create("Open Snipping Tool", DesktopApps.OpenSnippingTool),
+        Command.Create("Open Firefox", Desktop.OpenFirefox),
+        Command.Create("Open Google Chrome", Desktop.OpenGoogleChrome),
+        Command.Create("Open Slack", Desktop.OpenSlack),
+        Command.Create("Open Notepad++", Desktop.OpenNotepadPlusPlus),
+        Command.Create("Open Docker Desktop", Desktop.OpenDockerDesktop),
+        Command.Create("Open Visual Studio Code", Desktop.OpenVisualStudioCode),
+        Command.Create("Open Steam", Desktop.OpenSteam),
+        Command.Create("Open Snipping Tool", Desktop.OpenSnippingTool),
 
         #endregion Desktop Apps
 
@@ -34,7 +34,7 @@ public static class Commands
             () =>
             {
                 // Open web pages.
-                DesktopApps.OpenFirefox();
+                Desktop.OpenFirefox();
                 WebBrowser.OpenUrl("https://app.todoist.com");
                 WebBrowser.OpenYouTube();
                 WebBrowser.OpenGmail();
@@ -45,9 +45,9 @@ public static class Commands
                 WebBrowser.OpenUrl("https://docs.google.com/document/d/1IxN-PAExj77bW0WR1PcX_9LkDB193_sGGL0fAkwrYQ4/edit#");
 
                 // Open desktop applications.
-                DesktopApps.OpenSlack();
+                Desktop.OpenSlack();
                 RecNet.OpenRecNetDevEnv();
-                DesktopApps.OpenNotepadPlusPlus();
+                Desktop.OpenNotepadPlusPlus();
             }),
 
         #endregion Rec Room

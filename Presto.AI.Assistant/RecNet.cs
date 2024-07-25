@@ -8,5 +8,5 @@ public static class RecNet
             @"dev\DevTools\RecNetDevEnv\bin\Release\RecNetDevEnv.exe");
 
     public static void OpenRecNetDevEnv() =>
-        DesktopApps.OpenApp(GetRecNetDevEnvPath());
+        Desktop.OpenApp(GetRecNetDevEnvPath());
 }

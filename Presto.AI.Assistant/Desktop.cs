@@ -4,7 +4,7 @@ namespace Presto.AI.Assistant;
 
 using static FileSystem;
 
-public static class DesktopApps
+public static class Desktop
 {
     public static void OpenApp(string fileName, string arguments = "")
     {
