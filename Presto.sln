@@ -11,8 +11,6 @@ Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Presto.AI.Agents", "Presto.
 EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Presto.Runtime", "Presto.Runtime\Presto.Runtime.csproj", "{E10EF511-B0FE-4CCC-B841-EB2EBC5129ED}"
 EndProject
-Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Presto.AI.Assistant", "Presto.AI.Assistant\Presto.AI.Assistant.csproj", "{9A7EAF9A-64FF-4472-825F-B570E69B1B3F}"
-EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Presto.Core", "Presto.Core\Presto.Core.csproj", "{CE04B1E5-9B9C-4E0A-B7FD-F47E63D63B84}"
 EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Presto.StandardLibrary", "Presto.StandardLibrary\Presto.StandardLibrary.csproj", "{C333EFE8-539F-4FD1-9547-BC4F7FC3C763}"
@@ -22,8 +20,6 @@ EndProject
 Project("{6EC3EE1D-3C4E-46DD-8F32-0CC8E7565705}") = "Presto.UnitTests", "Presto.UnitTests\Presto.UnitTests.fsproj", "{4D54C745-BD9F-46AB-B535-FE742FE9B0B7}"
 EndProject
 Project("{6EC3EE1D-3C4E-46DD-8F32-0CC8E7565705}") = "Presto.Library", "Presto.Library\Presto.Library.fsproj", "{CCD7A652-D947-41C7-96BD-686D7571863E}"
-EndProject
-Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Presto.AI.Assistant.GUI", "Presto.AI.Assistant.GUI\Presto.AI.Assistant.GUI.csproj", "{97EF9FB8-0F25-46B6-9797-E613BFB77282}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
@@ -47,10 +43,6 @@ Global
 		{E10EF511-B0FE-4CCC-B841-EB2EBC5129ED}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{E10EF511-B0FE-4CCC-B841-EB2EBC5129ED}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{E10EF511-B0FE-4CCC-B841-EB2EBC5129ED}.Release|Any CPU.Build.0 = Release|Any CPU
-		{9A7EAF9A-64FF-4472-825F-B570E69B1B3F}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
-		{9A7EAF9A-64FF-4472-825F-B570E69B1B3F}.Debug|Any CPU.Build.0 = Debug|Any CPU
-		{9A7EAF9A-64FF-4472-825F-B570E69B1B3F}.Release|Any CPU.ActiveCfg = Release|Any CPU
-		{9A7EAF9A-64FF-4472-825F-B570E69B1B3F}.Release|Any CPU.Build.0 = Release|Any CPU
 		{CE04B1E5-9B9C-4E0A-B7FD-F47E63D63B84}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
 		{CE04B1E5-9B9C-4E0A-B7FD-F47E63D63B84}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{CE04B1E5-9B9C-4E0A-B7FD-F47E63D63B84}.Release|Any CPU.ActiveCfg = Release|Any CPU
@@ -71,10 +63,6 @@ Global
 		{CCD7A652-D947-41C7-96BD-686D7571863E}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{CCD7A652-D947-41C7-96BD-686D7571863E}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{CCD7A652-D947-41C7-96BD-686D7571863E}.Release|Any CPU.Build.0 = Release|Any CPU
-		{97EF9FB8-0F25-46B6-9797-E613BFB77282}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
-		{97EF9FB8-0F25-46B6-9797-E613BFB77282}.Debug|Any CPU.Build.0 = Debug|Any CPU
-		{97EF9FB8-0F25-46B6-9797-E613BFB77282}.Release|Any CPU.ActiveCfg = Release|Any CPU
-		{97EF9FB8-0F25-46B6-9797-E613BFB77282}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
